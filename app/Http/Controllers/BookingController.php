@@ -36,17 +36,20 @@ use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Models\Voucher;
+use App\Queries\BookingPassengerQuery;
 use App\Services\BookingService;
 use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\ProfitCalculationService;
 use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -197,528 +200,104 @@ class BookingController extends Controller
             $selectedRouteDisplay = $oldRoute['display'] ?? null;
         }
 
-        $branchCounts = ! $userBranchId
-            ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
-                ->whereNotNull('booking_branch_id')
-                ->groupBy('booking_branch_id')
-                ->pluck('total', 'booking_branch_id')
-                ->toArray()
-            : [];
-        $allBookingCount = ! $userBranchId ? Booking::count() : 0;
+        if ($tab === 'booking') {
+            $branchCounts = ! $userBranchId
+                ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
+                    ->whereNotNull('booking_branch_id')
+                    ->groupBy('booking_branch_id')
+                    ->pluck('total', 'booking_branch_id')
+                    ->toArray()
+                : [];
+            $allBookingCount = ! $userBranchId ? Booking::count() : 0;
 
-        $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
-            ->when($userBranchId, fn ($q) => $q->where(function ($q) {
-                $q->where('booking_branch_id', auth()->user()->branch_id)
-                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-            })
-            )
-            ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
-            )
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->input('search');
-                $q->where(function ($query) use ($search) {
-                    $query->where('invoice_id', 'like', "%{$search}%")
-                        ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
-                        ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
-                });
-            })
-            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
-            )
-            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
-            )
-            ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
-            )
-            ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
-                if ($selectedBookingStatus === 'active') {
-                    $q->where('is_cancelled', false);
-                } elseif ($selectedBookingStatus === 'cancellation_processing') {
-                    $q->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
-                } elseif ($selectedBookingStatus === 'cancelled') {
-                    $q->where('is_cancelled', true)
-                        ->where(function ($q) {
-                            $q->whereDoesntHave('cancelledBooking')
-                                ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
-                        });
-                }
-            })
-            ->when($request->filled('payment_wise'), function ($q) use ($request) {
-                $paymentWise = $request->input('payment_wise');
-                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
-                $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
-                    if ($paymentWise === 'clear') {
-                        $iq->where('balance', '<=', 0);
-                    } elseif ($paymentWise === 'due') {
-                        $iq->where('balance', '>', 0);
-                    } elseif ($paymentWise === 'due_below_1000') {
-                        $iq->where('balance', '>', 0);
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? < 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '<', 1000);
-                        }
-                    } elseif ($paymentWise === 'due_above_1000') {
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '>=', 1000);
-                        }
+            $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
+                ->when($userBranchId, fn ($q) => $q->where(function ($q) {
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                        ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                })
+                )
+                ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
+                )
+                ->when($request->filled('search'), function ($q) use ($request) {
+                    $search = $request->input('search');
+                    $q->where(function ($query) use ($search) {
+                        $query->where('invoice_id', 'like', "%{$search}%")
+                            ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                            ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
+                    });
+                })
+                ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+                )
+                ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+                )
+                ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
+                )
+                ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
+                    if ($selectedBookingStatus === 'active') {
+                        $q->where('is_cancelled', false);
+                    } elseif ($selectedBookingStatus === 'cancellation_processing') {
+                        $q->where('is_cancelled', true)
+                            ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
+                    } elseif ($selectedBookingStatus === 'cancelled') {
+                        $q->where('is_cancelled', true)
+                            ->where(function ($q) {
+                                $q->whereDoesntHave('cancelledBooking')
+                                    ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
+                            });
                     }
-                });
-            })
-            ->orderBy('created_at', 'desc');
+                })
+                ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                    $paymentWise = $request->input('payment_wise');
+                    $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
+                    $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
+                        if ($paymentWise === 'clear') {
+                            $iq->where('balance', '<=', 0);
+                        } elseif ($paymentWise === 'due') {
+                            $iq->where('balance', '>', 0);
+                        } elseif ($paymentWise === 'due_below_1000') {
+                            $iq->where('balance', '>', 0);
+                            if ($rate > 0) {
+                                $iq->whereRaw('balance * ? < 1000', [$rate]);
+                            } else {
+                                $iq->where('balance', '<', 1000);
+                            }
+                        } elseif ($paymentWise === 'due_above_1000') {
+                            if ($rate > 0) {
+                                $iq->whereRaw('balance * ? >= 1000', [$rate]);
+                            } else {
+                                $iq->where('balance', '>=', 1000);
+                            }
+                        }
+                    });
+                })
+                ->orderBy('created_at', 'desc');
 
-        $totalBookingCount = (clone $bookingQuery)->count();
-        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
+            $totalBookingCount = (clone $bookingQuery)->count();
+            $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
 
-        $bookings = $bookingQuery->paginate(10)
-            ->appends(['tab' => $tab])
-            ->withQueryString();
+            $bookings = $bookingQuery->paginate(10)
+                ->appends(['tab' => $tab])
+                ->withQueryString();
+        } else {
+            $branchCounts = [];
+            $allBookingCount = 0;
+            $totalBookingCount = 0;
+            $totalBookingPassengerCount = 0;
+            $bookings = new LengthAwarePaginator(collect(), 0, 10, 1);
+        }
 
         $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
         $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
-        $passengers = Passenger::query()
-            ->when(auth()->user()->branch_id, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
-                $q->where('booking_branch_id', auth()->user()->branch_id)
-                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-            })
-            )
-            )
-            ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
-                if ($selectedBookingStatus === 'active') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', false));
-                } elseif ($selectedBookingStatus === 'cancellation_processing') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancellation processing')));
-                } elseif ($selectedBookingStatus === 'cancelled') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->where(fn ($bw) => $bw->whereDoesntHave('cancelledBooking')
-                            ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
-                }
-            })
-            ->when($request->filled('fingerprint_status'), fn ($q) => $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
-            )
-            ->when($request->filled('visa_status'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
-            )
-            ->when($request->filled('ticket_status'), function ($q) use ($request) {
-                $val = $request->input('ticket_status');
-
-                if (in_array($val, ['partial-re-issued', 'partial-refunded', 're-issued', 'refunded'])) {
-                    $targetStatus = str_contains($val, 're-issued') ? 're-issued' : 'refunded';
-                    $isPartial = str_starts_with($val, 'partial-');
-
-                    $q->where(function ($wq) use ($targetStatus, $isPartial) {
-                        if ($isPartial) {
-                            $wq->where(function ($wq2) use ($targetStatus) {
-                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
-                                    ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                        ->where('status', '!=', $targetStatus));
-                            })->orWhere(function ($wq2) use ($targetStatus) {
-                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                    ->where('status', $targetStatus))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $targetStatus)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                            });
-                        } else {
-                            $wq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
-                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                ->where(function ($wq2) use ($targetStatus) {
-                                    $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                        ->where('status', $targetStatus))
-                                        ->orWhereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'));
-                                });
-                        }
-                    });
-                } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
-                    $isIssued = str_starts_with($val, 'issued-');
-                    $status = $isIssued ? 'issued' : 'awaiting-group';
-                    $routeFilter = $isIssued ? substr($val, 7) : substr($val, 15);
-
-                    if ($routeFilter === 'inbound' || $routeFilter === 'outbound' || $routeFilter === 'both') {
-                        $q->where(function ($wq) use ($status, $routeFilter, $isIssued) {
-                            $wq->where(function ($nq) use ($status, $routeFilter) {
-                                $nq->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular'))
-                                        ->whereHas('ticketFare.route', fn ($rq) => match ($routeFilter) {
-                                            'inbound' => $rq->where('route_type', 'oneway_inbound'),
-                                            'outbound' => $rq->where('route_type', 'oneway_outbound'),
-                                            'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
-                                        }));
-                            });
-                            if ($routeFilter === 'inbound') {
-                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
-                                    $poStatus = $isIssued ? 'pending' : 'awaiting-group';
-                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                    if ($isIssued) {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $poStatus));
-                                    } else {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', '!=', $poStatus));
-                                    }
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                        ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status));
-                                });
-                            } elseif ($routeFilter === 'outbound') {
-                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
-                                    if ($isIssued) {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', 'pending')
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                                ->where('status', 'issued'));
-                                    } else {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                                ->where('status', $status));
-                                    }
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                });
-                            } elseif ($routeFilter === 'both') {
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status));
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                });
-                            }
-                        });
-                    } elseif ($routeFilter === '') {
-                        $q->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
-                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                    }
-                } else {
-                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $val)
-                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                }
-            })
-            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) => $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
-            )
-            ->when($request->filled('booking_branch_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
-            )
-            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
-            )
-            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
-            )
-            ->when($request->filled('flight_date_from'), fn ($q) => $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
-            )
-            ->when($request->filled('flight_date_to'), fn ($q) => $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
-            )
-            ->when($request->filled('actual_flight_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
-            )
-            ->when($request->filled('actual_flight_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
-            )
-            ->when($request->filled('return_date_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
-            )
-            ->when($request->filled('return_date_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
-            )
-            ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status'))
-            )
-            ->when($request->filled('status_change_action'), function ($q) use ($request) {
-                $action = $request->input('status_change_action');
-                $dateFrom = $request->input('status_change_from');
-                $dateTo = $request->input('status_change_to');
-
-                if (in_array($action, ['visa_submitted', 'visa_issued', 'ticket_issued'])) {
-                    // New filters: exclude passengers whose current status is Cancel/Delivered/Hold
-                    $excludeIds = PassengerStatus::whereIn('name', ['Cancel', 'Delivered', 'Hold'])
-                        ->pluck('id')
-                        ->toArray();
-
-                    $q->where(function ($sub) use ($excludeIds) {
-                        $sub->whereNull('passenger_status_id')
-                            ->orWhereNotIn('passenger_status_id', $excludeIds);
-                    });
-
-                    match ($action) {
-                        'visa_submitted' => $q->whereHas(
-                            'visaSubmission',
-                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'submitted')
-                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'");
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                        'visa_issued' => $q->whereHas(
-                            'visaSubmission',
-                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'issued')
-                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                        'ticket_issued' => $q->whereHas(
-                            'issuedTickets',
-                            fn ($it) => $it->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'issued')
-                                        ->orWhere('new_data->status', 'issued');
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                    };
-                } else {
-                    // Existing Cancel/Delivered/Hold logic — unchanged
-                    $q->where('passenger_status_id', $action);
-
-                    if ($dateFrom || $dateTo) {
-                        $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
-                            $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
-                                $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
-                                    $logQ->where('action', 'updated')
-                                        ->where('new_values->passenger_status_id', $action);
-                                    if ($dateFrom) {
-                                        $logQ->whereDate('created_at', '>=', $dateFrom);
-                                    }
-                                    if ($dateTo) {
-                                        $logQ->whereDate('created_at', '<=', $dateTo);
-                                    }
-                                });
-                            })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
-                                $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
-                                    $logQ->where('action', 'updated')
-                                        ->where('new_values->passenger_status_id', $action);
-                                });
-                                if ($dateFrom) {
-                                    $q->whereDate('updated_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $q->whereDate('updated_at', '<=', $dateTo);
-                                }
-                            });
-                        });
-                    }
-                }
-            })
-            ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
-                $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
-                if (! empty($routeIds)) {
-                    $q->where(function ($q) use ($routeIds) {
-                        $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds))
-                            ->orWhereHas('ticketFareInbound', fn ($q) => $q->whereIn('route_id', $routeIds))
-                            ->orWhereHas('ticketFareOutbound', fn ($q) => $q->whereIn('route_id', $routeIds));
-                    });
-                }
-            })
-            ->when($request->filled('package_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
-            )
-            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) => $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) => $q->where('id', $request->input('ticket_agent_id'))
-            )
-            )
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->input('search');
-                $q->where(function ($query) use ($search) {
-                    $query->where('mobile_no', 'like', "%{$search}%")
-                        ->orWhere('passport_no', 'like', "%{$search}%")
-                        ->orWhere('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
-                        ->orWhereHas('issuedTickets', fn ($q) => $q->where('ticket_number', 'like', "%{$search}%")
-                            ->orWhere('pnr', 'like', "%{$search}%")
-                        );
-                });
-            })
-            ->when($request->filled('payment_wise'), function ($q) use ($request) {
-                $paymentWise = $request->input('payment_wise');
-                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
-                $q->whereHas('booking.invoice', function ($iq) use ($paymentWise, $rate) {
-                    if ($paymentWise === 'clear') {
-                        $iq->where('balance', '<=', 0);
-                    } elseif ($paymentWise === 'due') {
-                        $iq->where('balance', '>', 0);
-                    } elseif ($paymentWise === 'due_below_1000') {
-                        $iq->where('balance', '>', 0);
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? < 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '<', 1000);
-                        }
-                    } elseif ($paymentWise === 'due_above_1000') {
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '>=', 1000);
-                        }
-                    }
-                });
-            });
-
-        $totalPassengerCount = (clone $passengers)->count();
-
-        $currencyRateService = app(CurrencyRateService::class);
-
-        $bookingIds = (clone $passengers)->pluck('booking_id')->unique();
-
-        $invoiceBookings = Booking::with('invoice', 'currencyRate')
-            ->whereIn('id', $bookingIds)
-            ->get();
-
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
-
+        $totalPassengerCount = 0;
         $totalPackageValue = 0;
         $totalDue = 0;
         $totalPackageBdt = 0;
         $totalDueBdt = 0;
 
-        foreach ($invoiceBookings as $booking) {
-            $invoice = $booking->invoice;
-            if (! $invoice) {
-                continue;
-            }
-
-            $totalPackageValue += $invoice->total_amount;
-            $totalDue += $invoice->balance;
-
-            $rate = $booking->currencyRate?->rate ?? $firstRate;
-
-            if ($rate > 0) {
-                $totalPackageBdt += $invoice->total_amount * $rate;
-                $totalDueBdt += $invoice->balance * $rate;
-            }
-        }
-
-        $passengers = (clone $passengers)
-            ->with([
-                'booking',
-                'booking.customer',
-                'booking.customer.documents',
-                'booking.documents',
-                'booking.package.ticketFare.route',
-                'booking.package.ticketFareInbound',
-                'booking.package.ticketFareOutbound',
-                'booking.invoice',
-                'booking.fingerprint',
-                'booking.passengers',
-                'ticketFare.route',
-                'ticketFareInbound.route',
-                'ticketFareInbound.airline',
-                'ticketFareInbound.airlineClass.class',
-                'ticketFareInbound.baggageAllowances',
-                'ticketFareOutbound.route',
-                'ticketFareOutbound.airline',
-                'ticketFareOutbound.airlineClass.class',
-                'ticketFareOutbound.baggageAllowances',
-                'status',
-                'visaSubmission.visaAgent',
-                'visaSubmission.visaSellingPrice',
-                'visaSubmission.commissionAgent',
-                'visaSubmission.cancelledSubmissions',
-                'fingerprintDetail.fingerprint.fingerprintDetails',
-                'fingerprintDetail.approvedLog',
-                'ticketFare.baggageAllowances',
-                'allIssuedTickets',
-                'allIssuedTickets.ticketAgent',
-                'allIssuedTickets.ticketFare.airline',
-                'allIssuedTickets.ticketFare.airlineClass.class',
-                'allIssuedTickets.ticketFare.route.fromCity',
-                'allIssuedTickets.ticketFare.route.toCity',
-                'allIssuedTickets.ticketFare.route.returnCity',
-                'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
-                'allIssuedTickets.ticketFare.route.multiSegments.toCity',
-                'allIssuedTickets.latestReIssuedTicket',
-                'allIssuedTickets.latestReIssuedTicket.ticketAgent',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.airline',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.airlineClass.class',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.fromCity',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.toCity',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
-                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
-                'allIssuedTickets.latestRefundedTicket',
-                'allIssuedTickets.latestRefundedTicket.ticketAgent',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.airline',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.airlineClass.class',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.route.fromCity',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.route.toCity',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.route.returnCity',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
-                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
-                'allIssuedTickets.reIssuedTickets.reason',
-                'allIssuedTickets.refundedTickets.reason',
-                'allIssuedTickets.pendingRequests',
-                'latestIssuedTicket.ticketAgent',
-                'latestIssuedTicket.ticketFare.airline',
-                'latestIssuedTicket.ticketFare.airlineClass.class',
-                'latestIssuedTicket.ticketFare.route',
-                'latestIssuedTicket.latestReIssuedTicket',
-                'latestIssuedTicket.latestReIssuedTicket.ticketAgent',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airline',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.fromCity',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.toCity',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.returnCity',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
-                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
-                'latestIssuedTicket.latestRefundedTicket',
-                'latestIssuedTicket.latestRefundedTicket.ticketAgent',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.airline',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.airlineClass.class',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.fromCity',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.toCity',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.returnCity',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
-                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
-                'latestIssuedTicket.pendingRequests',
-                'ticketFareInbound.airline',
-                'ticketFareInbound.airlineClass.class',
-                'ticketFareInbound.route',
-                'ticketFareInbound.baggageAllowances',
-                'ticketFareOutbound.airline',
-                'ticketFareOutbound.airlineClass.class',
-                'ticketFareOutbound.route',
-                'ticketFareOutbound.baggageAllowances',
-            ])
-            ->withCount('documents')
-            ->orderBy('created_at', 'desc')
-            ->paginate(15)
-            ->appends(['tab' => $tab])
-            ->withQueryString();
-
+        $passengers = new LengthAwarePaginator(collect(), 0, 15, 1);
         $passengerStatuses = PassengerStatus::all();
         $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
         )->values();
@@ -774,7 +353,7 @@ class BookingController extends Controller
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
             'canFilterByVisaAgent', 'canFilterByTicketAgent',
-            'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
+            'bookingBranches', 'selectedBranchId', 'totalBookingCount',
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
@@ -789,6 +368,757 @@ class BookingController extends Controller
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
             'reIssueReasons'
         ));
+    }
+
+    public function passengerData(Request $request)
+    {
+        $query = (new BookingPassengerQuery($request))->getQuery();
+        $page = $query->with([
+            'booking' => fn ($q) => $q->with([
+                'customer', 'invoice', 'package', 'currencyRate',
+                'fingerprint', 'passengers', 'documents',
+                'customer.documents', 'cancelledBooking',
+            ]),
+            'ticketFare' => fn ($q) => $q->with([
+                'route.fromCity', 'route.toCity', 'route.returnCity',
+                'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+                'airline', 'airlineClass.class', 'baggageAllowances', 'groupTicket',
+            ]),
+            'ticketFareInbound' => fn ($q) => $q->with([
+                'route.fromCity', 'route.toCity', 'route.returnCity',
+                'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+                'airline', 'airlineClass.class', 'baggageAllowances',
+            ]),
+            'ticketFareOutbound' => fn ($q) => $q->with([
+                'route.fromCity', 'route.toCity', 'route.returnCity',
+                'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+                'airline', 'airlineClass.class', 'baggageAllowances',
+            ]),
+            'status',
+            'visaSubmission.visaAgent',
+            'visaSubmission.visaSellingPrice',
+            'visaSubmission.commissionAgent',
+            'visaSubmission.cancelledSubmissions',
+            'fingerprintDetail.fingerprint.fingerprintDetails',
+            'fingerprintDetail.approvedLog',
+            'allIssuedTickets' => fn ($q) => $q->with([
+                'ticketAgent',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'latestReIssuedTicket.ticketAgent',
+                'latestReIssuedTicket.ticketFare',
+                'latestRefundedTicket.ticketAgent',
+                'latestRefundedTicket.ticketFare',
+                'reIssuedTickets.reason',
+                'refundedTickets.reason',
+                'pendingRequests',
+                'issuer',
+            ]),
+            'cancelledPassengers',
+            'documents',
+        ])->paginate((int) $request->input('per_page', 15))->withQueryString();
+
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+        $costService = app(CostTrackingService::class);
+        $profitService = app(ProfitCalculationService::class);
+
+        $data = $page->getCollection()->map(function ($p) use ($firstRate, $costService, $profitService) {
+            $passBookingRate = $p->booking?->currencyRate?->rate
+                ?? app(CurrencyRateService::class)->getRateForDate($p->booking?->created_at)?->rate
+                ?? $firstRate;
+
+            return [
+                'id' => $p->id,
+                'booking_id' => $p->booking_id,
+                'first_name' => $p->first_name,
+                'last_name' => $p->last_name,
+                'passport_no' => $p->passport_no,
+                'mobile_no' => $p->mobile_no,
+                'flight_date_from' => $p->flight_date_from?->format('d M Y'),
+                'flight_date_to' => $p->flight_date_to?->format('d M Y'),
+                'stay_duration' => $p->stay_duration,
+                'passenger_type' => $p->passenger_type?->value,
+                'service_required' => $p->service_required?->value,
+                'package_value' => $p->package_value,
+                'ticket_remarks' => $p->ticket_remarks ?? '',
+                'is_ticket_held' => (bool) ($p->is_ticket_held ?? false),
+                'is_visa_held' => (bool) ($p->is_visa_held ?? false),
+                'is_cancelled' => $p->booking?->is_cancelled ?? false,
+                'profit' => (float) ($p->profit ?? 0),
+                'refund_payable' => (float) ($p->refund_payable ?? 0),
+                'route_display' => $p->route_display ?? '—',
+                'pass_booking_rate' => $passBookingRate,
+
+                'booking' => [
+                    'created_at' => $p->booking?->created_at?->format('d M Y'),
+                    'created_at_yyyy_mm_dd' => $p->booking?->created_at?->format('Y-m-d'),
+                    'invoice_id' => $p->booking?->invoice_id,
+                    'pax_qty' => $p->booking?->pax_qty,
+                    'remarks' => $p->booking?->remarks,
+                    'fingerprint_location' => $p->booking?->fingerprint_location?->value,
+                    'is_cancelled' => $p->booking?->is_cancelled ?? false,
+                    'customer' => [
+                        'name' => $p->booking?->customer?->name,
+                        'mobile_no' => $p->booking?->customer?->mobile_no,
+                    ],
+                    'package' => [
+                        'package_name' => $p->booking?->package?->package_name,
+                    ],
+                    'invoice' => $p->booking?->invoice ? [
+                        'total_amount' => (float) ($p->booking->invoice->total_amount ?? 0),
+                        'balance' => (float) ($p->booking->invoice->balance ?? 0),
+                        'paid_amount' => (float) ($p->booking->invoice->paid_amount ?? 0),
+                    ] : null,
+                    'discount_amount' => (float) ($p->booking?->discount_amount ?? 0),
+                ],
+
+                'fare_amount' => $this->computeFareAmount($p),
+                'actual_flight_date' => $this->computeActualFlightDate($p),
+                'return_date' => $this->computeReturnDate($p),
+                'fingerprint_display_status' => $this->computeFingerprintDisplayStatus($p),
+                'cancelled_passenger' => $this->computeCancelledPassengerInfo($p),
+                'documents_count' => $p->documents->count(),
+                'has_booking_documents' => $p->booking?->documents?->isNotEmpty() ?? false,
+                'has_customer_documents' => ($p->booking?->customer && $p->booking->customer->documents->isNotEmpty()) ?? false,
+                'passenger_url' => route('passengers.show', $p->id).'?return_url='.urlencode(request()->fullUrl()),
+                'passenger_download_url' => route('passengers.download-all-docs', $p->id),
+                'booking_download_url' => route('bookings.download-all-docs', ['booking' => $p->booking_id, 'passenger_id' => $p->id]),
+
+                'visa_data' => $this->computeVisaData($p, $passBookingRate),
+                'ticket_data' => $this->computeTicketData($p, $passBookingRate, $profitService),
+                'cost' => $this->computePassengerCost($p, $costService),
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $data,
+            'summary' => $this->passengerSummary($request),
+            'pagination' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    protected function passengerSummary(Request $request): array
+    {
+        $base = (new BookingPassengerQuery($request))->getBaseQueryForAggregates();
+        $base->getQuery()->orders = [];
+        $row = (clone $base)->selectRaw('COUNT(*) as total')->first();
+
+        $bookingIdsSub = (clone $base)->select('passengers.booking_id')->distinct();
+        $bookingIdsSub->getQuery()->orders = [];
+
+        $firstRate = (float) (app(CurrencyRateService::class)->getFirstRate()?->rate ?? 0);
+
+        $invoiceTotals = Invoice::whereIn('booking_id', $bookingIdsSub)
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as package, COALESCE(SUM(balance), 0) as due')
+            ->first();
+
+        $bdtTotals = Invoice::whereIn('invoices.booking_id', $bookingIdsSub)
+            ->leftJoin('bookings', 'bookings.id', '=', 'invoices.booking_id')
+            ->leftJoin('currency_rates', 'currency_rates.id', '=', 'bookings.currency_rate_id')
+            ->selectRaw('COALESCE(SUM(invoices.total_amount * COALESCE(currency_rates.rate, ?)), 0) as package_bdt, COALESCE(SUM(invoices.balance * COALESCE(currency_rates.rate, ?)), 0) as due_bdt', [$firstRate, $firstRate])
+            ->first();
+
+        return [
+            'total' => (int) $row->total,
+            'total_package_value' => (float) ($invoiceTotals->package ?? 0),
+            'total_due' => (float) ($invoiceTotals->due ?? 0),
+            'total_package_bdt' => (float) ($bdtTotals->package_bdt ?? 0),
+            'total_due_bdt' => (float) ($bdtTotals->due_bdt ?? 0),
+        ];
+    }
+
+    private function computeFareAmount(Passenger $p): float
+    {
+        $calcFare = function ($fare, $pType) {
+            if (! $fare) {
+                return 0;
+            }
+            $base = $fare->ticket_type?->value === 'offer'
+                ? ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0)
+                : ($fare->selling_fare ?? $fare->net_fare ?? 0);
+
+            return match ($pType) {
+                'child' => $base * ($fare->child_fare_percentage) / 100,
+                'infant' => $base * ($fare->infant_fare_percentage) / 100,
+                default => $base,
+            };
+        };
+
+        if ($p->ticket_fare_inbound_id && $p->ticket_fare_outbound_id) {
+            return $calcFare($p->ticketFareInbound, $p->passenger_type?->value)
+                + $calcFare($p->ticketFareOutbound, $p->passenger_type?->value);
+        }
+
+        return $calcFare($p->ticketFare, $p->passenger_type?->value);
+    }
+
+    private function computeActualFlightDate(Passenger $p): ?string
+    {
+        $regularTicket = $p->allIssuedTickets
+            ->first(fn ($t) => in_array($t->issue_type, [null, 'regular'], true)
+                && in_array($t->status, ['issued', 're-issued']));
+
+        if (! $regularTicket) {
+            return null;
+        }
+
+        $date = $regularTicket->status === 're-issued'
+            ? ($regularTicket->latestReIssuedTicket?->inbound_date ?? $regularTicket->inbound_date)
+            : $regularTicket->inbound_date;
+
+        return $date?->format('d M Y');
+    }
+
+    private function computeReturnDate(Passenger $p): ?string
+    {
+        $regularTicket = $p->allIssuedTickets
+            ->first(fn ($t) => in_array($t->issue_type, [null, 'regular'], true)
+                && in_array($t->status, ['issued', 're-issued']));
+
+        if (! $regularTicket) {
+            return null;
+        }
+
+        if ($regularTicket->outbound_pending) {
+            $pendingTicket = $p->allIssuedTickets
+                ->first(fn ($t) => $t->issue_type === 'pending_outbound'
+                    && in_array($t->status, ['issued', 're-issued'], true));
+            if ($pendingTicket) {
+                $d = $pendingTicket->status === 're-issued'
+                    ? ($pendingTicket->latestReIssuedTicket?->outbound_date ?? $pendingTicket->outbound_date)
+                    : $pendingTicket->outbound_date;
+
+                return $d?->format('d M Y');
+            }
+
+            return null;
+        }
+
+        $d = $regularTicket->status === 're-issued'
+            ? ($regularTicket->latestReIssuedTicket?->outbound_date ?? $regularTicket->outbound_date)
+            : $regularTicket->outbound_date;
+
+        return $d?->format('d M Y');
+    }
+
+    private function computeFingerprintDisplayStatus(Passenger $p): array
+    {
+        $detail = $p->fingerprintDetail;
+        $rawStatus = $detail?->status?->value;
+        $displayStatus = $rawStatus;
+        $approvedDate = null;
+
+        if ($rawStatus === 'approved') {
+            $allDetails = $detail->fingerprint?->fingerprintDetails;
+            $allApproved = $allDetails && $allDetails->every(fn ($d) => $d->status->value === 'approved');
+            if (! $allApproved) {
+                $displayStatus = 'Partially Approved';
+            }
+            $approvedDate = ($detail->approvedLog?->created_at ?? $detail->updated_at)?->format('d|m|y');
+        } elseif ($rawStatus === 'done') {
+            $displayStatus = 'Pending Pax Completion';
+        }
+
+        return [
+            'raw' => $rawStatus,
+            'display' => $displayStatus,
+            'approved_date' => $approvedDate,
+        ];
+    }
+
+    private function computeCancelledPassengerInfo(Passenger $p): ?array
+    {
+        $activeCancellation = $p->cancelledPassengers->first();
+        if (! $activeCancellation) {
+            return null;
+        }
+
+        return [
+            'is_confirmed' => $activeCancellation->status === 'cancelled' && $activeCancellation->confirmed_at,
+            'is_processing' => $activeCancellation->status === 'cancellation processing' && ! $activeCancellation->confirmed_at,
+        ];
+    }
+
+    private function computeVisaData(Passenger $p, float $passBookingRate): array
+    {
+        return [
+            'id' => $p->id,
+            'booking_id' => $p->booking_id,
+            'rate' => $passBookingRate,
+            'service_required' => $p->service_required?->value ?? 'all',
+            'is_visa_held' => (bool) ($p->is_visa_held ?? false),
+            'visa' => $p->visaSubmission ? [
+                'id' => $p->visaSubmission->id,
+                'agent_id' => $p->visaSubmission->visa_agent_id,
+                'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
+                'visa_number' => $p->visaSubmission?->visa_number ?? '',
+                'selling_price' => (float) ($p->visaSubmission?->visaSellingPrice?->selling_price ?? 0),
+                'agent_commission' => (float) ($p->visaSubmission?->agent_commission ?? 0),
+                'net_visa_cost' => (float) ($p->visaSubmission?->net_visa_cost ?? 0),
+                'additional_cost' => (float) ($p->visaSubmission?->additional_cost ?? 0),
+                'remarks' => $p->visaSubmission?->remarks ?? '',
+                'final_cost' => (float) ($p->visaSubmission?->final_cost ?? 0),
+                'commission_agent_id' => $p->visaSubmission?->commission_agent_id,
+                'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
+                'status' => $p->visaSubmission->status?->value ?? 'pending',
+            ] : null,
+        ];
+    }
+
+    private function computeTicketData(Passenger $p, float $firstRate, ProfitCalculationService $profitService): array
+    {
+        $paxCount = max($p->booking->passengers->count(), 1);
+        $fpCost = $p->booking->fingerprint?->cost ?? 0;
+
+        return [
+            'id' => $p->id,
+            'booking_id' => $p->booking_id,
+            'service_required' => $p->service_required?->value ?? 'all',
+            'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
+            'invoice_no' => $p->booking?->invoice_id ?? '',
+            'passenger_name' => trim($p->first_name.' '.$p->last_name),
+            'passport' => $p->passport_no ?? '',
+            'route' => $p->route_display ?? '',
+            'airline' => $p->ticketFare?->airline?->name ?? $p->booking?->package?->ticketFare?->airline?->name ?? '',
+            'travel_class' => $p->ticketFare?->airlineClass?->class?->name ?? $p->booking?->package?->ticketFare?->airlineClass?->class?->name ?? '',
+            'passenger_type' => $p->passenger_type?->value ?? 'adult',
+            'mobile_no' => $p->mobile_no ?? '',
+            'is_ticket_held' => (bool) ($p->is_ticket_held ?? false),
+            'ticket_status' => $p->allIssuedTickets
+                ->filter(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
+                ->sortByDesc('id')
+                ->first()?->status ?? null,
+            'ticket_remarks' => $p->ticket_remarks ?? '',
+            'due' => $p->booking?->invoice?->balance ?? 0,
+            'refund_payable' => (float) ($p->refund_payable ?? 0),
+            'profit' => (float) ($p->profit ?? 0),
+            'profit_breakdown' => $profitService->getPassengerProfitBreakdown($p),
+            'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
+            'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
+            'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
+            'fingerprint_status' => $p->fingerprintDetail?->status?->value ?? null,
+            'status' => $p->status?->name ?? 'None',
+            'is_cancelled' => $p->booking?->is_cancelled ?? false,
+            'fingerprint_cost' => $fpCost > 0 ? round($fpCost / $paxCount, 6) : 0,
+            'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id,
+            'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id,
+            'is_double_ticket' => ! is_null($p->ticket_fare_inbound_id),
+            'package_is_double_ticket' => $p->booking?->package?->is_double_ticket ?? false,
+            'inbound_ticket_fare' => $this->computeInboundFareData($p),
+            'outbound_ticket_fare' => $this->computeOutboundFareData($p),
+            'ticket_fare' => $this->computeCurrentTicketFareData($p),
+            'latest_issued_ticket' => $this->computeLatestIssuedTicket($p),
+            'all_issued_tickets' => $this->computeAllIssuedTickets($p),
+            'pending_outbound_issued_ticket' => $this->computePendingOutboundTicket($p),
+        ];
+    }
+
+    private function computeInboundFareData(Passenger $p): ?array
+    {
+        $fare = $p->ticketFareInbound;
+        if (! $fare) {
+            return null;
+        }
+        $route = $fare->route;
+        $pType = $p->passenger_type?->value ?? 'adult';
+
+        return [
+            'id' => $fare->id,
+            'route_display' => $this->formatRouteDisplay($route),
+            'airline' => $fare->airline?->name ?? '',
+            'travel_class' => $fare->airlineClass?->class?->name ?? '',
+            'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            'flight_type' => $route?->flight_type?->value ?? '',
+            'selling_fare' => (float) ($fare->selling_fare ?? 0),
+            'net_fare' => (float) ($fare->net_fare ?? 0),
+            'offer_price' => $fare->ticket_type?->value === 'offer' ? (float) ($fare->offer_price ?? 0) : null,
+            'with_offer' => (bool) ($fare->ticket_type?->value === 'offer'),
+            'child_fare_percentage' => (float) ($fare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float) ($fare->infant_fare_percentage ?? 30),
+            'baggage_inbound' => $fare->baggageAllowances
+                ->filter(fn ($ba) => $ba->travel_direction?->value === 'inbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+            'baggage_outbound' => $fare->baggageAllowances
+                ->filter(fn ($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+        ];
+    }
+
+    private function computeOutboundFareData(Passenger $p): ?array
+    {
+        $fare = $p->ticketFareOutbound;
+        if (! $fare) {
+            return null;
+        }
+        $route = $fare->route;
+        $pType = $p->passenger_type?->value ?? 'adult';
+
+        return [
+            'id' => $fare->id,
+            'route_display' => $this->formatRouteDisplay($route),
+            'airline' => $fare->airline?->name ?? '',
+            'travel_class' => $fare->airlineClass?->class?->name ?? '',
+            'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            'flight_type' => $route?->flight_type?->value ?? '',
+            'selling_fare' => (float) ($fare->selling_fare ?? 0),
+            'net_fare' => (float) ($fare->net_fare ?? 0),
+            'offer_price' => $fare->ticket_type?->value === 'offer' ? (float) ($fare->offer_price ?? 0) : null,
+            'with_offer' => (bool) ($fare->ticket_type?->value === 'offer'),
+            'child_fare_percentage' => (float) ($fare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float) ($fare->infant_fare_percentage ?? 30),
+            'baggage_inbound' => $fare->baggageAllowances
+                ->filter(fn ($ba) => $ba->travel_direction?->value === 'inbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+            'baggage_outbound' => $fare->baggageAllowances
+                ->filter(fn ($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+        ];
+    }
+
+    private function computeCurrentTicketFareData(Passenger $p): ?array
+    {
+        $fare = $p->ticketFare;
+        if (! $fare) {
+            return null;
+        }
+        $route = $fare->route;
+
+        return [
+            'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            'route_type' => match ($route?->route_type?->value) {
+                'oneway_inbound' => 'One Way-Inbound',
+                'oneway_outbound' => 'One Way-Outbound',
+                'round' => 'Round',
+                'multi_city' => 'Multi City',
+                default => '',
+            },
+            'flight_type' => match ($route?->flight_type?->value) {
+                'direct' => 'Direct',
+                'transit' => 'Transit',
+                default => '',
+            },
+            'group_ticket_id' => $fare->groupTicket?->id ?? null,
+            'inbound_date' => $fare->groupTicket?->inbound_date ?? '',
+            'outbound_date' => $fare->groupTicket?->outbound_date ?? '',
+            'pnr' => $fare->groupTicket?->pnr ?? '',
+            'ticket_number' => '',
+            'date' => '',
+            'ticket_agent' => '',
+            'ticket_fare_id' => $fare->id,
+            'airline_id' => $fare->airline_id,
+            'airline_classes_id' => $fare->airline_classes_id,
+            'route_id' => $fare->route_id,
+            'selling_fare' => (float) ($fare->selling_fare ?? 0),
+            'net_fare' => (float) ($fare->net_fare ?? 0),
+            'child_fare_percentage' => (float) ($fare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float) ($fare->infant_fare_percentage ?? 30),
+            'offer_price' => $fare->ticket_type?->value === 'offer' ? (float) ($fare->offer_price ?? 0) : null,
+            'with_offer' => (bool) ($fare->ticket_type?->value === 'offer'),
+            'refundable' => false,
+            'non_refundable' => false,
+            'non_exchangeable' => false,
+            'baggage_inbound' => '',
+            'baggage_outbound' => '',
+            'outbound_pending' => false,
+            'issue_type' => null,
+            'issued_ticket_id' => null,
+            'baggage_allowances' => $fare->baggageAllowances->map(fn ($b) => [
+                'passenger_type' => $b->passenger_type,
+                'travel_direction' => $b->travel_direction,
+                'allowance' => $b->allowance,
+            ]) ?? [],
+        ];
+    }
+
+    private function computeLatestIssuedTicket(Passenger $p): ?array
+    {
+        $lit = $p->allIssuedTickets
+            ->filter(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
+            ->sortByDesc('id')
+            ->first();
+
+        if (! $lit) {
+            return null;
+        }
+
+        return [
+            'id' => $lit->id,
+            'ticket_number' => $lit->ticket_number ?? '',
+            'pnr' => $lit->pnr ?? '',
+            'ticket_agent_id' => $lit->ticket_agent_id,
+            'ticket_agent_name' => $lit->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $lit->ticket_fare_id,
+            'group_ticket_id' => $lit->group_ticket_id,
+            'issued_date' => $lit->issued_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $lit->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $lit->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float) ($lit->selling_fare ?? 0),
+            'net_fare' => (float) ($lit->net_fare ?? 0),
+            'offer_price' => (float) ($lit->offer_price ?? 0),
+            'is_refundable' => $lit->is_refundable ?? false,
+            'is_exchangeable' => $lit->is_exchangeable ?? false,
+            'baggage_inbound' => $lit->baggage_inbound ?? '',
+            'baggage_outbound' => $lit->baggage_outbound ?? '',
+            'outbound_pending' => $lit->outbound_pending ?? false,
+            'issue_type' => $lit->issue_type,
+            'status' => $lit->status,
+            'refunded_net_fare' => $lit->latestRefundedTicket
+                ? (float) ($lit->latestRefundedTicket->net_fare ?? $lit->net_fare ?? 0)
+                : 0,
+            'was_refunded' => (bool) $lit->latestRefundedTicket,
+            'has_pending_request' => $lit->pendingRequests->isNotEmpty(),
+            'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
+            'airline' => $lit->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $this->formatRouteDisplay($lit->ticketFare?->route),
+            'route_type' => $lit->ticketFare?->route?->route_type?->value,
+            'latest_re_issued_ticket' => $this->computeLatestReIssuedTicket($lit),
+            'latest_refunded_ticket' => $this->computeLatestRefundedTicket($lit),
+        ];
+    }
+
+    private function computeLatestReIssuedTicket(IssuedTicket $lit): ?array
+    {
+        $lrt = $lit->latestReIssuedTicket;
+        if (! $lrt) {
+            return null;
+        }
+
+        return [
+            'id' => $lrt->id,
+            'ticket_number' => $lrt->ticket_number ?? '',
+            'pnr' => $lrt->pnr ?? '',
+            're_issue_date' => $lrt->re_issue_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $lrt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $lrt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float) ($lrt->selling_fare ?? 0),
+            'net_fare' => (float) ($lrt->net_fare ?? 0),
+            'offer_price' => (float) ($lrt->offer_price ?? 0),
+            'is_refundable' => $lrt->is_refundable ?? false,
+            'is_exchangeable' => $lrt->is_exchangeable ?? false,
+            'baggage_inbound' => $lrt->baggage_inbound ?? '',
+            'baggage_outbound' => $lrt->baggage_outbound ?? '',
+            'ticket_agent_id' => $lrt->ticket_agent_id,
+            'ticket_agent_name' => $lrt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $lrt->ticket_fare_id,
+            'group_ticket_id' => $lrt->group_ticket_id,
+            'route_id' => $lrt->route_id,
+            'reason_id' => $lrt->reason_id,
+            're_issue_charge' => (float) ($lrt->re_issue_charge ?? 0),
+            'fare_difference' => (float) ($lrt->fare_difference ?? 0),
+            'other_costs' => (float) ($lrt->other_costs ?? 0),
+            'service_charge' => (float) ($lrt->service_charge ?? 0),
+            'payment_by' => $lrt->payment_by,
+            'payment_option' => $lrt->payment_option?->value,
+            'refund_adjustment_amount' => (float) ($lrt->refund_adjustment_amount ?? 0),
+            'total_customer_payment' => (float) ($lrt->total_customer_payment ?? 0),
+            'remarks' => $lrt->remarks ?? '',
+            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? $lit->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? $lit->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? $lit->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $lrt->ticketFare?->airline?->name ?? $lit->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? $lit->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $this->formatRouteDisplay($lrt->ticketFare?->route ?? $lit->ticketFare?->route),
+        ];
+    }
+
+    private function computeLatestRefundedTicket(IssuedTicket $lit): ?array
+    {
+        $frt = $lit->latestRefundedTicket;
+        if (! $frt) {
+            return null;
+        }
+
+        return [
+            'id' => $frt->id,
+            'ticket_number' => $frt->ticket_number ?? '',
+            'pnr' => $frt->pnr ?? '',
+            'refund_date' => $frt->refund_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $frt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $frt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float) ($frt->selling_fare ?? 0),
+            'net_fare' => (float) ($frt->net_fare ?? 0),
+            'offer_price' => (float) ($frt->offer_price ?? 0),
+            'is_refundable' => $frt->is_refundable ?? false,
+            'is_exchangeable' => $frt->is_exchangeable ?? false,
+            'baggage_inbound' => $frt->baggage_inbound ?? '',
+            'baggage_outbound' => $frt->baggage_outbound ?? '',
+            'ticket_agent_id' => $frt->ticket_agent_id,
+            'ticket_agent_name' => $frt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $frt->ticket_fare_id,
+            'group_ticket_id' => $frt->group_ticket_id,
+            'reason_id' => $frt->reason_id,
+            'iata_refunded_amount' => (float) ($frt->iata_refunded_amount ?? 0),
+            'refund_to_customer' => (float) ($frt->refund_to_customer ?? 0),
+            'service_charge' => (float) ($frt->service_charge ?? 0),
+            'refund_compensation' => (float) ($frt->refund_compensation ?? 0),
+            'payment_by' => $frt->payment_by,
+            'remarks' => $frt->remarks ?? '',
+            'ticket_type' => $frt->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $frt->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $frt->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $frt->ticketFare?->airline?->name ?? '',
+            'travel_class' => $frt->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $this->formatRouteDisplay($frt->ticketFare?->route),
+        ];
+    }
+
+    private function computeAllIssuedTickets(Passenger $p): array
+    {
+        return $p->allIssuedTickets->map(fn ($t) => [
+            'id' => $t->id,
+            'passenger_id' => $t->passenger_id,
+            'outbound_pending' => $t->outbound_pending ?? false,
+            'ticket_number' => $t->ticket_number ?? '',
+            'issued_date' => $t->issued_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $t->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $t->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float) ($t->selling_fare ?? 0),
+            'net_fare' => (float) ($t->net_fare ?? 0),
+            'offer_price' => (float) ($t->offer_price ?? 0),
+            'pnr' => $t->pnr ?? '',
+            'status' => $t->status,
+            'issue_type' => $t->issue_type,
+            'has_pending_request' => $t->pendingRequests->isNotEmpty(),
+            'is_refundable' => $t->is_refundable ?? false,
+            'is_exchangeable' => $t->is_exchangeable ?? false,
+            'baggage_inbound' => $t->baggage_inbound ?? '',
+            'baggage_outbound' => $t->baggage_outbound ?? '',
+            'ticket_agent_id' => $t->ticket_agent_id,
+            'ticket_fare_id' => $t->ticket_fare_id,
+            'group_ticket_id' => $t->group_ticket_id,
+            'airline' => $t->ticketFare?->airline?->name ?? '',
+            'travel_class' => $t->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $this->formatRouteDisplay($t->ticketFare?->route),
+            'route_type' => $t->ticketFare?->route?->route_type?->value,
+            'flight_type' => $t->ticketFare?->route?->flight_type?->value ?? '',
+            'ticket_type' => $t->ticketFare?->ticket_type?->value ?? '',
+            'ticket_agent_name' => $t->ticketAgent?->name ?? '',
+            'issuer_name' => $t->issuer?->name ?? '',
+            'latest_re_issued_ticket' => $this->computeLatestReIssuedTicket($t),
+            'latest_refunded_ticket' => $this->computeLatestRefundedTicket($t),
+            'reason' => match ($t->status) {
+                're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+                'refunded' => $t->refundedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+                default => null,
+            },
+            'remarks' => match ($t->status) {
+                're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->remarks ?? null,
+                'refunded' => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
+                default => null,
+            },
+            'refunded_net_fare' => $t->latestRefundedTicket
+                ? (float) ($t->latestRefundedTicket->net_fare ?? $t->net_fare ?? 0)
+                : 0,
+            'was_refunded' => (bool) $t->latestRefundedTicket,
+        ])->values()->all();
+    }
+
+    private function computePendingOutboundTicket(Passenger $p): ?array
+    {
+        $poit = $p->allIssuedTickets->first(fn ($t) => $t->issue_type === 'pending_outbound');
+        if (! $poit) {
+            return null;
+        }
+
+        $src = $poit->status === 're-issued' ? ($poit->latestReIssuedTicket ?? $poit) : $poit;
+        $fare = $src->ticketFare ?? $poit->ticketFare;
+
+        return [
+            'id' => $poit->id,
+            'ticket_number' => $src->ticket_number ?? $poit->ticket_number ?? '',
+            'pnr' => $src->pnr ?? $poit->pnr ?? '',
+            'ticket_agent_id' => $src->ticket_agent_id ?? $poit->ticket_agent_id,
+            'ticket_agent_name' => $src->ticketAgent?->name ?? $poit->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $src->ticket_fare_id ?? $poit->ticket_fare_id,
+            'ticket_type' => $fare?->ticket_type?->value ?? '',
+            'flight_type' => $fare?->route?->flight_type?->value ?? '',
+            'route_display' => $this->formatRouteDisplay($fare?->route),
+            'airline' => $fare?->airline?->name ?? '',
+            'travel_class' => $fare?->airlineClass?->class?->name ?? '',
+            'issued_date' => $src !== $poit
+                ? ($src->re_issue_date?->format('Y-m-d') ?? $poit->issued_date?->format('Y-m-d') ?? '')
+                : ($poit->issued_date?->format('Y-m-d') ?? ''),
+            'outbound_date' => $src->outbound_date?->format('Y-m-d') ?? $poit->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float) ($src->selling_fare ?? $poit->selling_fare ?? 0),
+            'net_fare' => (float) ($src->net_fare ?? $poit->net_fare ?? 0),
+            'offer_price' => (float) ($src->offer_price ?? $poit->offer_price ?? 0),
+            'is_refundable' => $src->is_refundable ?? $poit->is_refundable ?? false,
+            'is_exchangeable' => $src->is_exchangeable ?? $poit->is_exchangeable ?? false,
+            'baggage_outbound' => $src->baggage_outbound ?? $poit->baggage_outbound ?? '',
+            'status' => $poit->status,
+            'refunded_net_fare' => $poit->latestRefundedTicket
+                ? (float) ($poit->latestRefundedTicket->net_fare ?? $poit->net_fare ?? 0)
+                : 0,
+            'was_refunded' => (bool) $poit->latestRefundedTicket,
+            're_issue_details' => $poit->status === 're-issued' && $src !== $poit ? [
+                'reason_id' => $src->reason_id,
+                're_issue_charge' => (float) ($src->re_issue_charge ?? 0),
+                'fare_difference' => (float) ($src->fare_difference ?? 0),
+                'other_costs' => (float) ($src->other_costs ?? 0),
+                'service_charge' => (float) ($src->service_charge ?? 0),
+                'payment_by' => $src->payment_by,
+                'payment_option' => $src->payment_option?->value,
+                'refund_adjustment_amount' => (float) ($src->refund_adjustment_amount ?? 0),
+                'remarks' => $src->remarks ?? '',
+            ] : null,
+        ];
+    }
+
+    private function computePassengerCost(Passenger $p, CostTrackingService $costService): float
+    {
+        static $bookingCostCache = [];
+        $booking = $p->booking;
+        if (! $booking) {
+            return 0;
+        }
+
+        $bid = $booking->id;
+        if (! isset($bookingCostCache[$bid])) {
+            $bookingCostCache[$bid] = $costService->getPassengerCosts($booking)->keyBy('passenger_id');
+        }
+        $c = $bookingCostCache[$bid]->get($p->id);
+
+        return (float) ($c['total_cost'] ?? 0);
+    }
+
+    private function formatRouteDisplay($route): string
+    {
+        if (! $route) {
+            return '';
+        }
+
+        $rt = $route->route_type?->value;
+        if ($rt === 'multi_city') {
+            if ($route->multiSegments && $route->multiSegments->count() > 0) {
+                return $route->multiSegments
+                    ->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))
+                    ->implode(', ');
+            }
+
+            return '-';
+        }
+
+        $from = $route->fromCity?->code ?? '?';
+        $to = $route->toCity?->code ?? '?';
+        $return = $route->returnCity?->code ?? '';
+
+        if ($rt === 'round' && $return) {
+            return "{$from}-{$to}-{$return}";
+        }
+
+        return "{$from}-{$to}";
     }
 
     public function create(Request $request)
