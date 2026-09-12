@@ -490,7 +490,7 @@ class BookingController extends Controller
                 'passenger_download_url' => route('passengers.download-all-docs', $p->id),
                 'booking_download_url' => route('bookings.download-all-docs', ['booking' => $p->booking_id, 'passenger_id' => $p->id]),
 
-                'visa_data' => $this->computeVisaData($p),
+                'visa_data' => $this->computeVisaData($p, $passBookingRate),
                 'ticket_data' => $this->computeTicketData($p, $passBookingRate, $profitService),
                 'cost' => $this->computePassengerCost($p, $costService),
             ];
@@ -650,11 +650,12 @@ class BookingController extends Controller
         ];
     }
 
-    private function computeVisaData(Passenger $p): array
+    private function computeVisaData(Passenger $p, float $passBookingRate): array
     {
         return [
             'id' => $p->id,
             'booking_id' => $p->booking_id,
+            'rate' => $passBookingRate,
             'service_required' => $p->service_required?->value ?? 'all',
             'is_visa_held' => (bool) ($p->is_visa_held ?? false),
             'visa' => $p->visaSubmission ? [

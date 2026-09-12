@@ -2270,12 +2270,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
+                                       @input="handleReIssueSarInput('selling_fare')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
+                                       @input="handleReIssueBdtInput('selling_fare')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2287,13 +2289,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
-                                       @input="recalcReIssueFareDifference()"
+                                       @input="handleReIssueSarInput('net_fare'); recalcReIssueFareDifference()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
+                                       @input="handleReIssueBdtInput('net_fare'); recalcReIssueFareDifference()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2305,12 +2308,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
+                                       @input="handleReIssueSarInput('offer_price')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
                                 <input type="number" x-model="reIssueForm.offer_price_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
+                                       @input="handleReIssueBdtInput('offer_price')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
