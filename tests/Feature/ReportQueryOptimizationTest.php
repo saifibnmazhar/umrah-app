@@ -706,4 +706,31 @@ class ReportQueryOptimizationTest extends TestCase
         $this->assertLessThan(80, $queryCount,
             'Branch-wise report should execute fewer than 80 queries for 5 bookings. Actual: '.$queryCount);
     }
+
+    /** @test */
+    public function test_profit_loss_print_stays_bounded_query_count(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->createBookingWithPassengers($user, $deps, $i, 2);
+        }
+
+        Auth::login($user);
+
+        DB::enableQueryLog();
+        $response = $this->get(route('report.profit-loss.print', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'type' => 'customer',
+        ]));
+        DB::disableQueryLog();
+
+        $queryCount = count(DB::getQueryLog());
+
+        $response->assertOk();
+        $this->assertLessThan(35, $queryCount,
+            'Profit/Loss print should execute fewer than 35 queries for 10 bookings. Actual: '.$queryCount);
+    }
 }

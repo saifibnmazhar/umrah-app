@@ -30,6 +30,14 @@ class ProfitLossReportController extends Controller
         'passengers.allIssuedTickets.refundedTickets',
     ];
 
+    private const PRINT_BOOKING_WITHS = [
+        'customer',
+        'invoice',
+        'fingerprint',
+        'fingerprintCharge',
+        'passengers.cancelledPassengers',
+    ];
+
     private function excludeCancelledBookings($query, string $table = 'bookings')
     {
         return $query->whereNotExists(function ($q) use ($table) {
@@ -434,6 +442,56 @@ class ProfitLossReportController extends Controller
         ))->values()->toArray();
     }
 
+    private function mapCustomersForPrint($bookings, ProfitCalculationService $profitService): array
+    {
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))
+            ->map(fn (Booking $booking) => [
+                'invoice_id' => $booking->invoice_id,
+                'customer_name' => $booking->customer->name ?? '',
+                'customer_passport' => $booking->customer->passport_no ?? '',
+                'customer_iqama' => $booking->customer->iqama_no ?? '',
+                'mobile' => $booking->customer->mobile_no ?? '',
+                'pax_qty' => $booking->pax_qty,
+                'package_value' => (float) ($booking->invoice->total_amount ?? 0),
+                'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
+                'passenger_profit_total' => (float) $booking->passengers
+                    ->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))
+                    ->sum('profit'),
+                'discount' => (float) ($booking->discount_amount ?? 0),
+                'total_profit' => (float) ($booking->profit ?? 0),
+            ])->values()->toArray();
+    }
+
+    private function mapPassengerForPrint($passenger, ?Booking $booking = null): array
+    {
+        $booking ??= $passenger->booking;
+
+        return [
+            'id' => (int) $passenger->id,
+            'invoice_id' => $booking->invoice_id,
+            'customer_name' => $booking->customer->name ?? '',
+            'customer_passport' => $booking->customer->passport_no ?? '',
+            'customer_iqama' => $booking->customer->iqama_no ?? '',
+            'mobile' => $passenger->mobile_no,
+            'passenger_name' => trim($passenger->first_name.' '.$passenger->last_name),
+            'passenger_passport' => $passenger->passport_no ?? '',
+            'package_value' => (float) ($passenger->package_value ?? 0),
+            'visa_profit' => (float) ($passenger->visa_profit ?? 0),
+            'ticket_profit' => (float) ($passenger->ticket_profit ?? 0),
+            'service_charge' => (float) ($passenger->service_charge ?? 0),
+            'total_profit' => (float) ($passenger->profit ?? 0),
+        ];
+    }
+
+    private function mapPassengersForPrint($bookings, ProfitCalculationService $profitService): array
+    {
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))
+            ->flatMap(fn (Booking $booking) => $booking->passengers
+                ->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))
+                ->map(fn ($passenger) => $this->mapPassengerForPrint($passenger, $booking))
+            )->values()->toArray();
+    }
+
     private function mapPassenger($passenger, ProfitCalculationService $profitService): array
     {
         $booking = $passenger->booking;
@@ -580,30 +638,28 @@ class ProfitLossReportController extends Controller
         $dateTo = $request->booking_date_to;
         $search = trim((string) $request->search);
         $profitLossFilter = $request->profit_loss_filter;
-
-        $query = Booking::with(array_merge(self::BOOKING_WITHS, [
-            'passengers.allIssuedTickets.logs',
-        ]))
-            ->whereHas('invoice');
-        $this->excludeCancelledBookings($query, 'bookings');
-
-        if ($request->booking_date_from) {
-            $query->whereDate('created_at', '>=', $request->booking_date_from);
-        }
-        if ($request->booking_date_to) {
-            $query->whereDate('created_at', '<=', $request->booking_date_to);
-        }
-        $this->applyBranchFilter($query, $request);
-        $bookings = $query->get();
-
         $profitService = app(ProfitCalculationService::class);
-        $customers = collect($this->mapCustomers($bookings, $profitService));
-        $passengers = collect($this->mapPassengers($bookings, $profitService));
 
         $isEffectiveMode = $request->filled('effective_date_from') || $request->filled('effective_date_to');
+
         if ($type === 'passenger' && $isEffectiveMode) {
             $dateFrom = $request->effective_date_from ?? '1970-01-01';
             $dateTo = $this->effectiveDateTo($request);
+
+            $passengerQuery = Passenger::query()
+                ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
+                ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
+                ->whereNotNull('bookings.invoice_id');
+            $this->excludeCancelledBookings($passengerQuery, 'bookings');
+            $this->excludeCancelledPassengers($passengerQuery, 'passengers');
+            $this->applyEffectiveDateFilter($passengerQuery, $request);
+            $this->applyBranchFilter($passengerQuery, $request);
+
+            $passengerIds = $passengerQuery->select('passengers.id')->pluck('id');
+
+            $bookings = Booking::with(self::PRINT_BOOKING_WITHS)
+                ->whereHas('passengers', fn ($q) => $q->whereIn('passengers.id', $passengerIds))
+                ->get();
 
             $passengerById = collect();
             foreach ($bookings as $bookingModel) {
@@ -613,24 +669,47 @@ class ProfitLossReportController extends Controller
                 }
             }
 
-            $passengers = $passengers->map(function ($row) use ($passengerById, $profitService, $dateFrom, $dateTo) {
-                $passenger = $passengerById->get($row['id'] ?? null);
-                if (! $passenger || ! $this->passengerHasEffectiveComponentInRange($passenger, $dateFrom, $dateTo)) {
-                    return null;
+            $passengers = collect();
+            foreach ($passengerIds as $pid) {
+                $passenger = $passengerById->get($pid);
+                if (! $passenger) {
+                    continue;
                 }
                 $breakdown = $this->calculateEffectiveDateBreakdown($passenger, $dateFrom, $dateTo);
-                $row['total_profit'] = $breakdown['total'];
-                $row['visa_profit'] = $breakdown['visa_profit'];
-                $row['ticket_profit'] = $breakdown['ticket_profit'];
-                $row['service_charge'] = $breakdown['service_charge'];
-                $row['additional_ticket_profit'] = $breakdown['additional_ticket_profit'];
-                $row['re_issue_profit'] = $breakdown['re_issue_profit'];
-                $row['refund_profit'] = $breakdown['refund_profit'];
-                $row['re_issue_cost'] = $breakdown['re_issue_cost'];
-                $row['breakdown'] = $profitService->getPassengerProfitBreakdownDetailedEffective($passenger, $dateFrom, $dateTo);
+                $passengers->push([
+                    'id' => (int) $passenger->id,
+                    'invoice_id' => $passenger->booking->invoice_id,
+                    'customer_name' => $passenger->booking->customer->name ?? '',
+                    'customer_passport' => $passenger->booking->customer->passport_no ?? '',
+                    'customer_iqama' => $passenger->booking->customer->iqama_no ?? '',
+                    'mobile' => $passenger->mobile_no,
+                    'passenger_name' => trim($passenger->first_name.' '.$passenger->last_name),
+                    'passenger_passport' => $passenger->passport_no ?? '',
+                    'package_value' => (float) ($passenger->package_value ?? 0),
+                    'total_profit' => $breakdown['total'],
+                    'visa_profit' => $breakdown['visa_profit'],
+                    'ticket_profit' => $breakdown['ticket_profit'],
+                    'service_charge' => $breakdown['service_charge'],
+                ]);
+            }
 
-                return $row;
-            })->filter(fn ($row) => $row !== null)->values();
+            $customers = collect($this->mapCustomersForPrint($bookings, $profitService));
+        } else {
+            $query = Booking::with(self::PRINT_BOOKING_WITHS)
+                ->whereHas('invoice');
+            $this->excludeCancelledBookings($query, 'bookings');
+
+            if ($request->booking_date_from) {
+                $query->whereDate('created_at', '>=', $request->booking_date_from);
+            }
+            if ($request->booking_date_to) {
+                $query->whereDate('created_at', '<=', $request->booking_date_to);
+            }
+            $this->applyBranchFilter($query, $request);
+            $bookings = $query->get();
+
+            $customers = collect($this->mapCustomersForPrint($bookings, $profitService));
+            $passengers = collect($this->mapPassengersForPrint($bookings, $profitService));
         }
 
         if ($search) {
@@ -659,7 +738,23 @@ class ProfitLossReportController extends Controller
             $customers = $customers->filter(fn ($r) => (float) $r['total_profit'] < 0)->values();
         }
 
-        $summary = $this->summary($request)->getData(true);
+        $summary = [
+            'customer' => [
+                'count' => $customers->count(),
+                'package_value' => (float) $customers->sum('package_value'),
+                'fingerprint_profit' => (float) $customers->sum('fingerprint_profit'),
+                'passenger_profit_total' => (float) $customers->sum('passenger_profit_total'),
+                'discount' => (float) $customers->sum('discount'),
+                'total_profit' => (float) $customers->sum('total_profit'),
+            ],
+            'passenger' => [
+                'count' => $passengers->count(),
+                'package_value' => (float) $passengers->sum('package_value'),
+                'total_visa_profit' => (float) $passengers->sum('visa_profit'),
+                'total_ticket_profit' => (float) $passengers->sum('ticket_profit'),
+                'total_profit' => (float) $passengers->sum('total_profit'),
+            ],
+        ];
 
         $branchName = $request->filled('branch_id')
             ? Branch::find($request->branch_id)?->name
