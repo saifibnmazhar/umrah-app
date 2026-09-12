@@ -26,6 +26,16 @@ class ProfitLossReportController extends Controller
         'passengers.allIssuedTickets.refundedTickets',
     ];
 
+    public const PRINT_MAX_ROWS = 2000;
+
+    private const PRINT_BOOKING_WITHS = [
+        'customer',
+        'invoice',
+        'fingerprint',
+        'fingerprintCharge',
+        'passengers',
+    ];
+
     private function bookingsQuery(Request $request)
     {
         $query = Booking::with(self::BOOKING_WITHS)
@@ -184,6 +194,48 @@ class ProfitLossReportController extends Controller
         ))->values()->toArray();
     }
 
+    private function mapCustomersForPrint($bookings): array
+    {
+        return $bookings->map(fn (Booking $booking) => [
+            'invoice_id' => $booking->invoice_id,
+            'customer_name' => $booking->customer->name ?? '',
+            'customer_passport' => $booking->customer->passport_no ?? '',
+            'customer_iqama' => $booking->customer->iqama_no ?? '',
+            'mobile' => $booking->customer->mobile_no ?? '',
+            'pax_qty' => $booking->pax_qty,
+            'package_value' => (float) ($booking->invoice->total_amount ?? 0),
+            'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
+            'passenger_profit_total' => (float) $booking->passengers->sum('profit'),
+            'discount' => (float) ($booking->discount_amount ?? 0),
+            'total_profit' => (float) ($booking->profit ?? 0),
+        ])->values()->toArray();
+    }
+
+    private function mapPassengerForPrint($passenger, ?Booking $booking = null): array
+    {
+        $booking ??= $passenger->booking;
+
+        return [
+            'id' => (int) $passenger->id,
+            'invoice_id' => $booking->invoice_id,
+            'customer_name' => $booking->customer->name ?? '',
+            'customer_passport' => $booking->customer->passport_no ?? '',
+            'customer_iqama' => $booking->customer->iqama_no ?? '',
+            'mobile' => $passenger->mobile_no,
+            'passenger_name' => trim($passenger->first_name.' '.$passenger->last_name),
+            'passenger_passport' => $passenger->passport_no ?? '',
+            'package_value' => (float) ($passenger->package_value ?? 0),
+            'total_profit' => (float) ($passenger->profit ?? 0),
+        ];
+    }
+
+    private function mapPassengersForPrint($bookings): array
+    {
+        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers
+            ->map(fn ($passenger) => $this->mapPassengerForPrint($passenger, $booking))
+        )->values()->toArray();
+    }
+
     private function mapPassenger($passenger, ProfitCalculationService $profitService): array
     {
         $booking = $passenger->booking;
@@ -292,7 +344,7 @@ class ProfitLossReportController extends Controller
         $search = trim((string) $request->search);
         $profitLossFilter = $request->profit_loss_filter;
 
-        $query = Booking::with(self::BOOKING_WITHS)
+        $query = Booking::with(self::PRINT_BOOKING_WITHS)
             ->where('is_cancelled', false)
             ->whereHas('invoice');
 
@@ -305,9 +357,8 @@ class ProfitLossReportController extends Controller
         $this->applyBranchFilter($query, $request);
         $bookings = $query->get();
 
-        $profitService = app(ProfitCalculationService::class);
-        $customers = collect($this->mapCustomers($bookings, $profitService));
-        $passengers = collect($this->mapPassengers($bookings, $profitService));
+        $customers = collect($this->mapCustomersForPrint($bookings));
+        $passengers = collect($this->mapPassengersForPrint($bookings));
 
         if ($search) {
             $q = strtolower($search);
@@ -335,7 +386,31 @@ class ProfitLossReportController extends Controller
             $customers = $customers->filter(fn ($r) => (float) $r['total_profit'] < 0)->values();
         }
 
-        $summary = $this->summary($request)->getData(true);
+        $truncated = false;
+        if ($customers->count() > self::PRINT_MAX_ROWS) {
+            $customers = $customers->slice(0, self::PRINT_MAX_ROWS)->values();
+            $truncated = true;
+        }
+        if ($passengers->count() > self::PRINT_MAX_ROWS) {
+            $passengers = $passengers->slice(0, self::PRINT_MAX_ROWS)->values();
+            $truncated = true;
+        }
+
+        $summary = [
+            'customer' => [
+                'count' => $customers->count(),
+                'package_value' => (float) $customers->sum('package_value'),
+                'fingerprint_profit' => (float) $customers->sum('fingerprint_profit'),
+                'passenger_profit_total' => (float) $customers->sum('passenger_profit_total'),
+                'discount' => (float) $customers->sum('discount'),
+                'total_profit' => (float) $customers->sum('total_profit'),
+            ],
+            'passenger' => [
+                'count' => $passengers->count(),
+                'package_value' => (float) $passengers->sum('package_value'),
+                'total_profit' => (float) $passengers->sum('total_profit'),
+            ],
+        ];
 
         $branchName = $request->filled('branch_id')
             ? Branch::find($request->branch_id)?->name
@@ -343,7 +418,7 @@ class ProfitLossReportController extends Controller
 
         return view('reports.profit-loss-print', compact(
             'type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo',
-            'search', 'profitLossFilter', 'summary', 'branchName'
+            'search', 'profitLossFilter', 'summary', 'branchName', 'truncated'
         ));
     }
 }

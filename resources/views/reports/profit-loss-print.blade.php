@@ -73,6 +73,13 @@
     </div>
     @endif
 
+    @if($truncated ?? false)
+    <div style="padding: 8px; background: #fef3c7; border: 1px solid #f59e0b; margin-bottom: 10px; font-size: 12px;">
+        <strong>Warning:</strong> Results truncated to {{ number_format(\App\Http\Controllers\ProfitLossReportController::PRINT_MAX_ROWS) }} rows.
+        Please refine your filters to see all results.
+    </div>
+    @endif
+
     @if($type === 'customer')
     <table>
         <thead>
