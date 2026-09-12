@@ -20,7 +20,7 @@ class VisaHoldButtonVisibilityTest extends TestCase
 
     private static function holdButtonCondition(): string
     {
-        return "!['Hold', 'Cancel', 'Delivered'].includes(passengersTicketData[0]?.status)";
+        return "!['Hold', 'Cancel', 'Delivered'].includes(p.status_name)";
     }
 
     private function userWithVisaAdmin(): void
@@ -171,7 +171,7 @@ class VisaHoldButtonVisibilityTest extends TestCase
         $html = $this->renderIndex('Processing');
 
         $this->assertStringContainsString(self::holdButtonCondition(), $html);
-        $this->assertStringContainsString('@click="toggleVisaHold(0)"', $html);
+        $this->assertStringContainsString('@click="toggleVisaHold(idx)"', $html);
     }
 
     public function test_hold_button_not_rendered_when_visa_edit_disallowed(): void
@@ -306,7 +306,7 @@ class VisaHoldButtonVisibilityTest extends TestCase
     {
         $html = $this->renderIndexWithIssuedVisa('Delivered');
 
-        $revertTemplate = 'openVisaRevertModal(0)"';
+        $revertTemplate = 'openVisaRevertModal(idx)"';
 
         $this->assertStringContainsString($revertTemplate, $html, 'Revert button must be present in the DOM');
 
@@ -319,6 +319,6 @@ class VisaHoldButtonVisibilityTest extends TestCase
     {
         $html = $this->renderIndexWithIssuedVisa('Processing');
 
-        $this->assertStringContainsString('openVisaRevertModal(0)', $html);
+        $this->assertStringContainsString('openVisaRevertModal(idx)', $html);
     }
 }
