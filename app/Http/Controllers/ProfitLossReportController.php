@@ -442,21 +442,24 @@ class ProfitLossReportController extends Controller
         ))->values()->toArray();
     }
 
-    private function mapCustomersForPrint($bookings): array
+    private function mapCustomersForPrint($bookings, ProfitCalculationService $profitService): array
     {
-        return $bookings->map(fn (Booking $booking) => [
-            'invoice_id' => $booking->invoice_id,
-            'customer_name' => $booking->customer->name ?? '',
-            'customer_passport' => $booking->customer->passport_no ?? '',
-            'customer_iqama' => $booking->customer->iqama_no ?? '',
-            'mobile' => $booking->customer->mobile_no ?? '',
-            'pax_qty' => $booking->pax_qty,
-            'package_value' => (float) ($booking->invoice->total_amount ?? 0),
-            'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
-            'passenger_profit_total' => (float) $booking->passengers->sum('profit'),
-            'discount' => (float) ($booking->discount_amount ?? 0),
-            'total_profit' => (float) ($booking->profit ?? 0),
-        ])->values()->toArray();
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))
+            ->map(fn (Booking $booking) => [
+                'invoice_id' => $booking->invoice_id,
+                'customer_name' => $booking->customer->name ?? '',
+                'customer_passport' => $booking->customer->passport_no ?? '',
+                'customer_iqama' => $booking->customer->iqama_no ?? '',
+                'mobile' => $booking->customer->mobile_no ?? '',
+                'pax_qty' => $booking->pax_qty,
+                'package_value' => (float) ($booking->invoice->total_amount ?? 0),
+                'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
+                'passenger_profit_total' => (float) $booking->passengers
+                    ->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))
+                    ->sum('profit'),
+                'discount' => (float) ($booking->discount_amount ?? 0),
+                'total_profit' => (float) ($booking->profit ?? 0),
+            ])->values()->toArray();
     }
 
     private function mapPassengerForPrint($passenger, ?Booking $booking = null): array
@@ -475,15 +478,18 @@ class ProfitLossReportController extends Controller
             'package_value' => (float) ($passenger->package_value ?? 0),
             'visa_profit' => (float) ($passenger->visa_profit ?? 0),
             'ticket_profit' => (float) ($passenger->ticket_profit ?? 0),
+            'service_charge' => (float) ($passenger->service_charge ?? 0),
             'total_profit' => (float) ($passenger->profit ?? 0),
         ];
     }
 
-    private function mapPassengersForPrint($bookings): array
+    private function mapPassengersForPrint($bookings, ProfitCalculationService $profitService): array
     {
-        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers
-            ->map(fn ($passenger) => $this->mapPassengerForPrint($passenger, $booking))
-        )->values()->toArray();
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))
+            ->flatMap(fn (Booking $booking) => $booking->passengers
+                ->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))
+                ->map(fn ($passenger) => $this->mapPassengerForPrint($passenger, $booking))
+            )->values()->toArray();
     }
 
     private function mapPassenger($passenger, ProfitCalculationService $profitService): array
@@ -687,7 +693,7 @@ class ProfitLossReportController extends Controller
                 ]);
             }
 
-            $customers = collect($this->mapCustomersForPrint($bookings));
+            $customers = collect($this->mapCustomersForPrint($bookings, $profitService));
         } else {
             $query = Booking::with(self::PRINT_BOOKING_WITHS)
                 ->whereHas('invoice');
@@ -702,8 +708,8 @@ class ProfitLossReportController extends Controller
             $this->applyBranchFilter($query, $request);
             $bookings = $query->get();
 
-            $customers = collect($this->mapCustomersForPrint($bookings));
-            $passengers = collect($this->mapPassengersForPrint($bookings));
+            $customers = collect($this->mapCustomersForPrint($bookings, $profitService));
+            $passengers = collect($this->mapPassengersForPrint($bookings, $profitService));
         }
 
         if ($search) {

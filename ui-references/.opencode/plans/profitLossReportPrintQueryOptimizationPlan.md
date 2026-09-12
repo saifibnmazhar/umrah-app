@@ -238,21 +238,6 @@ Also fixes:
 - No row limit — all filtered rows are included
 - Removed `$truncated` from view data
 
-Pass `$truncated` to the Blade view.
-
-**File:** `resources/views/reports/profit-loss-print.blade.php`
-
-Add a warning banner after the filters summary:
-
-```blade
-@if($truncated ?? false)
-<div style="padding: 8px; background: #fef3c7; border: 1px solid #f59e0b; margin-bottom: 10px; font-size: 12px;">
-    <strong>Warning:</strong> Results truncated to {{ number_format(\App\Http\Controllers\ProfitLossReportController::PRINT_MAX_ROWS) }} rows.
-    Please refine your filters to see all results.
-</div>
-@endif
-```
-
 ### 8. Update `print()` to use new methods
 
 **File:** `app/Http/Controllers/ProfitLossReportController.php`, method `print()`
@@ -354,16 +339,6 @@ public function print(Request $request)
         $customers = array_values(array_filter($customers, fn ($r) => (float) $r['total_profit'] < 0));
     }
 
-    $truncated = false;
-    if (count($customers) > self::PRINT_MAX_ROWS) {
-        $customers = array_slice($customers, 0, self::PRINT_MAX_ROWS);
-        $truncated = true;
-    }
-    if (count($passengers) > self::PRINT_MAX_ROWS) {
-        $passengers = array_slice($passengers, 0, self::PRINT_MAX_ROWS);
-        $truncated = true;
-    }
-
     $summary = [
         'customer' => [
             'count' => count($customers),
@@ -388,7 +363,7 @@ public function print(Request $request)
 
     return view('reports.profit-loss-print', compact(
         'type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo',
-        'search', 'profitLossFilter', 'summary', 'branchName', 'truncated'
+        'search', 'profitLossFilter', 'summary', 'branchName'
     ));
 }
 ```
