@@ -445,7 +445,9 @@ class BookingController extends Controller
             )
             ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status'))
             )
-            ->when($selectedServiceRequired !== 'all', fn ($q) => $q->where('service_required', $selectedServiceRequired)
+            ->when($selectedServiceRequired === 'visa_only', fn ($q) => $q->whereIn('service_required', ['visa_only', 'all'])
+            )
+            ->when($selectedServiceRequired === 'ticket_only', fn ($q) => $q->whereIn('service_required', ['ticket_only', 'all'])
             )
             ->when($request->filled('status_change_action'), function ($q) use ($request) {
                 $action = $request->input('status_change_action');

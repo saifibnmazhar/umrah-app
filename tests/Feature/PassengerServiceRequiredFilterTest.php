@@ -151,7 +151,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
         return collect($paginator->items())->pluck('passport_no')->all();
     }
 
-    public function test_visa_filter_shows_only_visa_only_passengers(): void
+    public function test_visa_filter_shows_visa_and_all_passengers(): void
     {
         $visa = $this->makePassenger('visa_only', 'PPVISA01');
         $ticket = $this->makePassenger('ticket_only', 'PPTICK01');
@@ -166,12 +166,12 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $nos = $this->passportNos($response->viewData('passengers'));
 
         $this->assertContains($visa->passport_no, $nos);
+        $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($ticket->passport_no, $nos);
-        $this->assertNotContains($all->passport_no, $nos);
         $this->assertSame('visa_only', $response->viewData('selectedServiceRequired'));
     }
 
-    public function test_ticket_filter_shows_only_ticket_only_passengers(): void
+    public function test_ticket_filter_shows_ticket_and_all_passengers(): void
     {
         $visa = $this->makePassenger('visa_only', 'PPVISA02');
         $ticket = $this->makePassenger('ticket_only', 'PPTICK02');
@@ -186,8 +186,8 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $nos = $this->passportNos($response->viewData('passengers'));
 
         $this->assertContains($ticket->passport_no, $nos);
+        $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($visa->passport_no, $nos);
-        $this->assertNotContains($all->passport_no, $nos);
     }
 
     public function test_all_filter_shows_everything(): void
@@ -213,6 +213,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
     {
         $visa = $this->makePassenger('visa_only', 'PPVISA04');
         $ticket = $this->makePassenger('ticket_only', 'PPTICK04');
+        $all = $this->makePassenger('all', 'PPALL004');
         $user = $this->makeUserWithRole('Visa Staff');
 
         $response = $this->actingAs($user)->get(route('bookings.index', ['tab' => 'passenger']));
@@ -221,6 +222,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $nos = $this->passportNos($response->viewData('passengers'));
 
         $this->assertContains($visa->passport_no, $nos);
+        $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($ticket->passport_no, $nos);
         $this->assertSame('visa_only', $response->viewData('selectedServiceRequired'));
     }
@@ -229,6 +231,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
     {
         $visa = $this->makePassenger('visa_only', 'PPVISA05');
         $ticket = $this->makePassenger('ticket_only', 'PPTICK05');
+        $all = $this->makePassenger('all', 'PPALL005');
         $user = $this->makeUserWithRole('Ticket Staff');
 
         $response = $this->actingAs($user)->get(route('bookings.index', ['tab' => 'passenger']));
@@ -237,6 +240,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $nos = $this->passportNos($response->viewData('passengers'));
 
         $this->assertContains($ticket->passport_no, $nos);
+        $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($visa->passport_no, $nos);
         $this->assertSame('ticket_only', $response->viewData('selectedServiceRequired'));
     }
