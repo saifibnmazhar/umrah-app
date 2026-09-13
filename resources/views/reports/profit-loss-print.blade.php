@@ -80,6 +80,7 @@
                 <th>Invoice ID</th>
                 <th>Customer Name</th>
                 <th>Mobile</th>
+                <th>Booking Date</th>
                 <th>Pax Qty</th>
                 <th>Package Value ({{ $__currency }})</th>
                 <th>Fingerprint Profit</th>
@@ -94,6 +95,7 @@
                 <td class="text-left">{{ $row['invoice_id'] }}</td>
                 <td class="text-left">{{ $row['customer_name'] }}</td>
                 <td class="text-center">{{ $row['mobile'] }}</td>
+                <td class="text-center">{{ \Carbon\Carbon::parse($row['booking_date'])->format('d-M-Y') }}</td>
                 <td class="text-center">{{ $row['pax_qty'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
                 <td class="text-right {{ $row['fingerprint_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['fingerprint_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['fingerprint_profit']) }}</td>
@@ -103,7 +105,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="9" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="10" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
             @if(count($customers) > 0)
@@ -112,7 +114,7 @@
                 $gtCount = $gt['count'] ?? count($customers);
             @endphp
             <tr class="grand-total">
-                <td class="text-left" colspan="4">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Customer' : 'Customers' }})</td>
+                <td class="text-left" colspan="5">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Customer' : 'Customers' }})</td>
                 <td class="text-right">{{ $fmtCurrency($gt['package_value'] ?? 0) }}</td>
                 <td class="text-right {{ ($gt['fingerprint_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['fingerprint_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['fingerprint_profit'] ?? 0) }}</td>
                 <td class="text-right {{ ($gt['passenger_profit_total'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['passenger_profit_total'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['passenger_profit_total'] ?? 0) }}</td>
@@ -130,6 +132,7 @@
                 <th>Customer Name</th>
                 <th>Mobile</th>
                 <th>Passenger Name</th>
+                <th>Booking Date</th>
                 <th>Package Value ({{ $__currency }})</th>
                 <th>Visa Profit ({{ $__currency }})</th>
                 <th>Ticket Profit ({{ $__currency }})</th>
@@ -143,6 +146,7 @@
                 <td class="text-left">{{ $row['customer_name'] }}</td>
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
+                <td class="text-center">{{ \Carbon\Carbon::parse($row['booking_date'])->format('d-M-Y') }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
                 <td class="text-right {{ ($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) }}</td>
                 <td class="text-right {{ ($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) }}</td>
@@ -150,7 +154,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="9" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
             @if(count($passengers) > 0)
@@ -159,7 +163,7 @@
                 $gtCount = $gt['count'] ?? count($passengers);
             @endphp
             <tr class="grand-total">
-                <td class="text-left" colspan="4">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Passenger' : 'Passengers' }})</td>
+                <td class="text-left" colspan="5">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Passenger' : 'Passengers' }})</td>
                 <td class="text-right">{{ $fmtCurrency($gt['package_value'] ?? 0) }}</td>
                 <td class="text-right {{ ($gt['total_visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_visa_profit'] ?? 0) }}</td>
                 <td class="text-right {{ ($gt['total_ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_ticket_profit'] ?? 0) }}</td>

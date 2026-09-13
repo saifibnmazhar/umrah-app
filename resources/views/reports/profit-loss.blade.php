@@ -267,12 +267,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
                 <div x-show="activeTab === 'customer'" x-cloak class="animate-fade flex flex-col flex-1 min-h-0">
                     <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
-                        <table class="w-full min-w-[1100px] table-fixed">
+                        <table class="w-full min-w-[1250px] table-fixed">
                             <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Booking Date</th>
                                     <th class="w-16 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Pax Qty</th>
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Fingerprint Profit</th>
@@ -284,12 +285,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             <tbody>
                                 <template x-if="loading">
                                     <tr>
-                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
+                                        <td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredCustomers.length === 0">
                                     <tr>
-                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
+                                        <td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
                                 <template x-for="(row, index) in paginatedCustomers" :key="index">
@@ -297,6 +298,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="row.invoice_id"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="formatDate(row.booking_date)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center font-medium text-gray-700" x-text="row.pax_qty"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right cursor-pointer hover:bg-blue-50 transition-colors"
@@ -334,13 +336,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
                 <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade flex flex-col flex-1 min-h-0">
                     <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
-                        <table class="w-full min-w-[1200px] table-fixed">
+                        <table class="w-full min-w-[1350px] table-fixed">
                             <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Booking Date</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Visa Profit (<span x-text="$store.currency.mode"></span>)</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Ticket Profit (<span x-text="$store.currency.mode"></span>)</th>
@@ -350,12 +353,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             <tbody>
                                 <template x-if="loading">
                                     <tr>
-                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
+                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredPassengers.length === 0">
                                     <tr>
-                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
+                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
                                 <template x-for="(row, index) in paginatedPassengers" :key="index">
@@ -364,6 +367,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-700" x-text="row.passenger_name"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="formatDate(row.booking_date)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.visa_profit ?? row.breakdown?.visa_profit)" x-text="formatProfitLoss((row.visa_profit ?? row.breakdown?.visa_profit) || 0)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.ticket_profit ?? row.breakdown?.ticket_profit)" x-text="formatProfitLoss((row.ticket_profit ?? row.breakdown?.ticket_profit) || 0)"></td>
@@ -922,6 +926,15 @@ function profitLossReport() {
         formatProfitLoss(amount) {
             const sign = amount >= 0 ? '+' : '';
             return sign + this.formatCurrency(amount);
+        },
+
+        formatDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            if (isNaN(d.getTime())) return '';
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const p = (n) => String(n).padStart(2, '0');
+            return p(d.getDate()) + '-' + months[d.getMonth()] + '-' + d.getFullYear();
         },
 
         printUrl(type) {
