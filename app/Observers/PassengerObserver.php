@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Passenger;
 use App\Models\PassengerUpdateLog;
+use App\Services\ProfitCalculationService;
 use Illuminate\Support\Facades\Auth;
 
 class PassengerObserver
@@ -27,13 +28,17 @@ class PassengerObserver
 
     public function updated(Passenger $passenger): void
     {
-        $user = Auth::user();
-        if (! $user) {
+        $dirty = $passenger->getDirty();
+        if (empty($dirty)) {
             return;
         }
 
-        $dirty = $passenger->getDirty();
-        if (empty($dirty)) {
+        if (array_key_exists('is_cancelled', $dirty) && $passenger->booking) {
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking);
+        }
+
+        $user = Auth::user();
+        if (! $user) {
             return;
         }
 

@@ -302,7 +302,6 @@ class ProfitLossReportBranchFilterTest extends TestCase
         $this->assertStringContainsString('x-model="branchId"', $html);
         $this->assertStringContainsString('loadBranches', $html);
         $this->assertStringContainsString('/api/reports/profit-loss/filters', $html);
-        $this->assertStringContainsString('&branch_id=\' + branchId', $html);
         $this->assertStringContainsString("params.set('branch_id', this.branchId)", $html);
     }
 

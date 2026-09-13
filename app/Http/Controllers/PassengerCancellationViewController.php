@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CancelledPassenger;
 use App\Models\Passenger;
 use App\Services\PassengerCancellationService;
+use App\Services\RefundCapService;
 
 class PassengerCancellationViewController extends Controller
 {
@@ -28,8 +29,10 @@ class PassengerCancellationViewController extends Controller
         ]);
 
         $invoice = $cancelledPassenger->booking->invoice;
+        $capInvoice = $invoice ?? $cancelledPassenger->invoice;
+        $refundCap = $capInvoice ? app(RefundCapService::class)->getCap($capInvoice) : ['paid' => 0, 'refunded' => 0, 'remaining' => 0];
 
-        return view('cancelled-passengers.confirm', compact('cancelledPassenger', 'invoice'));
+        return view('cancelled-passengers.confirm', compact('cancelledPassenger', 'invoice', 'refundCap'));
     }
 
     private function ensureBranchAccess(CancelledPassenger $cancelledPassenger): void

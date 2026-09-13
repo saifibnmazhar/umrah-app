@@ -182,6 +182,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
     Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
     Route::get('/api/bookings/search-invoice', [BookingController::class, 'searchInvoice'])->name('api.bookings.search-invoice');
+    Route::get('/api/bookings/passengers', [BookingController::class, 'passengerData'])->name('api.bookings.passengers');
     Route::get('/api/ticket-fares/filter', [TicketFareController::class, 'filter'])->name('api.ticket-fares.filter');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');

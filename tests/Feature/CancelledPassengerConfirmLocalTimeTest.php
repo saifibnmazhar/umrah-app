@@ -90,4 +90,43 @@ class CancelledPassengerConfirmLocalTimeTest extends TestCase
         // server-time string cannot be converted reliably in the browser.
         $this->assertStringContainsString($createdAt->toIso8601String(), $html);
     }
+
+    public function test_confirm_page_renders_auto_settled_read_only_adjustment(): void
+    {
+        $createdAt = Carbon::rawParse('2026-08-23 00:54:36', 'UTC');
+
+        $booking = new Booking;
+        $booking->id = 102;
+        $booking->invoice_id = '(###)-127827';
+        $booking->setRelation('customer', null);
+
+        $invoice = new Invoice;
+        $invoice->balance = '100';
+
+        $passenger = new Passenger;
+        $passenger->first_name = 'Jane';
+        $passenger->last_name = 'Doe';
+
+        $cancelled = new CancelledPassenger;
+        $cancelled->id = 4;
+        $cancelled->package_value = '3000';
+        $cancelled->additional_ticket_value = '2000';
+        $cancelled->total_passenger_due = '5000';
+        $cancelled->refundable_amount = '100';
+        $cancelled->created_at = $createdAt;
+        $cancelled->setRelation('booking', $booking);
+        $cancelled->setRelation('invoice', $invoice);
+        $cancelled->setRelation('passenger', $passenger);
+        $cancelled->setRelation('user', null);
+        $cancelled->setRelation('cancellationBranch', null);
+
+        $html = view('cancelled-passengers.confirm', [
+            'cancelledPassenger' => $cancelled,
+        ])->render();
+
+        $this->assertStringContainsString('auto-settled', $html);
+        $this->assertStringContainsString('Not editable', $html);
+        $this->assertStringNotContainsString('x-model.number="adjustedAmount"', $html);
+        $this->assertStringNotContainsString('x-model.number="adjustedAmountBdt"', $html);
+    }
 }

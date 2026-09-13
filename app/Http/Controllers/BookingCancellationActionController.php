@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
+use App\Models\Voucher;
 use App\Services\CancellationService;
+use App\Services\RefundCapService;
 use Illuminate\Http\Request;
 
 class BookingCancellationActionController extends Controller
@@ -61,17 +63,30 @@ class BookingCancellationActionController extends Controller
         $validated = $request->validate([
             'payment_method' => 'required|in:'.implode(',', array_column(PaymentMethod::cases(), 'value')),
             'refund_amount' => 'required|numeric|min:0',
+            'currency' => 'nullable|in:SAR,BDT',
             'remarks' => 'nullable|string|max:500',
         ]);
+
+        $capService = app(RefundCapService::class);
+        $requestedSar = $capService->normalizeToSar((float) $validated['refund_amount'], $validated['currency'] ?? null);
+        $floor = (float) ($cancelledBooking->total_passenger_refundable ?? 0);
+        $stored = (float) $cancelledBooking->refund_amount;
+        $requestedSar = max($requestedSar, min($stored, $floor));
+        $validated['refund_amount'] = $requestedSar;
+        $validated['currency'] = 'SAR';
+        $invoice = $cancelledBooking->invoice ?? $cancelledBooking->booking?->invoice;
+        if ($invoice) {
+            $capService->assertRefundAllowed($invoice, $requestedSar);
+        }
 
         try {
             $service = app(CancellationService::class);
             $service->confirmCancellation($cancelledBooking, $validated);
 
-            return redirect()->route('pending-refunds.index')
+            return redirect()->route('cancelled-bookings.print', $cancelledBooking)
                 ->with('success', 'Refund processed successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.index')
+            return redirect()->route('cancelled-bookings.print', $cancelledBooking)
                 ->with('error', $e->getMessage());
         }
     }
@@ -115,7 +130,7 @@ class BookingCancellationActionController extends Controller
             'cancellation_branch' => $cb->cancellationBranch?->name ?? '-',
             'total_paid' => $cb->total_paid,
             'service_charge_deduction' => $cb->service_charge_deduction,
-            'refund_amount' => $cb->refund_amount,
+            'refund_amount' => (float) ($cb->refundVoucher?->amount ?? 0),
             'method' => $cb->refundPayment?->payment_method?->value ?? '-',
             'remarks' => $cb->refundPayment?->remarks ?? '-',
             'cancelled_at' => $cb->created_at->format('Y-m-d H:i'),
@@ -124,10 +139,15 @@ class BookingCancellationActionController extends Controller
             'status' => $cb->status->value,
         ]);
 
+        $cbIds = $query->clone()->pluck('cancelled_bookings.id');
+        $totalRefund = (float) Voucher::whereIn('cancelled_booking_id', $cbIds)
+            ->whereHas('transactionType', fn ($q) => $q->where('name', 'Customer Refund'))
+            ->sum('amount');
+
         $summary = [
             'total_paid' => (float) $query->clone()->sum('total_paid'),
             'total_deduction' => (float) $query->clone()->sum('service_charge_deduction'),
-            'total_refund' => (float) $query->clone()->sum('refund_amount'),
+            'total_refund' => $totalRefund,
         ];
 
         return response()->json([
@@ -148,7 +168,19 @@ class BookingCancellationActionController extends Controller
 
         $validated = $request->validate([
             'refund_amount' => 'required|numeric|min:0',
+            'currency' => 'nullable|in:SAR,BDT',
         ]);
+
+        $capService = app(RefundCapService::class);
+        $requestedSar = $capService->normalizeToSar((float) $validated['refund_amount'], $validated['currency'] ?? null);
+        $floor = (float) ($cancelledBooking->total_passenger_refundable ?? 0);
+        $stored = (float) $cancelledBooking->refund_amount;
+        $requestedSar = max($requestedSar, min($stored, $floor));
+        $invoice = $cancelledBooking->invoice ?? $cancelledBooking->booking?->invoice;
+        if ($invoice) {
+            $capService->assertRefundAllowed($invoice, $requestedSar);
+        }
+        $validated['refund_amount'] = $requestedSar;
 
         $cancelledBooking->update([
             'refund_amount' => $validated['refund_amount'],

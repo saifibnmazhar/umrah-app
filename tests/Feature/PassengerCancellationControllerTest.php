@@ -84,6 +84,7 @@ class PassengerCancellationControllerTest extends TestCase
             $table->integer('pax_qty')->default(1);
             $table->decimal('total_value', 14, 6)->default(0);
             $table->decimal('discount_amount', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
@@ -126,6 +127,13 @@ class PassengerCancellationControllerTest extends TestCase
             $table->string('address')->nullable();
             $table->decimal('package_value', 12, 2)->default(0);
             $table->decimal('refund_payable', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
+            $table->decimal('visa_profit', 14, 6)->default(0);
+            $table->timestamp('visa_profit_effective_at')->nullable();
+            $table->decimal('ticket_profit', 14, 6)->default(0);
+            $table->timestamp('ticket_profit_effective_at')->nullable();
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->timestamp('service_charge_effective_at')->nullable();
             $table->boolean('is_cancelled')->default(false);
             $table->timestamp('cancelled_at')->nullable();
             $table->timestamps();
@@ -424,5 +432,60 @@ class PassengerCancellationControllerTest extends TestCase
         $this->actingAs($admin)
             ->postJson(route('passengers.cancellation.initiate', $passenger->id), [])
             ->assertJsonValidationErrors(['cancellation_branch_id']);
+    }
+
+    public function test_confirm_ignores_user_supplied_small_adjustment(): void
+    {
+        $this->createRoles();
+        $admin = $this->createUserWithRole('Super Admin');
+        $manager = $this->createUserWithRole('Branch Manager');
+
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $this->actingAs($admin)
+            ->postJson(route('passengers.cancellation.initiate', $passenger->id), [
+                'cancellation_branch_id' => $branch->id,
+            ])
+            ->assertOk();
+
+        $cp = CancelledPassenger::where('passenger_id', $passenger->id)->first();
+
+        $response = $this->actingAs($manager)->post(
+            route('cancelled-passengers.confirm.submit', $cp->id),
+            [
+                'balance_adjusted_amount' => 1,
+                'payment_method' => 'cash',
+            ]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+    }
+
+    public function test_confirm_does_not_require_balance_adjusted_amount(): void
+    {
+        $this->createRoles();
+        $admin = $this->createUserWithRole('Super Admin');
+        $manager = $this->createUserWithRole('Branch Manager');
+
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $this->actingAs($admin)
+            ->postJson(route('passengers.cancellation.initiate', $passenger->id), [
+                'cancellation_branch_id' => $branch->id,
+            ])
+            ->assertOk();
+
+        $cp = CancelledPassenger::where('passenger_id', $passenger->id)->first();
+
+        $response = $this->actingAs($manager)->post(
+            route('cancelled-passengers.confirm.submit', $cp->id),
+            ['payment_method' => 'cash']
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
     }
 }

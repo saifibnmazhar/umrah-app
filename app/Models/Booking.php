@@ -119,4 +119,11 @@ class Booking extends Model
     {
         return $this->hasOne(CancelledBooking::class)->latestOfMany();
     }
+
+    public function getTotalPassengerRefundable(): float
+    {
+        return (float) $this->passengers()
+            ->where('is_cancelled', false)
+            ->sum('refund_payable');
+    }
 }
