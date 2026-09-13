@@ -28,6 +28,26 @@ class BookingPassengerQuery
         return clone $this->query;
     }
 
+    public static function resolveSelectedServiceRequired(Request $request): string
+    {
+        $requested = $request->get('service_required');
+        if (in_array($requested, ['all', 'visa_only', 'ticket_only'], true)) {
+            return $requested;
+        }
+
+        $roles = auth()->user()?->roles->pluck('name') ?? collect();
+
+        if ($roles->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty()) {
+            return 'visa_only';
+        }
+
+        if ($roles->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty()) {
+            return 'ticket_only';
+        }
+
+        return 'all';
+    }
+
     protected function applyFilters(Request $request): void
     {
         $this->applyBranchScope()
@@ -42,12 +62,26 @@ class BookingPassengerQuery
             ->applyActualFlight($request)
             ->applyReturnDate($request)
             ->applyPassengerStatus($request)
+            ->applyServiceRequired($request)
             ->applyStatusChange($request)
             ->applyRouteDisplay($request)
             ->applyPackage($request)
             ->applyTicketAgent($request)
             ->applySearch($request)
             ->applyPaymentWise($request);
+    }
+
+    protected function applyServiceRequired(Request $request): static
+    {
+        $selected = self::resolveSelectedServiceRequired($request);
+
+        if ($selected === 'visa_only') {
+            $this->query->whereIn('service_required', ['visa_only', 'all']);
+        } elseif ($selected === 'ticket_only') {
+            $this->query->whereIn('service_required', ['ticket_only', 'all']);
+        }
+
+        return $this;
     }
 
     protected function applyBranchScope(): static

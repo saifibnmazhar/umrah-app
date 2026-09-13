@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refund Voucher (booking cancellation) - BM Umrah</title>
+    <title>Refund Voucher (ticket refund payment) - BM Umrah</title>
     <script>window.__currencyRate = {{ (float) ($currencyRate ?? 0) }};</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -13,18 +13,12 @@
         .header { text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 14px; margin-bottom: 20px; }
         .header h1 { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #0f172a; }
         .header .title { font-size: 17px; font-weight: 700; margin-top: 4px; letter-spacing: 3px; color: #dc2626; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; margin-bottom: 18px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; margin-bottom: 16px; }
         .info-row { display: flex; align-items: baseline; }
-        .info-row .label { font-weight: 700; min-width: 140px; font-size: 13px; color: #475569; }
+        .info-row .label { font-weight: 700; min-width: 120px; font-size: 13px; color: #475569; }
+        .voucher-head .info-row { gap: 8px; }
+        .voucher-head .info-row .label { flex-shrink: 0; }
         .info-row .value { font-weight: 600; color: #0f172a; }
-        .cancel-info .info-row { gap: 6px; }
-        .cancel-info .info-row .label { flex-shrink: 0; }
-        .cancel-info .label-long { min-width: 170px; }
-        .cancel-info .info-row-wide { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 24px; }
-        .cancel-info .info-pair { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; }
-        .cancel-info .info-pair .value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cancel-info .label-short { min-width: 95px; }
-        .cancel-info .label-mid { min-width: 115px; }
         .section-title { font-weight: 700; font-size: 13px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
         .table-wrap { border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -76,30 +70,33 @@
     </style>
 </head>
 <body>
-    @php $cb = $cancelledBooking; @endphp
     <div x-data class="voucher-wrap">
         <div class="toolbar no-print">
-            <a href="{{ route('cancelled-bookings.index') }}" class="btn btn-secondary">Back</a>
+            <a href="{{ route('ticket-refund-payments.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
         </div>
 
         <div class="header">
             <h1>BIN MISHAL GLOBAL SERVICES LTD.</h1>
-            <div class="title">REFUND VOUCHER (booking cancellation)</div>
+            <div class="title">REFUND VOUCHER (ticket refund payment)</div>
         </div>
 
-        <div class="info-grid">
+        <div class="info-grid voucher-head">
             <div class="info-row">
                 <span class="label">Voucher No:</span>
-                <span class="value">{{ $cb->refundVoucher?->voucher_id ?? 'N/A' }}</span>
+                <span class="value">{{ $payment->voucher?->voucher_id ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Date:</span>
-                <span class="value">{{ ($cb->refundVoucher?->payment_date ?? $cb->created_at)?->format('d-M-Y') }}</span>
+                <span class="value">{{ ($payment->voucher?->payment_date ?? $payment->created_at)?->format('d-M-Y') }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Invoice No:</span>
-                <span class="value">{{ $cb->booking?->invoice_id ?? '—' }}</span>
+                <span class="value">{{ $payment->booking?->invoice_id ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Passenger:</span>
+                <span class="value">{{ trim(($payment->passenger?->first_name ?? '') . ' ' . ($payment->passenger?->last_name ?? '')) ?: '—' }}</span>
             </div>
         </div>
 
@@ -107,14 +104,14 @@
         <div class="info-grid" style="margin-bottom: 18px;">
             <div class="info-row">
                 <span class="label">Customer:</span>
-                <span class="value">{{ $cb->booking?->customer?->name ?? '—' }}</span>
+                <span class="value">{{ $payment->booking?->customer?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Mobile:</span>
-                <span class="value">{{ $cb->booking?->customer?->mobile_no ?? '—' }}</span>
+                <span class="value">{{ $payment->booking?->customer?->mobile_no ?? '—' }}</span>
             </div>
             @php
-                $custId = $cb->booking?->customer;
+                $custId = $payment->booking?->customer;
                 $custIdLabel = 'Iqama No:';
                 $custIdValue = $custId?->iqama_no ?: null;
                 if (! $custIdValue && ($custId?->ref_iqama_no ?? null)) {
@@ -132,25 +129,19 @@
             </div>
         </div>
 
-        <div class="section-title">Cancellation Information</div>
-        <div class="info-grid cancel-info" style="margin-bottom: 18px;">
+        <div class="section-title">Payment Information</div>
+        <div class="info-grid" style="margin-bottom: 18px;">
             <div class="info-row">
-                <span class="label label-long">Cancellation Branch:</span>
-                <span class="value">{{ $cb->cancellationBranch?->name ?? '—' }}</span>
-            </div>
-            <div class="info-row-wide">
-                <div class="info-pair">
-                    <span class="label label-long">Cancel Date:</span>
-                    <span class="value">{{ $cb->created_at?->format('d-M-Y') ?? '—' }}</span>
-                </div>
-                <div class="info-pair">
-                    <span class="label label-mid">Booking Branch:</span>
-                    <span class="value">{{ $cb->booking?->bookingBranch?->name ?? '—' }}</span>
-                </div>
+                <span class="label">Payment Branch:</span>
+                <span class="value">{{ trim($payment->branch?->name ?? '—') }}</span>
             </div>
             <div class="info-row">
-                <span class="label label-long">Confirmed By:</span>
-                <span class="value">{{ $cb->confirmedBy?->name ?? '—' }}</span>
+                <span class="label">Paid By:</span>
+                <span class="value">{{ $payment->user?->name ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Date:</span>
+                <span class="value">{{ $payment->created_at?->format('d-M-Y') ?? '—' }}</span>
             </div>
         </div>
 
@@ -158,21 +149,9 @@
         <div class="table-wrap">
             <table>
                 <tbody>
-                    <tr>
-                        <td>Total Amount</td>
-                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->booking?->invoice?->total_amount, 2)</td>
-                    </tr>
-                    <tr>
-                        <td>Total Paid</td>
-                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->total_paid, 2)</td>
-                    </tr>
-                    <tr>
-                        <td>Service Charge Deduction</td>
-                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->service_charge_deduction, 2)</td>
-                    </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->refund_amount, 2)</td>
+                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($payment->amount, 2)</td>
                     </tr>
                 </tbody>
             </table>
@@ -182,12 +161,12 @@
         <div class="info-grid" style="margin-bottom: 18px;">
             <div class="info-row">
                 <span class="label">Payment Method:</span>
-                <span class="value">{{ ucfirst($cb->refundPayment?->payment_method?->value ?? '—') }}</span>
+                <span class="value">{{ ucfirst($payment->payment_method?->value ?? $payment->payment_method ?? '—') }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Transaction ID:</span>
-                @if(!empty($cb->refundPayment?->transaction_id))
-                <span class="value">{{ $cb->refundPayment->transaction_id }}</span>
+                @if(!empty($payment->transaction_id))
+                <span class="value">{{ $payment->transaction_id }}</span>
                 @else
                 <span class="blank" style="min-width: 180px;"></span>
                 @endif
@@ -233,7 +212,7 @@
     <script>
         history.pushState(null, '', location.href);
         window.addEventListener('popstate', function () {
-            location.replace("{{ route('cancelled-bookings.index') }}");
+            location.replace("{{ route('ticket-refund-payments.index') }}");
         });
     </script>
 </body>

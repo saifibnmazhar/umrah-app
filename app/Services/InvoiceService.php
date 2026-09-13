@@ -34,10 +34,20 @@ class InvoiceService
         }
 
         $invoice->paid_amount = $invoice->payments()
+            ->where(function ($q) {
+                $q->whereHas('vouchers.transactionType', function ($vq) {
+                    $vq->whereIn('name', ['Initial Payment', 'Due Collection']);
+                })->orWhereDoesntHave('vouchers');
+            })
             ->whereNull('cancelled_booking_id')
-            ->whereNull('cancelled_passenger_id')
             ->whereNull('refunded_ticket_id')
             ->whereNull('re_issued_ticket_id')
+            ->where(function ($q) {
+                $q->whereNull('cancelled_passenger_id')
+                    ->orWhereHas('vouchers.transactionType', function ($vq) {
+                        $vq->whereIn('name', ['Initial Payment', 'Due Collection']);
+                    });
+            })
             ->sum('amount');
         $dueAdjustments = (float) $invoice->payments()
             ->whereNotNull('cancelled_passenger_id')
