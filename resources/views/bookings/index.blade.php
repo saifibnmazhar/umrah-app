@@ -2853,7 +2853,11 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             </div>
             <div class="flex justify-between">
                 <span class="text-slate-500">Refund Payable</span>
-                <span class="font-semibold text-blue-600" x-text="$currency(payRefundMaxAmount, 2)"></span>
+                <span class="font-semibold text-blue-600">
+                    <span x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">SAR </span>
+                    <span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span>
+                    <span x-text="$currency(payRefundMaxAmount, 2)"></span>
+                </span>
             </div>
         </div>
         <form @submit.prevent="submitPayRefund()" class="space-y-4">

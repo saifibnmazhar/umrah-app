@@ -279,6 +279,16 @@
     </div>
 </div>
 <script>
+let _confirmRefundAmountSar = 0;
+
+function formatConfirmRefundDisplay(sarAmount) {
+    const store = Alpine.store('currency');
+    const isBDT = store.mode === 'BDT';
+    const displayAmount = isBDT ? sarAmount * (store.rate || 1) : sarAmount;
+    const prefix = isBDT ? 'BDT ' : 'SAR ';
+    return prefix + new Intl.NumberFormat('en-SA', { minimumFractionDigits: 2 }).format(displayAmount);
+}
+
 function toggleConfirmRefundRemarksRequired() {
     const isBank = document.getElementById('confirmRefundPaymentMethod').value === 'bank';
     document.getElementById('confirmRefundRemarks').required = isBank;
@@ -286,9 +296,10 @@ function toggleConfirmRefundRemarksRequired() {
     if (!isBank) document.getElementById('confirmRefundRemarksError').classList.add('hidden');
 }
 function openConfirmRefundModal(passengerId, name, amount) {
+    _confirmRefundAmountSar = amount;
     document.getElementById('confirmRefundPassengerId').value = passengerId;
     document.getElementById('confirmRefundPassengerName').textContent = name;
-    document.getElementById('confirmRefundAmount').textContent = new Intl.NumberFormat('en-SA', { minimumFractionDigits: 2 }).format(amount);
+    document.getElementById('confirmRefundAmount').textContent = formatConfirmRefundDisplay(amount);
     document.getElementById('confirmRefundRemarksError').classList.add('hidden');
     toggleConfirmRefundRemarksRequired();
     document.getElementById('confirmRefundModal').classList.remove('hidden');
@@ -328,5 +339,11 @@ async function submitConfirmRefund(e) {
         alert(result.message || 'Failed to confirm refund payment.');
     }
 }
+window.addEventListener('currency-toggled', function() {
+    var el = document.getElementById('confirmRefundAmount');
+    if (el && _confirmRefundAmountSar > 0) {
+        el.textContent = formatConfirmRefundDisplay(_confirmRefundAmountSar);
+    }
+});
 </script>
 @endsection
