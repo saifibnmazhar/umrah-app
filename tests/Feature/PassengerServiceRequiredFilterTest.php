@@ -146,9 +146,9 @@ class PassengerServiceRequiredFilterTest extends TestCase
         ]);
     }
 
-    private function passportNos($paginator): array
+    private function passengerNosFromJson($data): array
     {
-        return collect($paginator->items())->pluck('passport_no')->all();
+        return collect($data)->pluck('passport_no')->all();
     }
 
     public function test_visa_filter_shows_visa_and_all_passengers(): void
@@ -157,18 +157,14 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $ticket = $this->makePassenger('ticket_only', 'PPTICK01');
         $all = $this->makePassenger('all', 'PPALL001');
 
-        $response = $this->actingAs($this->admin)->get(route('bookings.index', [
-            'tab' => 'passenger',
-            'service_required' => 'visa_only',
-        ]));
+        $response = $this->actingAs($this->admin)->getJson('/api/bookings/passengers?tab=passenger&service_required=visa_only');
 
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $nos = $this->passengerNosFromJson($response->json('data'));
 
         $this->assertContains($visa->passport_no, $nos);
         $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($ticket->passport_no, $nos);
-        $this->assertSame('visa_only', $response->viewData('selectedServiceRequired'));
     }
 
     public function test_ticket_filter_shows_ticket_and_all_passengers(): void
@@ -177,13 +173,10 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $ticket = $this->makePassenger('ticket_only', 'PPTICK02');
         $all = $this->makePassenger('all', 'PPALL002');
 
-        $response = $this->actingAs($this->admin)->get(route('bookings.index', [
-            'tab' => 'passenger',
-            'service_required' => 'ticket_only',
-        ]));
+        $response = $this->actingAs($this->admin)->getJson('/api/bookings/passengers?tab=passenger&service_required=ticket_only');
 
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $nos = $this->passengerNosFromJson($response->json('data'));
 
         $this->assertContains($ticket->passport_no, $nos);
         $this->assertContains($all->passport_no, $nos);
@@ -196,13 +189,10 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $ticket = $this->makePassenger('ticket_only', 'PPTICK03');
         $all = $this->makePassenger('all', 'PPALL003');
 
-        $response = $this->actingAs($this->admin)->get(route('bookings.index', [
-            'tab' => 'passenger',
-            'service_required' => 'all',
-        ]));
+        $response = $this->actingAs($this->admin)->getJson('/api/bookings/passengers?tab=passenger&service_required=all');
 
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $nos = $this->passengerNosFromJson($response->json('data'));
 
         $this->assertContains($visa->passport_no, $nos);
         $this->assertContains($ticket->passport_no, $nos);
@@ -217,14 +207,16 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $user = $this->makeUserWithRole('Visa Staff');
 
         $response = $this->actingAs($user)->get(route('bookings.index', ['tab' => 'passenger']));
-
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $this->assertSame('visa_only', $response->viewData('selectedServiceRequired'));
+
+        $apiResponse = $this->actingAs($user)->getJson('/api/bookings/passengers?tab=passenger&service_required=visa_only');
+        $apiResponse->assertOk();
+        $nos = $this->passengerNosFromJson($apiResponse->json('data'));
 
         $this->assertContains($visa->passport_no, $nos);
         $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($ticket->passport_no, $nos);
-        $this->assertSame('visa_only', $response->viewData('selectedServiceRequired'));
     }
 
     public function test_ticket_staff_defaults_to_ticket_filter(): void
@@ -235,14 +227,16 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $user = $this->makeUserWithRole('Ticket Staff');
 
         $response = $this->actingAs($user)->get(route('bookings.index', ['tab' => 'passenger']));
-
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $this->assertSame('ticket_only', $response->viewData('selectedServiceRequired'));
+
+        $apiResponse = $this->actingAs($user)->getJson('/api/bookings/passengers?tab=passenger&service_required=ticket_only');
+        $apiResponse->assertOk();
+        $nos = $this->passengerNosFromJson($apiResponse->json('data'));
 
         $this->assertContains($ticket->passport_no, $nos);
         $this->assertContains($all->passport_no, $nos);
         $this->assertNotContains($visa->passport_no, $nos);
-        $this->assertSame('ticket_only', $response->viewData('selectedServiceRequired'));
     }
 
     public function test_other_roles_default_to_all(): void
@@ -252,14 +246,16 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $all = $this->makePassenger('all', 'PPALL006');
 
         $response = $this->actingAs($this->admin)->get(route('bookings.index', ['tab' => 'passenger']));
-
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $this->assertSame('all', $response->viewData('selectedServiceRequired'));
+
+        $apiResponse = $this->actingAs($this->admin)->getJson('/api/bookings/passengers?tab=passenger&service_required=all');
+        $apiResponse->assertOk();
+        $nos = $this->passengerNosFromJson($apiResponse->json('data'));
 
         $this->assertContains($visa->passport_no, $nos);
         $this->assertContains($ticket->passport_no, $nos);
         $this->assertContains($all->passport_no, $nos);
-        $this->assertSame('all', $response->viewData('selectedServiceRequired'));
     }
 
     public function test_explicit_param_overrides_role_default(): void
@@ -273,9 +269,12 @@ class PassengerServiceRequiredFilterTest extends TestCase
             'tab' => 'passenger',
             'service_required' => 'all',
         ]));
-
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $this->assertSame('all', $response->viewData('selectedServiceRequired'));
+
+        $apiResponse = $this->actingAs($user)->getJson('/api/bookings/passengers?tab=passenger&service_required=all');
+        $apiResponse->assertOk();
+        $nos = $this->passengerNosFromJson($apiResponse->json('data'));
 
         $this->assertContains($visa->passport_no, $nos);
         $this->assertContains($ticket->passport_no, $nos);

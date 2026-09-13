@@ -3171,13 +3171,11 @@ function bookingIndexApp() {
 
         onServiceRequiredChange() {
             const url = new URL(window.location.href);
-            if (this.selectedServiceRequired && this.selectedServiceRequired !== 'all') {
-                url.searchParams.set('service_required', this.selectedServiceRequired);
-            } else {
-                url.searchParams.set('service_required', 'all');
-            }
+            url.searchParams.set('service_required', this.selectedServiceRequired || 'all');
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onRouteChange() {
@@ -3408,6 +3406,7 @@ function bookingIndexApp() {
                 if (this.selectedReturnDateFrom) params.set('return_date_from', this.selectedReturnDateFrom);
                 if (this.selectedReturnDateTo) params.set('return_date_to', this.selectedReturnDateTo);
                 if (this.selectedPaymentWise) params.set('payment_wise', this.selectedPaymentWise);
+                params.set('service_required', this.selectedServiceRequired || 'all');
                 if (this.selectedFlightDateRange) {
                     const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
                     if (range) {
