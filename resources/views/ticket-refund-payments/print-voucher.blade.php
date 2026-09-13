@@ -70,7 +70,7 @@
     </style>
 </head>
 <body>
-    <div class="voucher-wrap">
+    <div x-data class="voucher-wrap">
         <div class="toolbar no-print">
             <a href="{{ route('ticket-refund-payments.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
@@ -151,7 +151,7 @@
                 <tbody>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell">@currency($payment->amount, 2)</td>
+                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($payment->amount, 2)</td>
                     </tr>
                 </tbody>
             </table>

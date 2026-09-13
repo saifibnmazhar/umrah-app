@@ -95,6 +95,7 @@ class RefundPaymentTest extends TestCase
         Schema::create('passengers', function ($table) {
             $table->id();
             $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->unsignedBigInteger('passenger_status_id')->nullable();
             $table->string('first_name');
             $table->string('last_name')->nullable();
             $table->decimal('refund_payable', 14, 6)->default(0);
@@ -263,6 +264,8 @@ class RefundPaymentTest extends TestCase
 
         $this->passenger->refresh();
         $this->assertEquals(0, (float) $this->passenger->refund_payable);
+        $this->assertNotNull($this->passenger->passenger_status_id);
+        $this->assertEquals('Ticket Refund Done', $this->passenger->status->name);
 
         $refundRequest->refresh();
         $this->assertEquals(RefundPaymentRequestStatus::PAID, $refundRequest->status);

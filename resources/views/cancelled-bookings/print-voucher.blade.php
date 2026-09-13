@@ -77,7 +77,7 @@
 </head>
 <body>
     @php $cb = $cancelledBooking; @endphp
-    <div class="voucher-wrap">
+    <div x-data class="voucher-wrap">
         <div class="toolbar no-print">
             <a href="{{ route('cancelled-bookings.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
@@ -160,19 +160,19 @@
                 <tbody>
                     <tr>
                         <td>Total Amount</td>
-                        <td class="text-right font-medium">@currency($cb->booking?->invoice?->total_amount, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->booking?->invoice?->total_amount, 2)</td>
                     </tr>
                     <tr>
                         <td>Total Paid</td>
-                        <td class="text-right font-medium">@currency($cb->total_paid, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->total_paid, 2)</td>
                     </tr>
                     <tr>
                         <td>Service Charge Deduction</td>
-                        <td class="text-right font-medium">@currency($cb->service_charge_deduction, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->service_charge_deduction, 2)</td>
                     </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell">@currency($cb->refund_amount, 2)</td>
+                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cb->refund_amount, 2)</td>
                     </tr>
                 </tbody>
             </table>
