@@ -4919,6 +4919,12 @@ function bookingIndexApp() {
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
+
+            this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
+            this.ticketFareForm.pnr = poit.pnr || '';
+            this.ticketFareForm.ticket_number = poit.ticket_number || '';
+            this.ticketFareForm.ticket_agent = poit.ticket_agent_name || '';
+
             this.isEditingReIssued = !!(poit.status === 're-issued' && poit.re_issue_details);
             if (this.isEditingReIssued) {
                 this.populateReIssueEditForm(poit.re_issue_details, poit.id, row, poit.was_refunded, poit.refunded_net_fare || 0);
