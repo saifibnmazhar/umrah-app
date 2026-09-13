@@ -8,6 +8,7 @@ use App\Models\Passenger;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\Role;
+use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -69,6 +70,12 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
             $table->decimal('refund_payable', 14, 6)->default(0);
             $table->decimal('package_value', 14, 6)->default(0);
             $table->decimal('profit', 14, 6)->default(0);
+            $table->decimal('visa_profit', 14, 6)->default(0);
+            $table->timestamp('visa_profit_effective_at')->nullable();
+            $table->decimal('ticket_profit', 14, 6)->default(0);
+            $table->timestamp('ticket_profit_effective_at')->nullable();
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->timestamp('service_charge_effective_at')->nullable();
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
@@ -141,7 +148,7 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
 
         Schema::enableForeignKeyConstraints();
 
-        \App\Models\TransactionType::firstOrCreate(
+        TransactionType::firstOrCreate(
             ['name' => 'Ticket Refund - Re-issue'],
             ['type' => 'debit']
         );

@@ -141,7 +141,7 @@ class PassengerServiceRequiredGatingTest extends TestCase
         $this->assertStringContainsString('font-bold text-slate-700">Ticket Only', $src);
         $this->assertStringContainsString('font-bold text-slate-700">Visa Only', $src);
         $this->assertStringContainsString("service_required) !== 'ticket_only'", $src);
-        $this->assertStringContainsString("service_required?->value ?? 'all') !== 'visa_only'", $src);
+        $this->assertStringContainsString("service_required !== 'visa_only'", $src);
     }
 
     public function test_visa_submit_rejected_for_ticket_only(): void

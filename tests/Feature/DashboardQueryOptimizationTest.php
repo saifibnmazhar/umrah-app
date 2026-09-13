@@ -30,6 +30,7 @@ use App\Models\VisaAgent;
 use App\Models\VisaAgentCost;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
+use App\Models\VisaUpdateLog;
 use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -226,7 +227,7 @@ class DashboardQueryOptimizationTest extends TestCase
                 'package_value' => 25000.00,
             ]);
 
-            VisaSubmission::create([
+            $visaSubmission = VisaSubmission::create([
                 'passenger_id' => $passenger->id,
                 'visa_agent_id' => $deps['visaAgent']->id,
                 'visa_selling_price_id' => $deps['visaPrice']->id,
@@ -238,6 +239,15 @@ class DashboardQueryOptimizationTest extends TestCase
                 'visa_number' => null,
                 'is_cancelled' => false,
                 'status' => 'issued',
+            ]);
+
+            VisaUpdateLog::create([
+                'visa_submission_id' => $visaSubmission->id,
+                'user_id' => $user->id,
+                'action' => 'status_update',
+                'old_values' => ['status' => 'submitted'],
+                'new_values' => ['status' => 'issued'],
+                'created_at' => now(),
             ]);
 
             IssuedTicket::create([

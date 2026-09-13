@@ -79,6 +79,7 @@ class BookingCancellationAuditTest extends TestCase
             $table->integer('pax_qty')->default(1);
             $table->decimal('total_value', 14, 6)->default(0);
             $table->decimal('discount_amount', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
@@ -102,6 +103,13 @@ class BookingCancellationAuditTest extends TestCase
             $table->string('last_name');
             $table->decimal('package_value', 12, 2)->default(0);
             $table->decimal('refund_payable', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
+            $table->decimal('visa_profit', 14, 6)->default(0);
+            $table->timestamp('visa_profit_effective_at')->nullable();
+            $table->decimal('ticket_profit', 14, 6)->default(0);
+            $table->timestamp('ticket_profit_effective_at')->nullable();
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->timestamp('service_charge_effective_at')->nullable();
             $table->boolean('is_cancelled')->default(false);
             $table->timestamp('cancelled_at')->nullable();
             $table->timestamps();

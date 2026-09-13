@@ -128,6 +128,7 @@ class CancelledRecordTest extends TestCase
             $table->decimal('pax_qty', 10, 0)->default(1);
             $table->decimal('total_value', 14, 6)->default(0);
             $table->decimal('discount_amount', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
@@ -164,6 +165,13 @@ class CancelledRecordTest extends TestCase
             $table->decimal('package_value', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->decimal('refund_payable', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
+            $table->decimal('visa_profit', 14, 6)->default(0);
+            $table->timestamp('visa_profit_effective_at')->nullable();
+            $table->decimal('ticket_profit', 14, 6)->default(0);
+            $table->timestamp('ticket_profit_effective_at')->nullable();
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->timestamp('service_charge_effective_at')->nullable();
             $table->timestamps();
         });
 

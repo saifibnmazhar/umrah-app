@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class FingerprintController extends Controller
 {
@@ -20,31 +21,32 @@ class FingerprintController extends Controller
      */
     public function adminIndex(Request $request): JsonResponse
     {
-        $query = Fingerprint::with([
-            'booking.customer',
-            'booking.district',
-            'booking.currencyRate',
-            'booking.passengers',
-            'booking.cancelledBooking',
-            'fingerprintDetails.passenger',
-            'fingerprintDetails.rescheduledFingerprints',
-            'assignedStaff',
+        $query = FingerprintDetail::with([
+            'fingerprint.booking.customer',
+            'fingerprint.booking.district',
+            'fingerprint.booking.currencyRate',
+            'fingerprint.booking.cancelledBooking',
+            'fingerprint.assignedStaff',
+            'fingerprint.fingerprintDetails',
+            'passenger.status',
+            'rescheduledFingerprints',
+            'approvedLog',
         ])->orderBy('created_at', 'desc');
 
         if ($request->has('division') && $request->division) {
-            $query->whereHas('booking.district', function ($q) use ($request) {
+            $query->whereHas('fingerprint.booking.district', function ($q) use ($request) {
                 $q->where('division', $request->division);
             });
         }
 
         if ($request->has('district') && $request->district) {
-            $query->whereHas('booking', function ($q) use ($request) {
+            $query->whereHas('fingerprint.booking', function ($q) use ($request) {
                 $q->where('district_id', $request->district);
             });
         }
 
         if ($request->has('fingerprint_location') && $request->fingerprint_location) {
-            $query->whereHas('booking', function ($q) use ($request) {
+            $query->whereHas('fingerprint.booking', function ($q) use ($request) {
                 $q->where('fingerprint_location', $request->fingerprint_location);
             });
         }
@@ -52,118 +54,114 @@ class FingerprintController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->whereHas('booking', function ($q) use ($search) {
+                $q->whereHas('fingerprint.booking', function ($q) use ($search) {
                     $q->where('invoice_id', 'LIKE', "%{$search}%")
                         ->orWhereHas('customer', function ($q) use ($search) {
                             $q->where('name', 'LIKE', "%{$search}%");
                         });
-                })->orWhereHas('fingerprintDetails.passenger', function ($q) use ($search) {
-                    $q->where('first_name', 'LIKE', "%{$search}%")
-                        ->orWhere('last_name', 'LIKE', "%{$search}%")
-                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                })->orWhereHas('passenger', function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             });
         }
 
         if ($request->filled('fingerprint_status')) {
-            $query->whereHas('fingerprintDetails', function ($q) use ($request) {
-                $q->where('status', $request->input('fingerprint_status'));
-            });
+            $query->where('status', $request->input('fingerprint_status'));
         }
 
         if ($request->filled('deadline_from')) {
-            $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+            $query->whereHas('fingerprint', function ($q) use ($request) {
+                $q->whereDate('deadline', '>=', $request->input('deadline_from'));
+            });
         }
 
         if ($request->filled('deadline_to')) {
-            $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+            $query->whereHas('fingerprint', function ($q) use ($request) {
+                $q->whereDate('deadline', '<=', $request->input('deadline_to'));
+            });
         }
 
         if ($request->filled('flight_date_from')) {
-            $query->whereHas('booking.passengers', function ($q) use ($request) {
+            $query->whereHas('passenger', function ($q) use ($request) {
                 $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'));
             });
         }
 
         if ($request->filled('flight_date_to')) {
-            $query->whereHas('booking.passengers', function ($q) use ($request) {
+            $query->whereHas('passenger', function ($q) use ($request) {
                 $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'));
             });
         }
 
         $user = auth()->user();
         if ($user->branch?->fingerprint_operation && ! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
-            $query->whereHas('booking', function ($q) use ($user) {
+            $query->whereHas('fingerprint.booking', function ($q) use ($user) {
                 $q->where('fingerprint_branch_id', $user->branch_id);
             });
         }
 
-        $fingerprints = $query->paginate(10);
+        $page = $query->paginate(25);
 
         $currencyRateService = app(CurrencyRateService::class);
         $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
 
-        $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) use ($firstRate) {
-                $booking = $fingerprint->booking;
-                $passengers = $booking->passengers;
+        $items = $page->getCollection()->map(function ($detail) use ($firstRate) {
+            $fingerprint = $detail->fingerprint;
+            $booking = $fingerprint->booking;
+            $passenger = $detail->passenger;
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $firstRate) {
-                    $detail = $fingerprint->fingerprintDetails
-                        ->where('passenger_id', $passenger->id)
-                        ->first();
+            $statusDisplay = $this->computePartiallyApprovedStatus($detail, $fingerprint->fingerprintDetails);
 
-                    $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+            $rescheduleDeadline = $detail->rescheduledFingerprints
+                ->sortByDesc('created_at')
+                ->first()?->next_date?->format('Y-m-d');
 
-                    $rescheduleDeadline = $detail?->rescheduledFingerprints
-                        ->sortByDesc('created_at')
-                        ->first()?->next_date?->format('Y-m-d');
+            $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
-                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
-
-                    return [
-                        'fingerprint_id' => $fingerprint->id,
-                        'fingerprint_detail_id' => $detail?->id,
-                        'invoice_id' => $booking->invoice_id,
-                        'booking_date' => $booking->created_at->format('Y-m-d'),
-                        'customer_name' => $booking->customer->name,
-                        'pax_qty' => $booking->pax_qty,
-                        'customer_mobile' => $booking->customer->mobile_no,
-                        'passenger_mobile' => $passenger->mobile_no,
-                        'district' => $booking->district->name ?? '-',
-                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                        'reschedule_deadline' => $rescheduleDeadline,
-                        'cost' => $fingerprint->cost,
-                        'rate' => $rate,
-                        'assigned_staff_id' => $fingerprint->assigned_staff_id,
-                        'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
-                        'booking_branch_id' => $booking->booking_branch_id,
-                        'fingerprint_branch_id' => $booking->fingerprint_branch_id,
-                        'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
-                        'fingerprint_status' => $detail?->status?->value ?? 'none',
-                        'passenger_status' => $passenger->status?->name ?? null,
-                        'fingerprint_status_display' => $statusDisplay,
-                        'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
-                        'is_cancelled' => $booking->is_cancelled,
-                        'cancellation_status' => $booking->cancelledBooking?->status?->value,
-                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
-                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
-                        'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
-                            ? $passenger->flight_date_from->format('d M Y').' → '.$passenger->flight_date_to->format('d M Y')
-                            : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
-                        'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
-                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
-                    ];
-                });
-            })->flatten(1);
+            return [
+                'fingerprint_id' => $fingerprint->id,
+                'fingerprint_detail_id' => $detail->id,
+                'invoice_id' => $booking->invoice_id,
+                'booking_date' => $booking->created_at->format('Y-m-d'),
+                'customer_name' => $booking->customer->name,
+                'pax_qty' => $booking->pax_qty,
+                'customer_mobile' => $booking->customer->mobile_no,
+                'passenger_mobile' => $passenger->mobile_no,
+                'district' => $booking->district->name ?? '-',
+                'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                'reschedule_deadline' => $rescheduleDeadline,
+                'cost' => $fingerprint->cost,
+                'rate' => $rate,
+                'assigned_staff_id' => $fingerprint->assigned_staff_id,
+                'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
+                'booking_branch_id' => $booking->booking_branch_id,
+                'fingerprint_branch_id' => $booking->fingerprint_branch_id,
+                'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
+                'fingerprint_status' => $detail->status?->value ?? 'none',
+                'passenger_status' => $passenger->status?->name ?? null,
+                'fingerprint_status_display' => $statusDisplay,
+                'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                'is_cancelled' => $booking->is_cancelled,
+                'cancellation_status' => $booking->cancelledBooking?->status?->value,
+                'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
+                'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
+                    ? $passenger->flight_date_from->format('d M Y').' → '.$passenger->flight_date_to->format('d M Y')
+                    : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
+                'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
+                'approved_at' => $detail->approvedLog?->created_at?->toISOString(),
+            ];
+        })->values();
 
         return response()->json([
             'data' => $items,
+            'summary' => ['total' => $page->total()],
             'pagination' => [
-                'current_page' => $fingerprints->currentPage(),
-                'last_page' => $fingerprints->lastPage(),
-                'per_page' => $fingerprints->perPage(),
-                'total' => $fingerprints->total(),
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
             ],
         ]);
     }
@@ -174,64 +172,70 @@ class FingerprintController extends Controller
      */
     public function staffIndex(Request $request): JsonResponse
     {
-        $query = Fingerprint::with([
-            'firstCostLog',
-            'booking.customer',
-            'booking.district',
-            'booking.currencyRate',
-            'booking.fingerprintBranch',
-            'booking.passengers',
-            'booking.cancelledBooking',
-            'fingerprintDetails.passenger',
+        $query = FingerprintDetail::with([
+            'fingerprint.firstCostLog',
+            'fingerprint.booking.customer',
+            'fingerprint.booking.district',
+            'fingerprint.booking.currencyRate',
+            'fingerprint.booking.fingerprintBranch',
+            'fingerprint.booking.cancelledBooking',
+            'fingerprint.assignedStaff',
+            'fingerprint.fingerprintDetails',
+            'passenger.status',
+            'rescheduledFingerprints',
+            'approvedLog',
         ])->orderBy('created_at', 'desc');
 
         $user = auth()->user();
         if ($user->hasRole('Fingerprint Staff')) {
-            $query->where('assigned_staff_id', $user->id);
+            $query->whereHas('fingerprint', function ($q) use ($user) {
+                $q->where('assigned_staff_id', $user->id);
+            });
         }
 
-        $query->whereHas('booking', function ($q) {
+        $query->whereHas('fingerprint.booking', function ($q) {
             $q->where('fingerprint_location', FingerprintLocation::HOME);
         });
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->whereHas('booking', function ($q) use ($search) {
+                $q->whereHas('fingerprint.booking', function ($q) use ($search) {
                     $q->where('invoice_id', 'LIKE', "%{$search}%")
                         ->orWhereHas('customer', function ($q) use ($search) {
                             $q->where('name', 'LIKE', "%{$search}%");
                         });
-                })->orWhereHas('fingerprintDetails.passenger', function ($q) use ($search) {
-                    $q->where('first_name', 'LIKE', "%{$search}%")
-                        ->orWhere('last_name', 'LIKE', "%{$search}%")
-                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                })->orWhereHas('passenger', function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             });
         }
 
         if ($request->filled('fingerprint_status')) {
-            $query->whereHas('fingerprintDetails', function ($q) use ($request) {
-                $q->where('status', $request->input('fingerprint_status'));
-            });
+            $query->where('status', $request->input('fingerprint_status'));
         }
 
         if ($request->filled('deadline_from')) {
-            $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+            $query->whereHas('fingerprint', function ($q) use ($request) {
+                $q->whereDate('deadline', '>=', $request->input('deadline_from'));
+            });
         }
 
         if ($request->filled('deadline_to')) {
-            $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+            $query->whereHas('fingerprint', function ($q) use ($request) {
+                $q->whereDate('deadline', '<=', $request->input('deadline_to'));
+            });
         }
 
         if ($request->filled('flight_date_from')) {
-            $query->whereHas('booking.passengers', function ($q) use ($request) {
+            $query->whereHas('passenger', function ($q) use ($request) {
                 $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'));
             });
         }
 
         if ($request->filled('flight_date_to')) {
-            $query->whereHas('booking.passengers', function ($q) use ($request) {
+            $query->whereHas('passenger', function ($q) use ($request) {
                 $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'));
             });
         }
@@ -240,77 +244,71 @@ class FingerprintController extends Controller
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
 
-        $fingerprints = $query->paginate(10);
+        $page = $query->paginate(25);
 
         $currencyRateService = app(CurrencyRateService::class);
         $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
 
-        $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo, $firstRate) {
-                $booking = $fingerprint->booking;
-                if (! $booking) {
-                    return collect([]);
-                }
+        $items = $page->getCollection()->map(function ($detail) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo, $firstRate) {
+            $fingerprint = $detail->fingerprint;
+            $booking = $fingerprint->booking;
+            if (! $booking) {
+                return null;
+            }
+            $passenger = $detail->passenger;
 
-                $passengers = $booking->passengers;
+            $firstLog = $fingerprint->firstCostLog;
+            $canEditCost = $isSuperOrCoAdmin
+                || ($isFingerprintStaffRole && (
+                    ! $firstLog
+                    || $firstLog->created_at >= $twentyFourHoursAgo
+                ));
 
-                $firstLog = $fingerprint->firstCostLog;
-                $canEditCost = $isSuperOrCoAdmin
-                    || ($isFingerprintStaffRole && (
-                        ! $firstLog
-                        || $firstLog->created_at >= $twentyFourHoursAgo
-                    ));
+            $statusDisplay = $this->computePartiallyApprovedStatus($detail, $fingerprint->fingerprintDetails);
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $canEditCost, $firstRate) {
-                    $detail = $fingerprint->fingerprintDetails()
-                        ->where('passenger_id', $passenger->id)
-                        ->first();
+            $firstName = $passenger->first_name ?? '';
+            $lastName = $passenger->last_name ?? '';
+            $passengerName = trim($firstName.' '.$lastName) ?: '-';
 
-                    $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+            $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
-                    $firstName = $passenger->first_name ?? '';
-                    $lastName = $passenger->last_name ?? '';
-                    $passengerName = trim($firstName.' '.$lastName) ?: '-';
-
-                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
-
-                    return [
-                        'fingerprint_id' => $fingerprint->id,
-                        'fingerprint_detail_id' => $detail?->id,
-                        'invoice_id' => $booking->invoice_id,
-                        'booking_date' => $booking->created_at?->format('Y-m-d'),
-                        'customer_name' => $booking->customer?->name ?? '-',
-                        'pax_qty' => $passengers->count(),
-                        'customer_mobile' => $booking->customer?->mobile_no ?? '',
-                        'passenger_mobile' => $passenger->mobile_no ?? '',
-                        'fingerprint_branch_name' => $booking->fingerprintBranch?->name ?? '-',
-                        'district' => $booking->district?->name ?? '-',
-                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                        'passenger_name' => $passengerName,
-                        'passenger_address' => $passenger->address ?? '-',
-                        'cost' => $fingerprint->cost,
-                        'rate' => $rate,
-                        'can_edit_cost' => $canEditCost,
-                        'fingerprint_status' => $detail?->status?->value ?? 'none',
-                        'passenger_status' => $passenger->status?->name ?? null,
-                        'fingerprint_status_display' => $statusDisplay,
-                        'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
-                        'is_cancelled' => $booking->is_cancelled,
-                        'cancellation_status' => $booking->cancelledBooking?->status?->value,
-                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
-                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
-                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
-                    ];
-                });
-            })->flatten(1);
+            return [
+                'fingerprint_id' => $fingerprint->id,
+                'fingerprint_detail_id' => $detail->id,
+                'invoice_id' => $booking->invoice_id,
+                'booking_date' => $booking->created_at?->format('Y-m-d'),
+                'customer_name' => $booking->customer?->name ?? '-',
+                'pax_qty' => $booking->pax_qty,
+                'customer_mobile' => $booking->customer?->mobile_no ?? '',
+                'passenger_mobile' => $passenger->mobile_no ?? '',
+                'fingerprint_branch_name' => $booking->fingerprintBranch?->name ?? '-',
+                'district' => $booking->district?->name ?? '-',
+                'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                'passenger_name' => $passengerName,
+                'passenger_address' => $passenger->address ?? '-',
+                'cost' => $fingerprint->cost,
+                'rate' => $rate,
+                'can_edit_cost' => $canEditCost,
+                'fingerprint_status' => $detail->status?->value ?? 'none',
+                'passenger_status' => $passenger->status?->name ?? null,
+                'fingerprint_status_display' => $statusDisplay,
+                'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                'is_cancelled' => $booking->is_cancelled,
+                'cancellation_status' => $booking->cancelledBooking?->status?->value,
+                'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
+                'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                'approved_at' => $detail->approvedLog?->created_at?->toISOString(),
+            ];
+        })->filter()->values();
 
         return response()->json([
             'data' => $items,
+            'summary' => ['total' => $page->total()],
             'pagination' => [
-                'current_page' => $fingerprints->currentPage(),
-                'last_page' => $fingerprints->lastPage(),
-                'per_page' => $fingerprints->perPage(),
-                'total' => $fingerprints->total(),
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
             ],
         ]);
     }
@@ -318,14 +316,20 @@ class FingerprintController extends Controller
     /**
      * Compute Partially Approved display status
      */
-    private function computePartiallyApprovedStatus($detail, $passengers): string
+    private function computePartiallyApprovedStatus($detail, $siblings = null): string
     {
         if (! $detail || $detail->status->value !== 'approved') {
             return $detail?->status?->value ?? 'none';
         }
 
-        $fingerprint = $detail->fingerprint;
-        $allDetails = $fingerprint->fingerprintDetails;
+        if ($siblings instanceof Collection && $siblings->first() instanceof FingerprintDetail) {
+            $allDetails = $siblings;
+        } elseif ($detail->relationLoaded('fingerprint') && $detail->fingerprint?->relationLoaded('fingerprintDetails')) {
+            $allDetails = $detail->fingerprint->fingerprintDetails;
+        } else {
+            $fingerprint = $detail->fingerprint;
+            $allDetails = $fingerprint->fingerprintDetails;
+        }
 
         $allApproved = $allDetails->every(function ($d) {
             return $d->status->value === 'approved';
