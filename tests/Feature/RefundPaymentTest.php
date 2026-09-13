@@ -283,9 +283,9 @@ class RefundPaymentTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)
-            ->postJson(route('passengers.refund-pay-revert', $this->passenger->id));
+            ->post(route('passengers.refund-pay-revert', $this->passenger->id));
 
-        $response->assertOk()->assertJson(['success' => true]);
+        $response->assertRedirect(route('pending-refunds.index', ['tab' => 'tickets']));
 
         $refundRequest->refresh();
         $this->assertEquals(RefundPaymentRequestStatus::REVERTED, $refundRequest->status);
