@@ -77,7 +77,7 @@
 </head>
 <body>
     @php $cp = $cancelledPassenger; @endphp
-    <div class="voucher-wrap">
+    <div x-data class="voucher-wrap">
         <div class="toolbar no-print">
             <a href="{{ route('cancelled-passengers.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
@@ -168,31 +168,31 @@
                 <tbody>
                     <tr>
                         <td>Package Value</td>
-                        <td class="text-right font-medium">@currency($cp->package_value, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->package_value, 2)</td>
                     </tr>
                     <tr>
                         <td>Additional Tickets</td>
-                        <td class="text-right font-medium">@currency($cp->additional_ticket_value, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->additional_ticket_value, 2)</td>
                     </tr>
                     <tr>
                         <td>Total Passenger Due</td>
-                        <td class="text-right font-medium">@currency($cp->total_passenger_due, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->total_passenger_due, 2)</td>
                     </tr>
                     <tr>
                         <td>Deduction</td>
-                        <td class="text-right font-medium">@currency($cp->service_charge_deduction, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->service_charge_deduction, 2)</td>
                     </tr>
                     <tr>
                         <td>Refundable Amount</td>
-                        <td class="text-right font-medium">@currency($cp->refundable_amount, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->refundable_amount, 2)</td>
                     </tr>
                     <tr>
                         <td>Adjusted from Due</td>
-                        <td class="text-right adjustment-cell">@currency($cp->balance_adjusted_amount, 2)</td>
+                        <td class="text-right adjustment-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->balance_adjusted_amount, 2)</td>
                     </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell">@currency($cp->refund_amount, 2)</td>
+                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->refund_amount, 2)</td>
                     </tr>
                 </tbody>
             </table>

@@ -7,6 +7,7 @@ use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\PassengerStatus;
 use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\RefundPaymentRequest;
@@ -265,6 +266,9 @@ class RefundController extends Controller
                 'confirmed_by' => auth()->id(),
                 'confirmed_at' => now(),
             ]);
+
+            $refundDoneStatus = PassengerStatus::firstOrCreate(['name' => 'Ticket Refund Done']);
+            $passenger->update(['passenger_status_id' => $refundDoneStatus->id]);
 
             return response()->json([
                 'success' => true,
