@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RefundPaymentRequestStatus;
 use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\RefundedTicket;
+use App\Models\RefundPaymentRequest;
+use App\Models\TransactionType;
+use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -137,5 +142,165 @@ class RefundController extends Controller
             ->get();
 
         return response()->json($refundedTickets);
+    }
+
+    public function assignBranch(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'branch_id' => 'required|exists:branches,id',
+        ]);
+
+        if ((float) $passenger->refund_payable <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Passenger has no refund payable balance.',
+            ], 422);
+        }
+
+        if (RefundPaymentRequest::where('passenger_id', $passenger->id)
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refund payment is already in progress or completed.',
+            ], 422);
+        }
+
+        RefundPaymentRequest::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $passenger->booking_id,
+            'branch_id' => $validated['branch_id'],
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => $passenger->refund_payable,
+            'assigned_by' => auth()->id(),
+            'assigned_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Refund payment branch assigned successfully.',
+        ]);
+    }
+
+    public function confirm(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,bank',
+            'remarks' => ['nullable', 'string', 'max:500', 'required_if:payment_method,bank', 'regex:/\S/'],
+        ]);
+
+        $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)
+            ->latest()
+            ->first();
+
+        if (! $refundRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Passenger is not in processing status.',
+            ], 422);
+        }
+
+        $booking = $passenger->booking;
+        $invoice = $booking->invoice;
+        $amount = (float) $passenger->refund_payable;
+
+        if ($amount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refund payable balance is zero.',
+            ], 422);
+        }
+
+        if (! $invoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking has no invoice.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($passenger, $booking, $invoice, $amount, $validated, $refundRequest) {
+            $passenger = Passenger::lockForUpdate()->find($passenger->id);
+
+            $transactionType = TransactionType::where('name', 'Ticket Refund - Payment')->first();
+
+            if (! $transactionType) {
+                throw new \RuntimeException('Transaction type "Ticket Refund - Payment" not found.');
+            }
+
+            $payment = Payment::create([
+                'invoice_id' => $invoice->id,
+                'booking_id' => $booking->id,
+                'branch_id' => $refundRequest->branch_id,
+                'user_id' => auth()->id(),
+                'currency_rate_id' => $booking->currency_rate_id,
+                'payment_date' => now(),
+                'payment_method' => $validated['payment_method'],
+                'amount' => $amount,
+                'bdt_amount' => 0,
+                'passenger_id' => $passenger->id,
+                'remarks' => $validated['remarks'] ?? null,
+            ]);
+
+            $voucher = app(VoucherService::class)->createVoucher([
+                'invoice_id' => $invoice->id,
+                'booking_id' => $booking->id,
+                'payment_id' => $payment->id,
+                'branch_id' => $refundRequest->branch_id,
+                'user_id' => auth()->id(),
+                'currency_rate_id' => $booking->currency_rate_id,
+                'transaction_type_id' => $transactionType->id,
+                'payment_date' => now(),
+                'payment_method' => $validated['payment_method'],
+                'amount' => $amount,
+                'bdt_amount' => 0,
+                'notes' => $validated['remarks'] ?? null,
+            ]);
+
+            $passenger->decreaseRefundPayable($amount);
+
+            $refundRequest->update([
+                'status' => RefundPaymentRequestStatus::PAID,
+                'payment_id' => $payment->id,
+                'voucher_id' => $voucher->id,
+                'confirmed_by' => auth()->id(),
+                'confirmed_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Refund payment processed successfully.',
+                'data' => [
+                    'payment_id' => $payment->id,
+                    'voucher_id' => $voucher->id,
+                    'amount' => $amount,
+                ],
+            ]);
+        });
+    }
+
+    public function revert(Passenger $passenger)
+    {
+        try {
+            $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
+                ->where('status', RefundPaymentRequestStatus::PROCESSING)
+                ->latest()
+                ->first();
+
+            if (! $refundRequest) {
+                return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                    ->with('error', 'Passenger is not in processing status.');
+            }
+
+            $refundRequest->update([
+                'status' => RefundPaymentRequestStatus::REVERTED,
+                'reverted_at' => now(),
+            ]);
+
+            return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                ->with('success', 'Refund payment reverted.');
+        } catch (\Exception $e) {
+            return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                ->with('error', $e->getMessage());
+        }
     }
 }

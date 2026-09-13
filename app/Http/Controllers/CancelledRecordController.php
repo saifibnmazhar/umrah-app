@@ -6,6 +6,7 @@ use App\Enums\CancelledBookingStatus;
 use App\Models\Branch;
 use App\Models\CancelledBooking;
 use App\Models\CancelledPassenger;
+use App\Models\Payment;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -141,6 +142,83 @@ class CancelledRecordController extends Controller
             'cancelledPassengers' => $cancelledPassengers,
             'branches' => Branch::select('id', 'name')->orderBy('name')->get(),
         ]);
+    }
+
+    public function ticketRefundIndex(Request $request)
+    {
+        $query = $this->buildTicketRefundQuery($request);
+
+        $ticketRefundPayments = $query->latest()->paginate(20)->withQueryString();
+
+        return view('cancelled-bookings.index', [
+            'tab' => 'ticket-refunds',
+            'cancelledBookings' => collect(),
+            'cancelledPassengers' => collect(),
+            'ticketRefundPayments' => $ticketRefundPayments,
+            'branches' => Branch::select('id', 'name')->orderBy('name')->get(),
+        ]);
+    }
+
+    public function ticketRefundIndexData(Request $request): JsonResponse
+    {
+        $query = $this->buildTicketRefundQuery($request);
+
+        $payments = $query->latest()->paginate(20);
+
+        $items = collect($payments->items())->map(function (Payment $payment) {
+            return [
+                'id' => $payment->id,
+                'invoice_id' => $payment->booking?->invoice_id ?? '—',
+                'customer' => $payment->booking?->customer?->name ?? 'N/A',
+                'passenger' => trim(($payment->passenger?->first_name ?? '').' '.($payment->passenger?->last_name ?? '')) ?: '—',
+                'payment_branch' => $payment->branch?->name ?? '—',
+                'refund_amount' => (float) $payment->amount,
+                'payment_method' => $payment->payment_method?->value ?? $payment->payment_method ?? '—',
+                'status' => 'paid',
+                'paid_by' => $payment->user?->name ?? '—',
+                'date' => $payment->created_at->format('Y-m-d'),
+                'show_route' => route('ticket-refund-payments.show', $payment->id),
+                'print_route' => route('ticket-refund-payments.print', $payment->id),
+            ];
+        });
+
+        return $this->paginatedResponse($payments, $items);
+    }
+
+    public function ticketRefundShow(Payment $payment)
+    {
+        $this->ensurePaymentBranchAccess($payment);
+
+        $payment->load([
+            'booking.customer',
+            'booking.invoice',
+            'passenger',
+            'branch',
+            'user',
+            'voucher.transactionType',
+            'voucher.branch',
+        ]);
+
+        return view('ticket-refund-payments.show', compact('payment'));
+    }
+
+    public function ticketRefundPrint(Payment $payment)
+    {
+        $this->ensurePaymentBranchAccess($payment);
+
+        $payment->load([
+            'booking.customer',
+            'booking.invoice',
+            'passenger',
+            'branch',
+            'user',
+            'voucher.transactionType',
+            'voucher.branch',
+        ]);
+
+        $currencyRate = (float) (app(CurrencyRateService::class)->getRateForDate(now())?->rate ?? 0);
+
+        return view('ticket-refund-payments.print-voucher', compact('payment', 'currencyRate'));
     }
 
     public function passengerShow(CancelledPassenger $cancelledPassenger)
@@ -281,6 +359,48 @@ class CancelledRecordController extends Controller
 
         if ($request->filled('branch_id')) {
             $query->where('cancellation_branch_id', $request->branch_id);
+        }
+
+        return $query;
+    }
+
+    private function ensurePaymentBranchAccess(Payment $payment): void
+    {
+        $this->ensureFingerprintAdminHasBranch();
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $payment->branch_id) {
+            abort(403);
+        }
+    }
+
+    private function buildTicketRefundQuery(Request $request)
+    {
+        $query = Payment::with([
+            'booking.customer',
+            'booking.invoice',
+            'passenger',
+            'branch',
+            'user',
+            'voucher.transactionType',
+            'voucher.branch',
+        ])->whereHas('voucher.transactionType', fn ($q) => $q->where('name', 'Ticket Refund - Payment'));
+
+        $this->applyBranchFilter($query, 'payments.branch_id');
+
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('booking', function ($b) use ($search) {
+                    $b->where('invoice_id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
+                })->orWhereHas('passenger', function ($p) use ($search) {
+                    $p->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('payments.branch_id', $request->branch_id);
         }
 
         return $query;

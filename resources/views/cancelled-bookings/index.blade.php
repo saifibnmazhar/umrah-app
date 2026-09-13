@@ -3,8 +3,16 @@
 @section('content')
 @php
     $canSeeInitiatedBy = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
-    $indexRoute = $tab === 'passengers' ? 'cancelled-passengers.index' : 'cancelled-bookings.index';
-    $apiRoute = $tab === 'passengers' ? 'api.cancelled-passengers.data' : 'api.cancelled-bookings.data';
+    $indexRoute = match($tab) {
+        'passengers' => 'cancelled-passengers.index',
+        'ticket-refunds' => 'ticket-refund-payments.index',
+        default => 'cancelled-bookings.index',
+    };
+    $apiRoute = match($tab) {
+        'passengers' => 'api.cancelled-passengers.data',
+        'ticket-refunds' => 'api.ticket-refund-payments.data',
+        default => 'api.cancelled-bookings.data',
+    };
     $branchesData = $branches->map(fn ($b) => ['id' => $b->id, 'name' => $b->name])->values();
 @endphp
 <div class="w-full mx-auto" x-data='cancelledIndex({ tab: @json($tab), apiUrl: @json(route($apiRoute)), indexUrl: @json(route($indexRoute)), branches: @json($branchesData), canSeeInitiatedBy: @json($canSeeInitiatedBy), initialBranchId: @json(request('branch_id', '')) })'>
@@ -31,6 +39,10 @@
         <a href="{{ route('cancelled-passengers.index', request()->only(['branch_id', 'search'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'passengers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
             Cancelled Passengers
+        </a>
+        <a href="{{ route('ticket-refund-payments.index', request()->only(['branch_id', 'search'])) }}"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'ticket-refunds' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+            Ticket Refund Payments
         </a>
     </div>
 
@@ -143,6 +155,51 @@
                                     <span x-show="row.status !== 'cancellation processing' && row.status !== 'cancelled'" class="text-slate-600" x-text="row.status"></span>
                                 </td>
                                 <template x-if="canSeeInitiatedBy"><td class="px-3 py-2 text-slate-600" x-text="row.initiated_by"></td></template>
+                                <td class="px-3 py-2 text-slate-600" x-text="row.date"></td>
+                                <td class="px-3 py-2 text-center whitespace-nowrap">
+                                    <a :href="row.show_route" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium">View</a>
+                                    <a :href="row.print_route" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium ml-1">Print</a>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+            <template x-if="tab === 'ticket-refunds'">
+                <table class="w-full min-w-[1000px] text-sm">
+                    <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                            <th class="px-3 py-2 text-left font-medium">Customer</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                            <th class="px-3 py-2 text-left font-medium">Payment Branch</th>
+                            <th class="px-3 py-2 text-right font-medium">Refund Amount</th>
+                            <th class="px-3 py-2 text-left font-medium">Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Status</th>
+                            <template x-if="canSeeInitiatedBy"><th class="px-3 py-2 text-left font-medium">Paid By</th></template>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-center font-medium">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <template x-if="loading">
+                            <tr><td colspan="10" class="px-3 py-8 text-center text-slate-500">Loading...</td></tr>
+                        </template>
+                        <template x-if="!loading && data.length === 0">
+                            <tr><td colspan="10" class="px-3 py-4 text-center text-slate-500">No ticket refund payments found</td></tr>
+                        </template>
+                        <template x-for="row in data" :key="row.id">
+                            <tr>
+                                <td class="px-3 py-2 text-slate-700" x-text="row.invoice_id"></td>
+                                <td class="px-3 py-2 text-slate-700" x-text="row.customer"></td>
+                                <td class="px-3 py-2 text-slate-700" x-text="row.passenger"></td>
+                                <td class="px-3 py-2 text-slate-700" x-text="row.payment_branch"></td>
+                                <td class="px-3 py-2 text-slate-800 font-medium text-right" x-text="fmt(row.refund_amount)"></td>
+                                <td class="px-3 py-2 text-slate-600" x-text="row.payment_method"></td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Paid</span>
+                                </td>
+                                <template x-if="canSeeInitiatedBy"><td class="px-3 py-2 text-slate-600" x-text="row.paid_by"></td></template>
                                 <td class="px-3 py-2 text-slate-600" x-text="row.date"></td>
                                 <td class="px-3 py-2 text-center whitespace-nowrap">
                                     <a :href="row.show_route" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium">View</a>
