@@ -1034,8 +1034,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <label class="text-xs font-semibold text-slate-400 mb-1">Service Required</label>
                         <select x-model="selectedServiceRequired" @change="onServiceRequiredChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="all" {{ ($selectedServiceRequired ?? 'all') === 'all' ? 'selected' : '' }}>Visa + Ticket</option>
-                            <option value="visa_only" {{ ($selectedServiceRequired ?? '') === 'visa_only' ? 'selected' : '' }}>Visa Only</option>
-                            <option value="ticket_only" {{ ($selectedServiceRequired ?? '') === 'ticket_only' ? 'selected' : '' }}>Ticket Only</option>
+                            <option value="visa_only" {{ ($selectedServiceRequired ?? '') === 'visa_only' ? 'selected' : '' }}>Excluding Ticket Only</option>
+                            <option value="ticket_only" {{ ($selectedServiceRequired ?? '') === 'ticket_only' ? 'selected' : '' }}>Excluding Visa Only</option>
                         </select>
                     </div>
                     <div class="flex flex-col">
