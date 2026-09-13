@@ -280,26 +280,27 @@ class RefundController extends Controller
 
     public function revert(Passenger $passenger)
     {
-        $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
-            ->where('status', RefundPaymentRequestStatus::PROCESSING)
-            ->latest()
-            ->first();
+        try {
+            $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
+                ->where('status', RefundPaymentRequestStatus::PROCESSING)
+                ->latest()
+                ->first();
 
-        if (! $refundRequest) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Passenger is not in processing status.',
-            ], 422);
+            if (! $refundRequest) {
+                return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                    ->with('error', 'Passenger is not in processing status.');
+            }
+
+            $refundRequest->update([
+                'status' => RefundPaymentRequestStatus::REVERTED,
+                'reverted_at' => now(),
+            ]);
+
+            return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                ->with('success', 'Refund payment reverted.');
+        } catch (\Exception $e) {
+            return redirect()->route('pending-refunds.index', ['tab' => 'tickets'])
+                ->with('error', $e->getMessage());
         }
-
-        $refundRequest->update([
-            'status' => RefundPaymentRequestStatus::REVERTED,
-            'reverted_at' => now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Refund payment reverted.',
-        ]);
     }
 }
