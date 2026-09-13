@@ -291,6 +291,7 @@ class PassengerServiceRequiredFilterTest extends TestCase
         $response->assertSee('service_required', false);
         $response->assertSee('Excluding Ticket Only', false);
         $response->assertSee('Excluding Visa Only', false);
-        $response->assertSee('Visa + Ticket', false);
+        $response->assertSee('>All</option>', false);
+        $response->assertDontSee('Visa + Ticket', false);
     }
 }
