@@ -17,6 +17,7 @@ use App\Models\StayDurationLimit;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 class PaymentWiseDueRangeFilterTest extends TestCase
@@ -143,22 +144,21 @@ class PaymentWiseDueRangeFilterTest extends TestCase
         ];
     }
 
-    private function passportNos($paginator): array
+    private function passportNos($data): array
     {
-        return collect($paginator->items())->pluck('passport_no')->all();
+        $items = $data instanceof LengthAwarePaginator ? $data->items() : $data;
+
+        return collect($items)->pluck('passport_no')->all();
     }
 
     public function test_due_below_1000_bdt_excludes_cleared_and_above(): void
     {
         $p = $this->seedScenario();
 
-        $response = $this->actingAs($this->user)->get(route('bookings.index', [
-            'tab' => 'passenger',
-            'payment_wise' => 'due_below_1000',
-        ]));
+        $response = $this->actingAs($this->user)->getJson('/api/bookings/passengers?tab=passenger&payment_wise=due_below_1000');
 
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $nos = $this->passportNos($response->json('data'));
 
         $this->assertContains($p['below']->passport_no, $nos);
         $this->assertNotContains($p['clear']->passport_no, $nos);
@@ -170,13 +170,10 @@ class PaymentWiseDueRangeFilterTest extends TestCase
     {
         $p = $this->seedScenario();
 
-        $response = $this->actingAs($this->user)->get(route('bookings.index', [
-            'tab' => 'passenger',
-            'payment_wise' => 'due_above_1000',
-        ]));
+        $response = $this->actingAs($this->user)->getJson('/api/bookings/passengers?tab=passenger&payment_wise=due_above_1000');
 
         $response->assertOk();
-        $nos = $this->passportNos($response->viewData('passengers'));
+        $nos = $this->passportNos($response->json('data'));
 
         $this->assertContains($p['exact']->passport_no, $nos);
         $this->assertContains($p['above']->passport_no, $nos);

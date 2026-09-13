@@ -29,7 +29,6 @@ use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -231,13 +230,10 @@ class StatusChangeFilterQueryTest extends TestCase
     {
         $this->actingAs($user);
 
-        $response = $this->get(route('bookings.index', $query));
+        $response = $this->getJson('/api/bookings/passengers?'.http_build_query($query));
         $response->assertOk();
 
-        $passengers = $response->viewData('passengers');
-        $this->assertInstanceOf(LengthAwarePaginator::class, $passengers);
-
-        return $passengers->getCollection()->pluck('id')->all();
+        return collect($response->json('data'))->pluck('id')->all();
     }
 
     public function test_visa_submitted_filter_returns_passenger_with_submitted_log(): void
