@@ -439,6 +439,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     </div>
                     @endif
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Service Required</label>
+                        <select x-model="selectedServiceRequired" @change="onServiceRequiredChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="all" {{ ($selectedServiceRequired ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
+                            <option value="visa_only" {{ ($selectedServiceRequired ?? '') === 'visa_only' ? 'selected' : '' }}>Excluding Ticket Only</option>
+                            <option value="ticket_only" {{ ($selectedServiceRequired ?? '') === 'ticket_only' ? 'selected' : '' }}>Excluding Visa Only</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
@@ -2867,6 +2875,7 @@ function bookingIndexApp() {
         selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
         selectedPaymentWise: '{{ $selectedPaymentWise ?? '' }}',
+        selectedServiceRequired: '{{ $selectedServiceRequired ?? 'all' }}',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
         totalPackageValue: {{ $totalPackageValue }},
@@ -3160,6 +3169,15 @@ function bookingIndexApp() {
             this.loadPassengerData();
         },
 
+        onServiceRequiredChange() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('service_required', this.selectedServiceRequired || 'all');
+            url.searchParams.delete('page');
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
+        },
+
         onRouteChange() {
             const url = new URL(window.location.href);
             if (this.selectedRouteDisplay) {
@@ -3347,7 +3365,7 @@ function bookingIndexApp() {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'passenger');
             ['fingerprint_status', 'visa_status', 'ticket_status',
-                'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
+                'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'service_required', 'route_display', 'package_id',
                 'booking_branch_id', 'booking_date_from', 'booking_date_to',
                 'actual_flight_from', 'actual_flight_to',
                 'return_date_from', 'return_date_to',
@@ -3388,6 +3406,7 @@ function bookingIndexApp() {
                 if (this.selectedReturnDateFrom) params.set('return_date_from', this.selectedReturnDateFrom);
                 if (this.selectedReturnDateTo) params.set('return_date_to', this.selectedReturnDateTo);
                 if (this.selectedPaymentWise) params.set('payment_wise', this.selectedPaymentWise);
+                params.set('service_required', this.selectedServiceRequired || 'all');
                 if (this.selectedFlightDateRange) {
                     const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
                     if (range) {
