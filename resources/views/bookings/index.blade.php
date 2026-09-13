@@ -2976,6 +2976,16 @@ function bookingIndexApp() {
                 const match = this.flightDateRanges.find(r => r.start === fFrom && r.end === fTo);
                 if (match) this.selectedFlightDateRange = match.id;
             }
+
+            const savedScroll = sessionStorage.getItem('bookingsScroll');
+            if (savedScroll !== null) {
+                sessionStorage.removeItem('bookingsScroll');
+                this.$nextTick(() => {
+                    if (this.$refs.tableScroll) {
+                        this.$refs.tableScroll.scrollTop = parseInt(savedScroll, 10) || 0;
+                    }
+                });
+            }
         },
 
         navigateToTab(tab) {
@@ -3513,7 +3523,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return '';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return this.passengerStatusMap[row.status] ?? '';
             }
 
@@ -3548,7 +3559,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return 'None';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return row.status;
             }
 
@@ -3734,6 +3746,7 @@ function bookingIndexApp() {
                     });
                     this.showToast('Visa submitted successfully');
                     this.closeVisaSubmitModal();
+                    this.reloadView();
                 } else {
                     alert(res.message || 'Failed to submit visa');
                 }
@@ -3818,6 +3831,7 @@ function bookingIndexApp() {
                     data.visa.status = 'issued';
                     this.showToast('Visa issued successfully');
                     this.closeVisaIssueModal();
+                    this.reloadView();
                 } else {
                     alert(res.message || 'Failed to issue visa');
                 }
@@ -3930,6 +3944,7 @@ function bookingIndexApp() {
                     });
                     this.closeVisaResubmitModal();
                     this.showToast('Visa re-submitted successfully');
+                    this.reloadView();
                 } else {
                     alert(res.message || 'Re-submit failed');
                 }
@@ -3981,6 +3996,7 @@ function bookingIndexApp() {
                     });
                     this.closeVisaCancelModal();
                     this.showToast('Visa cancelled successfully');
+                    this.reloadView();
                 } else {
                     alert(res.message || 'Cancellation failed');
                 }
@@ -4118,6 +4134,7 @@ function bookingIndexApp() {
                     data.visa.final_cost = sub.final_cost;
                     this.showToast('Visa updated successfully');
                     this.closeVisaEditModal();
+                    this.reloadView();
                 } else {
                     alert(res.message || 'Failed to update visa');
                 }
@@ -4353,6 +4370,7 @@ function bookingIndexApp() {
             .then(data => {
                 if (data.success) {
                     this.passengersTicketData[index].is_ticket_held = data.is_ticket_held;
+                    this.reloadView();
                 }
             })
             .finally(() => {
@@ -4669,6 +4687,7 @@ function bookingIndexApp() {
                         });
                     }
                     this.showToast(data.message || 'Tickets confirmed successfully.');
+                    this.reloadView();
                 } else {
                     this.showToast(data.message || 'Failed to confirm tickets.', 'error');
                 }
@@ -4713,6 +4732,7 @@ function bookingIndexApp() {
                     this.remarksContent = this.remarksForm.text;
                     this.remarksEditMode = false;
                     this.showToast('Remarks updated successfully.');
+                    this.reloadView();
                 } else {
                     this.showToast(data.message || 'Failed to update remarks.', 'error');
                 }
@@ -6172,6 +6192,7 @@ function bookingIndexApp() {
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
+                    this.reloadView();
                 } else {
                     this.showToast(data.message || 'Failed to save ticket.', 'error');
                 }
@@ -6805,13 +6826,18 @@ function bookingIndexApp() {
                     }),
                 });
                 const data = await res.json();
-                if (data.success) window.location.reload();
+                if (data.success) this.reloadView();
                 else alert(data.message || 'Failed to initiate cancellation');
             } catch (e) {
                 alert('Failed to initiate cancellation');
             } finally {
                 this.cancelLoading = false;
             }
+        },
+
+        reloadView() {
+            sessionStorage.setItem('bookingsScroll', String(this.$refs.tableScroll?.scrollTop ?? 0));
+            window.location.reload();
         },
 
         // ── Passenger Cancellation State ──
@@ -6923,7 +6949,8 @@ function updatePassengerStatus(passengerId, statusId, selectEl) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('Status updated successfully');
+            sessionStorage.setItem('bookingsScroll', String(document.querySelector('[x-ref="tableScroll"]')?.scrollTop ?? 0));
+            window.location.reload();
         } else {
             alert(data.message || 'Failed to update status');
         }
@@ -6960,6 +6987,8 @@ function updateFingerprintLocation(bookingId, location, select) {
                     cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
                 }
             }
+            sessionStorage.setItem('bookingsScroll', String(document.querySelector('[x-ref="tableScroll"]')?.scrollTop ?? 0));
+            window.location.reload();
         } else {
             alert('Failed to update fingerprint location');
             selectEl.value = originalValue;

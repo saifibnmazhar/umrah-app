@@ -299,7 +299,7 @@ class BookingController extends Controller
 
         $passengers = new LengthAwarePaginator(collect(), 0, 15, 1);
         $passengerStatuses = PassengerStatus::all();
-        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold', 'Ticket Refund Done', 'Departure Done'])
         )->values();
         $statusChangeOptions = $statusChangeOptions->concat(collect([
             (object) ['id' => 'visa_submitted', 'name' => 'Visa Submitted'],
