@@ -911,6 +911,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <div x-ref="ddMenu" x-show="open" @click.outside="open = false" :style="'position:fixed;top:' + ddTop + 'px;right:' + ddRight + 'px;z-index:9999'" class="bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                 <a :href="p.passenger_url || '#'" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
                 <button x-show="hasViewableTickets(idx)" @click="open = false; openTicketInfoModal(idx)" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                @if($canPayRefundPayable)
+                    <template x-if="passengersTicketData[idx]?.refund_payable > 0 && (!passengersTicketData[idx]?.refund_payment_request_status || passengersTicketData[idx]?.refund_payment_request_status === 'paid' || passengersTicketData[idx]?.refund_payment_request_status === 'reverted')">
+                        <button @click="open = false; openPayRefundModal(idx)"
+                            class="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50 transition text-left">
+                            Pay Refund
+                        </button>
+                    </template>
+                @endif
                 <template x-if="p.has_customer_documents || p.has_booking_documents">
                     <a :href="p.passenger_download_url || '#'" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
                 </template>
