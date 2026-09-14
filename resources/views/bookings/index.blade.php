@@ -531,7 +531,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <th class="px-3 py-2 text-left font-medium w-32">Invoice ID</th>
                             <th class="px-3 py-2 text-left font-medium w-28">Customer</th>
                             <th class="px-3 py-2 text-left font-medium w-20">PAX QTY</th>
-                            <th class="px-3 py-2 text-left font-medium w-24">Mobile</th>
+                            <th class="px-3 py-2 text-left font-medium w-40">Mobile</th>
                             <th class="px-3 py-2 text-left font-medium w-48">Name</th>
                             <th class="px-3 py-2 text-left font-medium w-60">Current status</th>
                             <th class="px-3 py-2 text-left font-medium w-28">Passport No</th>
