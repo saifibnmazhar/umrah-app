@@ -579,7 +579,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             x-bind:value="getComputedStatusId(idx)"
-            x-on:change="if ($event.target.value == {{ $passengerStatuses->firstWhere('name', 'Cancel')->id ?? 'null' }}) { openCancelPassengerModal(p.id); $el.value = ''; } else { updatePassengerStatus(p.id, $event.target.value, this) }">
+            x-on:change="if ($event.target.value == {{ $passengerStatuses->firstWhere('name', 'Cancel')->id ?? 'null' }}) { openCancelPassengerModal(p.id); $el.value = ''; } else { updatePassengerStatus(p.id, $event.target.value, $el) }">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
                 @php

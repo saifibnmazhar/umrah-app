@@ -322,46 +322,47 @@ class BookingPassengerQuery
 
     private function applyComputedStatusFilter(string $statusName): void
     {
-        $this->query->where(function ($query) use ($statusName) {
-            match ($statusName) {
-                'Ticket Issued' => $query
-                    ->where(fn ($q) => $this->whereTicketIssued($q))
-                    ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)),
+        $this->query->whereNull('passenger_status_id')
+            ->where(function ($query) use ($statusName) {
+                match ($statusName) {
+                    'Ticket Issued' => $query
+                        ->where(fn ($q) => $this->whereTicketIssued($q))
+                        ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)),
 
-                'Processing' => $query
-                    ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::CANCELLED->value)),
+                    'Processing' => $query
+                        ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::CANCELLED->value)),
 
-                'Ticket Issued before Visa' => $query
-                    ->where(fn ($q) => $this->whereTicketIssued($q))
-                    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)))
-                    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::CANCELLED->value))),
+                    'Ticket Issued before Visa' => $query
+                        ->where(fn ($q) => $this->whereTicketIssued($q))
+                        ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)))
+                        ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::CANCELLED->value))),
 
-                'Visa Issued' => $query
-                    ->where(fn ($q) => $this->whereTicketNotIssued($q))
-                    ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)),
+                    'Visa Issued' => $query
+                        ->where(fn ($q) => $this->whereTicketNotIssued($q))
+                        ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)),
 
-                'Visa Submitted' => $query
-                    ->where(fn ($q) => $this->whereTicketNotIssued($q))
-                    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)))
-                    ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::SUBMITTED->value)),
+                    'Visa Submitted' => $query
+                        ->where(fn ($q) => $this->whereTicketNotIssued($q))
+                        ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->where('status', VisaStatus::ISSUED->value)))
+                        ->whereHas('visaSubmission', fn ($q) => $q->where('status', VisaStatus::SUBMITTED->value)),
 
-                'Fingerprint Done' => $query
-                    ->where(fn ($q) => $this->whereTicketNotIssued($q))
-                    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->whereIn('status', [
-                        VisaStatus::SUBMITTED->value,
-                        VisaStatus::ISSUED->value,
-                    ])))
-                    ->whereHas('fingerprintDetail', fn ($q) => $q->where('status', FingerprintStatus::APPROVED->value)),
+                    'Fingerprint Done' => $query
+                        ->where(fn ($q) => $this->whereTicketNotIssued($q))
+                        ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->whereIn('status', [
+                            VisaStatus::SUBMITTED->value,
+                            VisaStatus::ISSUED->value,
+                            VisaStatus::CANCELLED->value,
+                        ])))
+                        ->whereHas('fingerprintDetail', fn ($q) => $q->where('status', FingerprintStatus::APPROVED->value)),
 
-                default => null,
-            };
-        });
+                    default => null,
+                };
+            });
     }
 
     private function whereTicketIssued($query): void
     {
         $query->where(fn ($q) => $q
-            ->whereIn('passengers.ticket_status', ['issued', 're-issued'])
             ->orWhereHas('latestIssuedTicket', fn ($iq) => $iq->whereIn('status', ['issued', 're-issued']))
             ->orWhereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')->whereIn('status', ['issued', 're-issued']))
         );
@@ -370,7 +371,6 @@ class BookingPassengerQuery
     private function whereTicketNotIssued($query): void
     {
         $query->where(fn ($q) => $q
-            ->whereNotIn('passengers.ticket_status', ['issued', 're-issued'])
             ->whereDoesntHave('latestIssuedTicket', fn ($iq) => $iq->whereIn('status', ['issued', 're-issued']))
             ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')->whereIn('status', ['issued', 're-issued']))
         );

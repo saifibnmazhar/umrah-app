@@ -477,4 +477,134 @@ class PassengerStatusFilterTest extends TestCase
 
         $this->assertNotContains($passenger->id, $ids);
     }
+
+    // ─── Issue 4: Computed Status Filter Mismatches ─────────────────
+
+    public function test_computed_ticket_issued_excludes_refunded_ticket(): void
+    {
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $user->update(['branch_id' => $deps['branch']->id]);
+        $booking = $this->createBooking($deps);
+
+        $passenger = $this->createPassenger($booking, $deps);
+        $this->createVisaSubmission($user, $passenger, $deps)->update(['status' => 'issued']);
+
+        IssuedTicket::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['ticketFare']->id,
+            'status' => 'issued',
+        ]);
+
+        $passenger->update(['ticket_status' => 'issued']);
+
+        IssuedTicket::where('passenger_id', $passenger->id)->update(['status' => 'refunded']);
+
+        $status = PassengerStatus::firstOrCreate(['name' => 'Ticket Issued']);
+        $ids = $this->getFilteredPassengerIds($user, ['passenger_status' => $status->id]);
+
+        $this->assertNotContains($passenger->id, $ids);
+    }
+
+    public function test_computed_visa_submitted_excludes_refunded_ticket(): void
+    {
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $user->update(['branch_id' => $deps['branch']->id]);
+        $booking = $this->createBooking($deps);
+
+        $passenger = $this->createPassenger($booking, $deps);
+        $this->createVisaSubmission($user, $passenger, $deps)->update(['status' => 'submitted']);
+
+        IssuedTicket::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['ticketFare']->id,
+            'status' => 'issued',
+        ]);
+
+        $passenger->update(['ticket_status' => 'issued']);
+
+        IssuedTicket::where('passenger_id', $passenger->id)->update(['status' => 'refunded']);
+
+        $status = PassengerStatus::firstOrCreate(['name' => 'Visa Submitted']);
+        $ids = $this->getFilteredPassengerIds($user, ['passenger_status' => $status->id]);
+
+        $this->assertContains($passenger->id, $ids);
+    }
+
+    public function test_computed_filter_excludes_manual_status_override(): void
+    {
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $user->update(['branch_id' => $deps['branch']->id]);
+        $booking = $this->createBooking($deps);
+
+        $passenger = $this->createPassenger($booking, $deps, 'Delivered');
+        $this->createVisaSubmission($user, $passenger, $deps)->update(['status' => 'issued']);
+
+        $status = PassengerStatus::firstOrCreate(['name' => 'Visa Issued']);
+        $ids = $this->getFilteredPassengerIds($user, ['passenger_status' => $status->id]);
+
+        $this->assertNotContains($passenger->id, $ids);
+    }
+
+    public function test_fingerprint_done_excludes_cancelled_visa(): void
+    {
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $user->update(['branch_id' => $deps['branch']->id]);
+        $booking = $this->createBooking($deps);
+
+        $passenger = $this->createPassenger($booking, $deps);
+
+        $fingerprint = Fingerprint::create([
+            'booking_id' => $booking->id,
+            'deadline' => now()->addDays(7),
+            'cost' => 100,
+        ]);
+
+        FingerprintDetail::create([
+            'fingerprint_id' => $fingerprint->id,
+            'passenger_id' => $passenger->id,
+            'status' => 'approved',
+        ]);
+
+        $this->createVisaSubmission($user, $passenger, $deps)->update(['status' => 'cancelled']);
+
+        $status = PassengerStatus::firstOrCreate(['name' => 'Fingerprint Done']);
+        $ids = $this->getFilteredPassengerIds($user, ['passenger_status' => $status->id]);
+
+        $this->assertNotContains($passenger->id, $ids);
+    }
+
+    public function test_fingerprint_done_includes_approved_without_visa(): void
+    {
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $user->update(['branch_id' => $deps['branch']->id]);
+        $booking = $this->createBooking($deps);
+
+        $passenger = $this->createPassenger($booking, $deps);
+
+        $fingerprint = Fingerprint::create([
+            'booking_id' => $booking->id,
+            'deadline' => now()->addDays(7),
+            'cost' => 100,
+        ]);
+
+        FingerprintDetail::create([
+            'fingerprint_id' => $fingerprint->id,
+            'passenger_id' => $passenger->id,
+            'status' => 'approved',
+        ]);
+
+        $status = PassengerStatus::firstOrCreate(['name' => 'Fingerprint Done']);
+        $ids = $this->getFilteredPassengerIds($user, ['passenger_status' => $status->id]);
+
+        $this->assertContains($passenger->id, $ids);
+    }
 }
