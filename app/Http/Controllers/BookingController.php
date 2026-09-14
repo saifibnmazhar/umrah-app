@@ -1882,6 +1882,7 @@ class BookingController extends Controller
                 unset($validated['package_id']);
                 unset($validated['discount_type']);
                 unset($validated['discount_value']);
+                unset($validated['fingerprint_location']);
             }
             $booking->update($validated);
 
