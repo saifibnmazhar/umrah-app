@@ -451,6 +451,7 @@ class BookingController extends Controller
                 'is_ticket_held' => (bool) ($p->is_ticket_held ?? false),
                 'is_visa_held' => (bool) ($p->is_visa_held ?? false),
                 'is_cancelled' => $p->booking?->is_cancelled ?? false,
+                'status_name' => $p->status?->name ?? null,
                 'profit' => (float) ($p->profit ?? 0),
                 'refund_payable' => (float) ($p->refund_payable ?? 0),
                 'route_display' => $p->route_display ?? '—',
