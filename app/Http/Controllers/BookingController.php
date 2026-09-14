@@ -223,6 +223,7 @@ class BookingController extends Controller
                     $q->where(function ($query) use ($search) {
                         $query->where('invoice_id', 'like', "%{$search}%")
                             ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                            ->orWhereHas('customer', fn ($q) => $q->where('name', 'like', "%{$search}%"))
                             ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                     });
                 })

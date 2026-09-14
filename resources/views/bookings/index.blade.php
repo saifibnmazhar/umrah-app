@@ -152,7 +152,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="mb-4 flex flex-wrap items-center gap-4">
-                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Customer Name, Mobile or Invoice No...">
                 <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                 <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                 <select x-model="selectedFingerprintLocation" @change="onFingerprintLocationChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">

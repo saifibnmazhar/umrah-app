@@ -498,17 +498,30 @@ class BookingPassengerQuery
         }
         $search = $request->input('search');
         $tab = $request->get('tab', 'passenger');
+        $words = preg_split('/\s+/', trim($search));
         if ($tab === 'booking') {
-            $this->query->where(fn ($query) => $query->whereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
-                ->orWhereHas('booking.customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
-                ->orWhere('passport_no', 'like', "%{$search}%"));
+            $this->query->where(fn ($query) => $query->where(function ($q) use ($words) {
+                foreach ($words as $word) {
+                    $q->where(function ($sub) use ($word) {
+                        $sub->whereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$word}%"))
+                            ->orWhereHas('booking.customer', fn ($q) => $q->where('mobile_no', 'like', "%{$word}%"))
+                            ->orWhere('passport_no', 'like', "%{$word}%");
+                    });
+                }
+            }));
         } else {
-            $this->query->where(fn ($query) => $query->where('mobile_no', 'like', "%{$search}%")
-                ->orWhere('passport_no', 'like', "%{$search}%")
-                ->orWhere('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
-                ->orWhereHas('issuedTickets', fn ($q) => $q->where('ticket_number', 'like', "%{$search}%")->orWhere('pnr', 'like', "%{$search}%")));
+            $this->query->where(fn ($query) => $query->where(function ($q) use ($words) {
+                foreach ($words as $word) {
+                    $q->where(function ($sub) use ($word) {
+                        $sub->where('mobile_no', 'like', "%{$word}%")
+                            ->orWhere('passport_no', 'like', "%{$word}%")
+                            ->orWhere('first_name', 'like', "%{$word}%")
+                            ->orWhere('last_name', 'like', "%{$word}%")
+                            ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$word}%"))
+                            ->orWhereHas('issuedTickets', fn ($q) => $q->where('ticket_number', 'like', "%{$word}%")->orWhere('pnr', 'like', "%{$word}%"));
+                    });
+                }
+            }));
         }
 
         return $this;
