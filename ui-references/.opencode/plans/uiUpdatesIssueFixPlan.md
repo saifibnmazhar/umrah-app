@@ -258,3 +258,262 @@ extra computation.
 3. `php artisan test` — full suite passes
 4. Manual: select each status from the Current Status dropdown on the passenger tab and confirm correct filtering
 5. Manual: hover the Markup column and confirm tooltip shows profit breakdown values
+
+---
+
+## Issue 3: Passenger Index Loses Scroll Position After Row Update
+
+### Root Cause
+
+When a passenger row is updated (status change, visa submit/issue, ticket
+confirm, remarks update, refund, re-issue, cancel), the page refreshes via
+`reloadView()` or `location.reload()`. The scroll save/restore mechanism is
+broken because the `x-ref="tableScroll"` attribute is never defined on any
+element.
+
+**Broken scroll-save code:**
+
+| Location | Code | Problem |
+|----------|------|---------|
+| `reloadView()` (line 6844) | `this.$refs.tableScroll?.scrollTop ?? 0` | Ref doesn't exist, always saves `0` |
+| `init()` (line 2980) | `this.$refs.tableScroll.scrollTop = ...` | Ref doesn't exist, restore never executes |
+| `updatePassengerStatus()` (line 6958) | `document.querySelector('[x-ref="tableScroll"]')` | Selector returns `null`, saves `0` |
+| `updateFingerprintLocation()` (line 6996) | `document.querySelector('[x-ref="tableScroll"]')` | Selector returns `null`, saves `0` |
+
+**Handlers that bypass `reloadView()` entirely (zero scroll save):**
+
+| Handler | Line | Refresh mechanism |
+|---------|------|-------------------|
+| `handleRefundSubmit()` | 5646 | `setTimeout(() => location.reload(), 800)` |
+| `handleReIssueSubmit()` | 5828 | `setTimeout(() => location.reload(), 800)` |
+| `handleTicketFareSubmit()` re-issue path | 6048 | `setTimeout(() => location.reload(), 600)` |
+| `submitCancelPassenger()` | 6909 | `window.location.reload()` |
+
+**All handlers using `reloadView()` (broken scroll save):**
+
+| Handler | Line |
+|---------|------|
+| `handleVisaSubmit()` | 3749 |
+| `handleVisaIssue()` | 3834 |
+| `handleVisaResubmit()` | 3947 |
+| `handleVisaCancel()` | 3999 |
+| `handleVisaEdit()` | 4137 |
+| `toggleTicketHold()` | 4373 |
+| `confirmTickets()` | 4690 |
+| `updateRemarks()` | 4735 |
+| `handleTicketFareSubmit()` normal path | 6201 |
+| `handleCancelSubmit()` | 6835 |
+
+**The scrollable container** is at line 526:
+```html
+<div class="overflow-auto flex-1 min-h-0">
+```
+It has no `x-ref`. The sticky header inside it (line 528) has
+`sticky top-0 z-10` which confirms this is the scroll container.
+
+### Fix: Convert Action Handlers to AJAX Refresh
+
+Replace full page reloads with AJAX data refresh via `loadPassengerData()`.
+This eliminates the scroll loss entirely (no reload = no scroll reset) and
+is significantly more performant (~100-300ms vs ~1-3s for full reload).
+
+#### Step 1: Add scroll save/restore to `loadPassengerData()`
+
+**File:** `resources/views/bookings/index.blade.php` (line 3376)
+
+Add scroll position preservation around the data fetch:
+
+```javascript
+async loadPassengerData() {
+    // Save scroll position before re-render
+    const scrollContainer = this.$refs.tableScroll;
+    const savedScroll = scrollContainer ? scrollContainer.scrollTop : 0;
+
+    this.passengersLoading = true;
+    try {
+        // ... existing fetch + params logic (unchanged) ...
+        this.passengersList = json.data;
+        // ... rest of existing logic (unchanged) ...
+    } catch (e) {
+        console.error('Failed to load passenger data', e);
+    } finally {
+        this.passengersLoading = false;
+
+        // Restore scroll position after Alpine re-renders the x-for
+        this.$nextTick(() => {
+            if (scrollContainer) {
+                scrollContainer.scrollTop = savedScroll;
+            }
+        });
+    }
+},
+```
+
+#### Step 2: Add `x-ref="tableScroll"` to the scrollable container
+
+**File:** `resources/views/bookings/index.blade.php` (line 526)
+
+```html
+<!-- Before -->
+<div class="overflow-auto flex-1 min-h-0">
+
+<!-- After -->
+<div x-ref="tableScroll" class="overflow-auto flex-1 min-h-0">
+```
+
+#### Step 3: Convert standalone functions to AJAX
+
+**`updatePassengerStatus()`** (lines 6946-6968):
+
+Replace `window.location.reload()` with `loadPassengerData()`:
+
+```javascript
+function updatePassengerStatus(passengerId, statusId, selectEl) {
+    fetch(`/passengers/${passengerId}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ status: statusId }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Access Alpine component and refresh via AJAX
+            const component = Alpine.$data(selectEl.closest('[x-data]'));
+            if (component && typeof component.loadPassengerData === 'function') {
+                component.loadPassengerData();
+            }
+        } else {
+            alert(data.message || 'Failed to update status');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating status:', error);
+        alert('An error occurred while updating status');
+    });
+}
+```
+
+**`updateFingerprintLocation()`** (lines 6970-7008):
+
+Same pattern — replace `window.location.reload()` with AJAX refresh:
+
+```javascript
+// After successful fetch:
+const component = Alpine.$data(element.closest('[x-data]'));
+if (component && typeof component.loadPassengerData === 'function') {
+    component.loadPassengerData();
+}
+```
+
+#### Step 4: Convert `reloadView()` callers to `loadPassengerData()`
+
+For each handler that currently calls `this.reloadView()`, replace with:
+
+```javascript
+// Before:
+this.reloadView();
+
+// After:
+this.loadPassengerData();
+```
+
+Handlers to convert (10 total):
+
+| Handler | Line |
+|---------|------|
+| `handleVisaSubmit()` | 3749 |
+| `handleVisaIssue()` | 3834 |
+| `handleVisaResubmit()` | 3947 |
+| `handleVisaCancel()` | 3999 |
+| `handleVisaEdit()` | 4137 |
+| `toggleTicketHold()` | 4373 |
+| `confirmTickets()` | 4690 |
+| `updateRemarks()` | 4735 |
+| `handleTicketFareSubmit()` normal path | 6201 |
+| `handleCancelSubmit()` | 6835 |
+
+#### Step 5: Convert `location.reload()` callers to `loadPassengerData()`
+
+These handlers bypass `reloadView()` and call `location.reload()` directly:
+
+**`handleRefundSubmit()`** (line 5646):
+```javascript
+// Before:
+setTimeout(() => location.reload(), 800);
+
+// After:
+this.loadPassengerData();
+```
+
+**`handleReIssueSubmit()`** (line 5828):
+```javascript
+// Before:
+setTimeout(() => location.reload(), 800);
+
+// After:
+this.loadPassengerData();
+```
+
+**`handleTicketFareSubmit()` re-issue path** (line 6048):
+```javascript
+// Before:
+setTimeout(() => location.reload(), 600);
+
+// After:
+this.loadPassengerData();
+```
+
+**`submitCancelPassenger()`** (line 6909):
+```javascript
+// Before:
+window.location.reload();
+
+// After:
+this.loadPassengerData();
+```
+
+#### Step 6: Clean up dead scroll code
+
+After converting all handlers to AJAX:
+
+1. **Remove `reloadView()` method** (lines 6844-6847) — no longer called
+2. **Remove scroll restore in `init()`** (lines 2980-2988) — no page reloads to restore from
+3. **Remove broken `sessionStorage` saves** in standalone functions — replaced by AJAX
+
+### Why This Is Better Than Fix 1 (x-ref Only)
+
+| | Fix 1 (x-ref only) | Fix 3 (AJAX conversion) |
+|---|---|---|
+| Scroll | Saved/restored (if ref works) | Never lost |
+| Speed | ~1-3s (full page reload) | ~100-300ms (AJAX only) |
+| Network | Re-downloads entire HTML | Single small JSON response |
+| DOM | Full teardown + rebuild | Only table rows re-render |
+| UX | Visible page flicker | Seamless update |
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `resources/views/bookings/index.blade.php` line 526 | Add `x-ref="tableScroll"` |
+| `resources/views/bookings/index.blade.php` lines 3376-3429 | Add scroll save/restore to `loadPassengerData()` |
+| `resources/views/bookings/index.blade.php` lines 3749, 3834, 3947, 3999, 4137, 4373, 4690, 4735, 6201, 6835 | Replace `this.reloadView()` with `this.loadPassengerData()` |
+| `resources/views/bookings/index.blade.php` lines 5646, 5828, 6048, 6909 | Replace `location.reload()` / `window.location.reload()` with `this.loadPassengerData()` |
+| `resources/views/bookings/index.blade.php` lines 6946-6968 | Convert `updatePassengerStatus()` to AJAX refresh |
+| `resources/views/bookings/index.blade.php` lines 6970-7008 | Convert `updateFingerprintLocation()` to AJAX refresh |
+| `resources/views/bookings/index.blade.php` lines 6844-6847 | Remove `reloadView()` method |
+| `resources/views/bookings/index.blade.php` lines 2980-2988 | Remove scroll restore from `init()` |
+
+### Verification Steps
+
+1. Manual: update a passenger status (e.g., set to "Hold") — table should refresh in place without scrolling to top
+2. Manual: submit/issue a visa — table should refresh in place
+3. Manual: confirm tickets — table should refresh in place
+4. Manual: update remarks — table should refresh in place
+5. Manual: refund/re-issue a ticket — table should refresh in place
+6. Manual: cancel a passenger — table should refresh in place
+7. Manual: scroll to page 3, perform an update — confirm still on page 3 at the same scroll position
+8. Manual: use filters — confirm scroll resets to top (expected behavior for filter changes)
