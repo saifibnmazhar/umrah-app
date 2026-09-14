@@ -81,10 +81,17 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
+                    @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                     <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge(); $el.blur()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="office">Office</option>
                         <option value="home">Home</option>
                     </select>
+                    @else
+                    <p class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium">
+                        {{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}
+                    </p>
+                    <input type="hidden" name="fingerprint_location" value="{{ $booking->fingerprint_location?->value ?? 'office' }}">
+                    @endif
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Branch</label>

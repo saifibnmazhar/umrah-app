@@ -155,7 +155,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print');
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
-    Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store');
     Route::put('/bookings/{booking}/payment/{payment}', [BookingController::class, 'updatePayment'])->name('bookings.payment.update')->middleware('role:Super Admin');
 
