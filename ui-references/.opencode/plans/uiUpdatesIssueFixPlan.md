@@ -517,3 +517,212 @@ After converting all handlers to AJAX:
 6. Manual: cancel a passenger — table should refresh in place
 7. Manual: scroll to page 3, perform an update — confirm still on page 3 at the same scroll position
 8. Manual: use filters — confirm scroll resets to top (expected behavior for filter changes)
+
+---
+
+## Issue 4: Computed Status Filter Mismatches Displayed Status
+
+### Symptom
+
+After a computed status changes to another computed status (e.g., "Visa Submitted" → "Visa Issued"), or from computed to manual (e.g., "Visa Issued" → "Delivered"):
+
+- Filtering by the **old** status still shows the passenger
+- Filtering by the **new/current** status does **not** show the passenger
+
+Both symptoms can happen simultaneously.
+
+### Root Cause
+
+**Two separate bugs, both in `BookingPassengerQuery.php`:**
+
+#### Bug A: Stale `passengers.ticket_status` column (computed→computed issue)
+
+The `passengers.ticket_status` enum column is set to `'issued'` when a ticket is
+created (`TicketIssueController:89`, `TicketRequestController:564`), but **never
+reset** when a ticket is refunded or deleted. No code sets it back to `'pending'`
+or `null`.
+
+The SQL `whereTicketIssued()` and `whereTicketNotIssued()` methods check this
+stale column:
+
+```php
+// whereTicketIssued — OR logic, column alone can make it true
+->whereIn('passengers.ticket_status', ['issued', 're-issued'])
+->orWhereHas('latestIssuedTicket', ...)
+
+// whereTicketNotIssued — AND logic, column alone can make it false
+->whereNotIn('passengers.ticket_status', ['issued', 're-issued'])
+->whereDoesntHave('latestIssuedTicket', ...)
+```
+
+But the **display** (`computeTicketData:698`) computes `ticket_status` from the
+`allIssuedTickets` relationship, NOT the column:
+
+```php
+'ticket_status' => $p->allIssuedTickets
+    ->filter(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
+    ->sortByDesc('id')
+    ->first()?->status ?? null,
+```
+
+And the JS `getComputedStatusName()` uses this computed value (line 3571):
+```javascript
+const ticketStatus = row.ticket_status; // from computeTicketData, not column
+```
+
+**Concrete scenario:**
+
+1. Passenger: visa submitted, ticket issued → `passengers.ticket_status = 'issued'`
+2. Ticket is refunded → IssuedTicket status becomes 'refunded' (or deleted)
+3. `passengers.ticket_status` is still `'issued'` (stale, never reset)
+4. Display: `computeTicketData` → no active issued ticket → `ticket_status = null` → not issued → computes "Visa Submitted"
+5. SQL "Visa Submitted" filter: `whereTicketNotIssued` → checks column `'issued'` → FAILS → passenger NOT shown
+6. SQL "Ticket Issued" filter: `whereTicketIssued` → checks column `'issued'` → PASSES → passenger IS shown
+
+**Result:** Display shows "Visa Submitted" but filter shows "Ticket Issued".
+
+#### Bug B: No `whereNull('passenger_status_id')` guard (computed→manual issue)
+
+`applyComputedStatusFilter()` does not exclude passengers whose
+`passenger_status_id` points to a manual status. A passenger manually set to
+"Delivered" but with visa=issued would match BOTH the "Delivered" filter AND the
+computed "Visa Issued" filter.
+
+**Concrete scenario:**
+
+1. Passenger: visa issued, no ticket → computed status "Visa Issued"
+2. Admin manually sets status to "Delivered" → `passenger_status_id = <Delivered ID>`
+3. Display: `isManualStatus()` returns true → shows "Delivered"
+4. SQL "Visa Issued" filter: `applyComputedStatusFilter` checks relationships → visa IS issued → MATCHES
+5. SQL "Delivered" filter: `where('passenger_status_id', $deliveredId)` → MATCHES
+
+**Result:** Passenger appears in both "Delivered" AND "Visa Issued" filters, but display shows "Delivered".
+
+### Additional Minor Bug: "Fingerprint Done" Filter Too Broad
+
+The PHP priority chain returns "Processing" for cancelled visas (condition 2)
+before reaching "Fingerprint Done" (condition 6). So a passenger with a
+cancelled visa + approved fingerprint would display "Processing", NOT "Fingerprint
+Done".
+
+But the SQL "Fingerprint Done" filter doesn't exclude cancelled visas:
+
+```php
+'Fingerprint Done' => $query
+    ->where(fn ($q) => $this->whereTicketNotIssued($q))
+    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->whereIn('status', [
+        VisaStatus::SUBMITTED->value,
+        VisaStatus::ISSUED->value,
+        // ← Missing: VisaStatus::CANCELLED->value
+    ])))
+    ->whereHas('fingerprintDetail', fn ($q) => $q->where('status', FingerprintStatus::APPROVED->value)),
+```
+
+If the latest visa is 'cancelled', `whereDoesntHave visa IN (submitted, issued)`
+passes (cancelled is not in the list). The passenger matches "Fingerprint Done"
+in SQL but displays "Processing".
+
+### Fix
+
+#### Step 1: Remove stale column from `whereTicketIssued()` and `whereTicketNotIssued()`
+
+**File:** `app/Queries/BookingPassengerQuery.php` (lines 361-377)
+
+Remove the `passengers.ticket_status` column checks. Use only relationship-based
+checks to match the display logic (`computeTicketData` + `getComputedStatusName`).
+
+```php
+private function whereTicketIssued($query): void
+{
+    $query->where(fn ($q) => $q
+        ->orWhereHas('latestIssuedTicket', fn ($iq) => $iq->whereIn('status', ['issued', 're-issued']))
+        ->orWhereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')->whereIn('status', ['issued', 're-issued']))
+    );
+}
+
+private function whereTicketNotIssued($query): void
+{
+    $query->where(fn ($q) => $q
+        ->whereDoesntHave('latestIssuedTicket', fn ($iq) => $iq->whereIn('status', ['issued', 're-issued']))
+        ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')->whereIn('status', ['issued', 're-issued']))
+    );
+}
+```
+
+**Why safe:** The `latestIssuedTicket` relationship uses `ofMany(['id' => 'MAX'])`
+with the same `issue_type = null OR 'regular'` filter that `computeTicketData()`
+uses. The `allIssuedTickets` with `pending_outbound` matches
+`computePendingOutboundTicket()`. Both sides check the same data via
+relationships.
+
+#### Step 2: Add `whereNull('passenger_status_id')` to `applyComputedStatusFilter()`
+
+**File:** `app/Queries/BookingPassengerQuery.php` (line 325)
+
+Add the guard at the top of the method:
+
+```php
+private function applyComputedStatusFilter(string $statusName): void
+{
+    $this->query->whereNull('passenger_status_id')
+        ->where(function ($query) use ($statusName) {
+            match ($statusName) {
+                // ... existing cases unchanged
+            };
+        });
+}
+```
+
+**Why safe:** Computed statuses always have `passenger_status_id = NULL` (enforced
+by `syncComputedStatus()`). Adding `whereNull` simply ensures the SQL filter
+matches the display logic: if `passenger_status_id` points to a manual status,
+`getDisplayStatusAttribute()` returns the manual name, not the computed value.
+
+#### Step 3: Add missing cancelled visa exclusion to "Fingerprint Done"
+
+**File:** `app/Queries/BookingPassengerQuery.php` (line 350)
+
+Add `VisaStatus::CANCELLED->value` to the `whereIn` list:
+
+```php
+'Fingerprint Done' => $query
+    ->where(fn ($q) => $this->whereTicketNotIssued($q))
+    ->where(fn ($q) => $q->whereDoesntHave('visaSubmission', fn ($q) => $q->whereIn('status', [
+        VisaStatus::SUBMITTED->value,
+        VisaStatus::ISSUED->value,
+        VisaStatus::CANCELLED->value,  // ← ADD THIS
+    ])))
+    ->whereHas('fingerprintDetail', fn ($q) => $q->where('status', FingerprintStatus::APPROVED->value)),
+```
+
+**Why safe:** The PHP priority chain handles cancelled visas at condition 2
+(`$isVisaCancelled → "Processing"`) before reaching condition 6 (`"Fingerprint
+Done"`). The SQL must mirror this priority. A cancelled visa means the passenger
+is in "Processing", not "Fingerprint Done".
+
+### Files to Modify
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/Queries/BookingPassengerQuery.php` | 325 | Add `whereNull('passenger_status_id')` to `applyComputedStatusFilter()` |
+| `app/Queries/BookingPassengerQuery.php` | 327-358 | Add `VisaStatus::CANCELLED->value` to "Fingerprint Done" `whereIn` |
+| `app/Queries/BookingPassengerQuery.php` | 361-377 | Remove `passengers.ticket_status` column checks from `whereTicketIssued()` and `whereTicketNotIssued()` |
+
+### Tests to Add/Update
+
+| Test | Scenario |
+|------|----------|
+| `test_computed_ticket_issued_excludes_refunded_ticket` | Passenger with refunded ticket (stale column) → filter "Ticket Issued" should NOT match |
+| `test_computed_visa_submitted_excludes_refunded_ticket` | Passenger with refunded ticket (stale column) + visa submitted → filter "Visa Submitted" SHOULD match |
+| `test_computed_filter_excludes_manual_status_override` | Passenger with manual status "Delivered" + visa issued → filter "Visa Issued" should NOT match |
+| `test_fingerprint_done_excludes_cancelled_visa` | Passenger with cancelled visa + approved fingerprint → filter "Fingerprint Done" should NOT match |
+| `test_fingerprint_done_includes_approved_without_visa` | Passenger with approved fingerprint, no visa → filter "Fingerprint Done" SHOULD match |
+
+### Verification Steps
+
+1. `php artisan test tests/Feature/PassengerStatusFilterTest.php` — all tests pass
+2. `vendor/bin/pint` — code style clean
+3. Manual test: Issue a ticket, then refund it. Confirm "Visa Submitted" filter shows the passenger and "Ticket Issued" filter does not.
+4. Manual test: Set a passenger to "Delivered" manually. Confirm they do NOT appear in any computed status filter.
+5. Manual test: Approve fingerprint for a passenger with cancelled visa. Confirm they appear in "Processing" not "Fingerprint Done".
+6. Manual test: All original status filter tests from Issue 1 still pass.
