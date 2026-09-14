@@ -674,27 +674,27 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             </template>
             @endif
 
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <button x-show="p.visa_data?.visa?.status === 'pending' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaSubmitModal(idx)"
                         class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <button x-show="p.visa_data?.visa?.status === 'submitted' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaIssueModal(idx)"
                         class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <button x-show="(p.visa_data?.visa?.status === 'submitted' || p.visa_data?.visa?.status === 'issued') && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaEditModal(idx)"
                         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <button x-show="p.visa_data?.visa?.status === 'submitted' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaCancelModal(idx)"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <button x-show="p.visa_data?.visa?.status === 'cancelled' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaResubmitModal(idx)"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
@@ -704,7 +704,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         @click="openVisaRevertModal(idx)"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.fingerprint_status !== 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.fingerprint_status !== 'approved' && p.status !== 'Hold' && p.status !== 'Cancel'">
                 <span x-show="(p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'" class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
             <template x-if="p.cancelled_passenger || p.booking?.is_cancelled">
@@ -765,13 +765,13 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled">
                     <button x-show="rowHasPendingRegular(idx) && p.ticket_data?.fingerprint_status === 'approved' && p.ticket_data?.service_required !== 'visa_only'" @click="openTicketFareModal(idx)" :disabled="p.ticket_data?.is_ticket_held" :class="p.ticket_data?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
-                <template x-if="canShowInlineIssueOut(idx) && p.ticket_data?.service_required !== 'visa_only'">
+                <template x-if="canShowInlineIssueOut(idx) && p.ticket_data?.service_required !== 'visa_only' && !p.cancelled_passenger && !p.booking?.is_cancelled && p.status !== 'Cancel'">
                     <button @click="handleIssueOutFromMenu(idx)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
-                <template x-if="canShowInlineIssueOutSingle(idx) && p.ticket_data?.service_required !== 'visa_only'">
+                <template x-if="canShowInlineIssueOutSingle(idx) && p.ticket_data?.service_required !== 'visa_only' && !p.cancelled_passenger && !p.booking?.is_cancelled && p.status !== 'Cancel'">
                     <button @click="handleIssueOutFromMenu(idx)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
-                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status === 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status === 'approved' && p.status !== 'Hold' && p.status !== 'Cancel'">
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -811,7 +811,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 <template x-if="p.cancelled_passenger || p.booking?.is_cancelled">
                     <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
                 </template>
-                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status !== 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status !== 'approved' && p.status !== 'Hold' && p.status !== 'Cancel'">
                     <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
                 </template>
             </div>
