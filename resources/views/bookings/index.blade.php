@@ -112,7 +112,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canViewTicketAgentColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Delivery Staff'])->isNotEmpty();
-            $canEditFingerprintLocation = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty();
+            $canEditFingerprintLocation = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
