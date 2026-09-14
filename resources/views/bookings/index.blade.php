@@ -614,15 +614,15 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
               x-text="(p.profit || 0) !== 0 ? $currency(p.profit, 2, p.pass_booking_rate) : '—'">—</span>
         <div x-show="tipOpen" x-cloak
              class="absolute z-50 mt-1 left-0 w-52 bg-slate-900 text-white text-xs rounded-lg shadow-xl p-3 leading-relaxed">
-            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(p.visa_data?.visa?.profit ?? p.profit_breakdown?.visa_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(p.profit_breakdown?.ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(p.profit_breakdown?.additional_ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(p.profit_breakdown?.re_issue_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(p.profit_breakdown?.refund_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(p.profit_breakdown?.re_issue_cost ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(p.profit_breakdown?.service_charge ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.visa_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.additional_ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.re_issue_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.refund_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(p.ticket_data?.profit_breakdown?.re_issue_cost ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.service_charge ?? 0, 2, p.pass_booking_rate)"></span></div>
             <div class="border-t border-slate-600 my-1 pt-1 flex justify-between font-semibold">
-                <span>Total</span><span x-text="$currency(p.profit_breakdown?.total ?? 0, 2, p.pass_booking_rate)"></span>
+                <span>Total</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.total ?? 0, 2, p.pass_booking_rate)"></span>
             </div>
         </div>
     </td>
