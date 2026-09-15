@@ -885,6 +885,7 @@ class BookingController extends Controller
             'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
             'route' => $this->formatRouteDisplay($lit->ticketFare?->route),
             'route_type' => $lit->ticketFare?->route?->route_type?->value,
+            'flight_type' => $lit->ticketFare?->route?->flight_type?->value ?? '',
             'latest_re_issued_ticket' => $this->computeLatestReIssuedTicket($lit),
             'latest_refunded_ticket' => $this->computeLatestRefundedTicket($lit),
         ];
