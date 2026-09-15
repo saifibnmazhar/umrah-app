@@ -6269,15 +6269,20 @@ function bookingIndexApp() {
             const tt = this.ticketFareForm.ticket_type;
             const rt = this.ticketFareForm.route_type;
             const ft = this.ticketFareForm.flight_type;
+            const isOutbound = this.ticketFareForm.isOutboundMode;
             const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
             const ftMap = {'Transit':'transit','Direct':'direct'};
             let fares = this.ticketFaresList;
             if (tt) {
                 fares = fares.filter(f => f.ticket_type === tt);
             }
-            if (rt && ft) {
-                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt) && f.flight_type === (ftMap[ft]||ft));
+            if (rt) {
+                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt));
             }
+            if (ft) {
+                fares = fares.filter(f => f.flight_type === (ftMap[ft]||ft));
+            }
+            if (isOutbound && (!tt || !ft)) return [];
             return fares.map(f => {
                 let display = f.route + ' | ' + f.airline + ' | ' + f.airline_class + ' | ' + f.ticket_type;
                 if (f.ticket_type === 'group' && f.pnr && f.ticket_qty) {
