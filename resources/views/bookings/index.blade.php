@@ -58,6 +58,21 @@ $activeFares = \App\Models\TicketFare::where('is_active', true)->with([
 $inactiveFareIds = \App\Models\Passenger::whereNotNull('ticket_fare_id')
     ->whereHas('ticketFare', fn($q) => $q->where('is_active', false))
     ->pluck('ticket_fare_id')
+    ->merge(
+        \App\Models\Passenger::whereNotNull('ticket_fare_inbound_id')
+            ->whereHas('ticketFareInbound', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_inbound_id')
+    )
+    ->merge(
+        \App\Models\Passenger::whereNotNull('ticket_fare_outbound_id')
+            ->whereHas('ticketFareOutbound', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_outbound_id')
+    )
+    ->merge(
+        \App\Models\IssuedTicket::whereNotNull('ticket_fare_id')
+            ->whereHas('ticketFare', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_id')
+    )
     ->unique();
 
 $inactiveFares = \App\Models\TicketFare::whereIn('id', $inactiveFareIds)->with([
