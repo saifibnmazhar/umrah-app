@@ -1967,7 +1967,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
                             <select x-model="reIssueForm.reason_id"
                                     @change="reIssueForm.errors.reason_id = ''; handleReIssueReasonChange()"
                                     :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
@@ -1980,8 +1980,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By *</label>
                             <select x-model="reIssueForm.payment_by" @change="handleReIssuePaymentByChange()"
+                                    @input="reIssueForm.errors.payment_by = ''"
+                                    :class="reIssueForm.errors.payment_by ? 'border-red-500' : ''"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Payment</option>
                                 <option value="customer">Customer</option>
@@ -1989,6 +1991,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <option value="employee">Employee</option>
                                 <option value="company">Company</option>
                             </select>
+                            <p x-show="reIssueForm.errors.payment_by" x-text="reIssueForm.errors.payment_by" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
@@ -2020,7 +2023,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
                                        :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
@@ -2028,7 +2031,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
                                        :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
@@ -2039,7 +2042,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
                                        @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
                                        :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
@@ -2047,7 +2050,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
                                        @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
                                        :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
@@ -2182,12 +2185,16 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
+                                    @input="reIssueForm.errors.ticket_option = ''"
+                                    :class="reIssueForm.errors.ticket_option ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredReIssueTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
+                            <p x-show="reIssueForm.errors.ticket_option" x-text="reIssueForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Outbound'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
@@ -2357,8 +2364,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By *</label>
                             <select x-model="reIssueForm.payment_by" @change="handleReIssuePaymentByChange()"
+                                    @input="reIssueForm.errors.payment_by = ''"
+                                    :class="reIssueForm.errors.payment_by ? 'border-red-500' : ''"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Payment</option>
                                 <option value="customer">Customer</option>
@@ -2366,6 +2375,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <option value="employee">Employee</option>
                                 <option value="company">Company</option>
                             </select>
+                            <p x-show="reIssueForm.errors.payment_by" x-text="reIssueForm.errors.payment_by" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
@@ -4322,6 +4332,8 @@ function bookingIndexApp() {
                 date: '',
                 ticket_agent_id: '',
                 reason_id: '',
+                payment_by: '',
+                ticket_option: '',
                 re_issue_charge: '',
                 fare_difference: '',
                 other_costs: '',
@@ -5780,6 +5792,25 @@ function bookingIndexApp() {
             const form = this.reIssueForm;
             if (!form.issued_ticket_id) return;
 
+            form.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+
+            if (!form.ticket_option) form.errors.ticket_option = 'Please select a ticket';
+            if (!form.pnr || !form.pnr.trim()) form.errors.pnr = 'PNR is required';
+            if (!form.ticket_number || !form.ticket_number.trim()) form.errors.ticket_number = 'Ticket number is required';
+            if (!form.date || !form.date.trim()) form.errors.date = 'Issue date is required';
+            if (!form.ticket_agent_id) form.errors.ticket_agent_id = 'Please select a ticket agent';
+            if (!form.reason_id) form.errors.reason_id = 'Please select a reason';
+            if (!form.payment_by) form.errors.payment_by = 'Please select a payment method';
+            if (form.re_issue_charge === '' || form.re_issue_charge === null || form.re_issue_charge === undefined || parseFloat(form.re_issue_charge) < 0) form.errors.re_issue_charge = 'Re-issue charge is required';
+            if (form.fare_difference === '' || form.fare_difference === null || form.fare_difference === undefined) form.errors.fare_difference = 'Fare difference is required';
+
+            const firstError = Object.values(form.errors).find(e => e);
+            if (firstError) {
+                this.isSubmitting = false;
+                this.showToast(firstError, 'error');
+                return;
+            }
+
             this.isSubmitting = true;
 
             const payload = {
@@ -5957,7 +5988,7 @@ function bookingIndexApp() {
             const f = this.ticketFareForm;
             f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '', ticket_option: '' };
 
-            if (f.isOutboundMode && !f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
+            if (!f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
             if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
@@ -5972,6 +6003,22 @@ function bookingIndexApp() {
             if (firstError) {
                 this.showToast(firstError, 'error');
                 return;
+            }
+
+            if (this.isEditingReIssued) {
+                const rf = this.reIssueForm;
+                rf.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+
+                if (!rf.reason_id) rf.errors.reason_id = 'Please select a reason';
+                if (!rf.payment_by) rf.errors.payment_by = 'Please select a payment method';
+                if (rf.re_issue_charge === '' || rf.re_issue_charge === null || rf.re_issue_charge === undefined || parseFloat(rf.re_issue_charge) < 0) rf.errors.re_issue_charge = 'Re-issue charge is required';
+                if (rf.fare_difference === '' || rf.fare_difference === null || rf.fare_difference === undefined) rf.errors.fare_difference = 'Fare difference is required';
+
+                const reIssueError = Object.values(rf.errors).find(e => e);
+                if (reIssueError) {
+                    this.showToast(reIssueError, 'error');
+                    return;
+                }
             }
 
             if (!this.validateTicketFareDates()) {
