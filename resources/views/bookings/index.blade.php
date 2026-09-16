@@ -5399,6 +5399,10 @@ function bookingIndexApp() {
             this.reIssueForm.fare_difference = 0;
             this.reIssueForm.other_costs = 0;
             this.reIssueForm.service_charge = 0;
+            this.reIssueForm.re_issue_charge_bdt = '';
+            this.reIssueForm.fare_difference_bdt = '';
+            this.reIssueForm.other_costs_bdt = '';
+            this.reIssueForm.service_charge_bdt = '';
             this.reIssueForm.total_cost = 0;
             this.reIssueForm.total_cost_bdt = '';
             this.reIssueForm.total_payment = 0;
