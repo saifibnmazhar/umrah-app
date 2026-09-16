@@ -804,16 +804,22 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
 <button @click="open = false; toggleTicketHold(idx)" :disabled="isTogglingTicketHold[idx]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="p.ticket_data?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="p.ticket_data?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
                                 <button x-show="canShowIssueOutInMenu(idx)" @click="open = false; handleIssueOutFromMenu(idx)" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Issue-Out</button>
-                                <template x-if="rowHasConfirmableTickets(idx)">
+                                <template x-if="rowHasConfirmableTickets(idx) || rowHasCancelableTickets(idx)">
                                     <div>
                                         <template x-if="!showThreeButtonsMode(idx)">
-                                            <button @click="confirmTickets(idx, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                            <span>
+                                                <button x-show="showSingleGConfirm(idx)" @click="confirmTickets(idx, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                                <button x-show="showSingleGCancel(idx)" @click="revertTickets(idx, 'all')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel</button>
+                                            </span>
                                         </template>
                                         <template x-if="showThreeButtonsMode(idx)">
                                             <span>
                                                 <button x-show="showGConfirmIn(idx)" @click="confirmTickets(idx, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
+                                                <button x-show="showGCancelIn(idx)" @click="revertTickets(idx, 'in')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel In</button>
                                                 <button x-show="showGConfirmOut(idx)" @click="confirmTickets(idx, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
+                                                <button x-show="showGCancelOut(idx)" @click="revertTickets(idx, 'out')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel Out</button>
                                                 <button x-show="showGConfirmBoth(idx)" @click="confirmTickets(idx, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
+                                                <button x-show="showGCancelBoth(idx)" @click="revertTickets(idx, 'both')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel Both</button>
                                             </span>
                                         </template>
                                     </div>
@@ -4755,6 +4761,46 @@ function bookingIndexApp() {
                 && !this.isRegularTicketIssuedRoundOrMultiCity(index);
         },
 
+        rowHasCancelableTickets(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => t.status === 'awaiting-group');
+        },
+
+        showSingleGConfirm(index) {
+            return this.hasConfirmableRegular(index);
+        },
+
+        showSingleGCancel(index) {
+            return this.hasCancelableRegular(index);
+        },
+
+        hasCancelableRegular(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const regular = (row.all_issued_tickets || []).find(t => !t.issue_type || t.issue_type === 'regular');
+            return regular && regular.status === 'awaiting-group';
+        },
+
+        hasCancelableOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const outbound = (row.all_issued_tickets || []).find(t => t.issue_type === 'pending_outbound');
+            return outbound && outbound.status === 'awaiting-group';
+        },
+
+        showGCancelIn(index) {
+            return this.hasCancelableRegular(index);
+        },
+
+        showGCancelOut(index) {
+            return this.hasCancelableOutbound(index);
+        },
+
+        showGCancelBoth(index) {
+            return this.hasCancelableRegular(index) && this.hasCancelableOutbound(index);
+        },
+
         confirmTickets(index, action) {
             const row = this.passengersTicketData[index];
             if (!row) return;
@@ -4796,7 +4842,45 @@ function bookingIndexApp() {
                 this.showToast('Failed to confirm tickets.', 'error');
             });
         },
-        
+
+        revertTickets(index, action) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+
+            fetch(`/passengers/${row.id}/revert-group`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({ action, booking_id: row.booking_id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    (row.all_issued_tickets || []).forEach(t => {
+                        if (data.updated_ids.includes(t.id)) {
+                            t.status = 'pending';
+                        }
+                    });
+                    if (row.latest_issued_ticket && data.updated_ids.includes(row.latest_issued_ticket.id)) {
+                        row.latest_issued_ticket.status = 'pending';
+                    }
+                    if (row.pending_outbound_issued_ticket && data.updated_ids.includes(row.pending_outbound_issued_ticket.id)) {
+                        row.pending_outbound_issued_ticket.status = 'pending';
+                    }
+                    this.showToast(data.message || 'Tickets reverted successfully.');
+                } else {
+                    this.showToast(data.message || 'Failed to revert tickets.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Revert group error:', err);
+                this.showToast('Failed to revert tickets.', 'error');
+            });
+        },
+
         openRemarksModal(index) {
             const row = this.passengersTicketData[index];
             if (!row) return;

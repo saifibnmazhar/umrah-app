@@ -567,6 +567,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-edit');
         Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
             ->name('passengers.confirm-group');
+        Route::put('/passengers/{passenger}/revert-group', [TicketIssueController::class, 'revertGroup'])
+            ->name('passengers.revert-group');
         Route::post('/passengers/{passenger}/create-outbound-pending', [TicketIssueController::class, 'createPendingOutbound'])
             ->name('passengers.create-outbound-pending');
         Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
