@@ -4834,6 +4834,7 @@ function bookingIndexApp() {
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
             this.ticketFareForm.ticket_type = '';
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
             this.ticketFareForm.flight_type = '';
             this.ticketFareForm.inbound_date = '';
@@ -4893,6 +4894,7 @@ function bookingIndexApp() {
             this.ticketFareForm.issued_ticket_id = poit.id;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
             this.ticketFareForm.inbound_date = '';
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
