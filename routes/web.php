@@ -140,13 +140,22 @@ Route::middleware('auth')->group(function () {
     Route::patch('/passengers/{passenger}/toggle-ticket-hold', [PassengerController::class, 'toggleTicketHold'])->name('passengers.toggle-ticket-hold')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::patch('/passengers/{passenger}/toggle-visa-hold', [PassengerController::class, 'toggleVisaHold'])->name('passengers.toggle-visa-hold')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::patch('/passengers/{passenger}/ticket-remarks', [PassengerController::class, 'updateTicketRemarks'])->name('passengers.ticket-remarks')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::post('/passengers/{passenger}/refund-pay-assign-branch', [RefundController::class, 'assignBranch'])
+        ->name('passengers.refund-pay-assign-branch')
+        ->middleware(['role:Super Admin,Co Admin,Ticket Admin', 'throttle:5,1']);
+    Route::post('/passengers/{passenger}/refund-pay-confirm', [RefundController::class, 'confirm'])
+        ->name('passengers.refund-pay-confirm')
+        ->middleware(['role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin', 'throttle:5,1']);
+    Route::post('/passengers/{passenger}/refund-pay-revert', [RefundController::class, 'revert'])
+        ->name('passengers.refund-pay-revert')
+        ->middleware(['role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin', 'throttle:5,1']);
 
     // Booking-specific routes
     Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');
     Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print');
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
-    Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store');
     Route::put('/bookings/{booking}/payment/{payment}', [BookingController::class, 'updatePayment'])->name('bookings.payment.update')->middleware('role:Super Admin');
 

@@ -176,6 +176,7 @@ class BookingController extends Controller
         $selectedStatusChangeFrom = $request->get('status_change_from');
         $selectedStatusChangeTo = $request->get('status_change_to');
         $selectedPaymentWise = $request->get('payment_wise');
+        $selectedServiceRequired = BookingPassengerQuery::resolveSelectedServiceRequired($request);
 
         $allRouteMaps = Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
             ->get()
@@ -364,6 +365,7 @@ class BookingController extends Controller
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
             'selectedPaymentWise',
+            'selectedServiceRequired',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
@@ -454,7 +456,7 @@ class BookingController extends Controller
                 'status_name' => $p->status?->name ?? null,
                 'profit' => (float) ($p->profit ?? 0),
                 'refund_payable' => (float) ($p->refund_payable ?? 0),
-                'route_display' => $p->route_display ?? '—',
+                'route_display' => $p->route_display ?? 'Ã”Ã‡Ã¶',
                 'pass_booking_rate' => $passBookingRate,
 
                 'booking' => [
@@ -1883,6 +1885,7 @@ class BookingController extends Controller
                 unset($validated['package_id']);
                 unset($validated['discount_type']);
                 unset($validated['discount_value']);
+                unset($validated['fingerprint_location']);
             }
             $booking->update($validated);
 

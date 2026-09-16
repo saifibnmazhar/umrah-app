@@ -127,12 +127,13 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canViewTicketAgentColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Delivery Staff'])->isNotEmpty();
-            $canEditFingerprintLocation = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty();
+            $canEditFingerprintLocation = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
             $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
             $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
+            $canPayRefundPayable = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
             $canRevertVisa = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Visa Admin');
             $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
         @endphp
@@ -453,6 +454,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </select>
                     </div>
                     @endif
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Service Required</label>
+                        <select x-model="selectedServiceRequired" @change="onServiceRequiredChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="all" {{ ($selectedServiceRequired ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
+                            <option value="visa_only" {{ ($selectedServiceRequired ?? '') === 'visa_only' ? 'selected' : '' }}>Excluding Ticket Only</option>
+                            <option value="ticket_only" {{ ($selectedServiceRequired ?? '') === 'ticket_only' ? 'selected' : '' }}>Excluding Visa Only</option>
+                        </select>
+                    </div>
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -917,6 +926,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <div x-ref="ddMenu" x-show="open" @click.outside="open = false" :style="'position:fixed;top:' + ddTop + 'px;right:' + ddRight + 'px;z-index:9999'" class="bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                 <a :href="p.passenger_url || '#'" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
                 <button x-show="hasViewableTickets(idx)" @click="open = false; openTicketInfoModal(idx)" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                @if($canPayRefundPayable)
+                    <template x-if="passengersTicketData[idx]?.refund_payable > 0 && (!passengersTicketData[idx]?.refund_payment_request_status || passengersTicketData[idx]?.refund_payment_request_status === 'paid' || passengersTicketData[idx]?.refund_payment_request_status === 'reverted')">
+                        <button @click="open = false; openPayRefundModal(idx)"
+                            class="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50 transition text-left">
+                            Pay Refund
+                        </button>
+                    </template>
+                @endif
                 <template x-if="p.has_customer_documents || p.has_booking_documents">
                     <a :href="p.passenger_download_url || '#'" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
                 </template>
@@ -2847,6 +2864,52 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
         </div>
     </div>
 </div>
+<div x-show="payRefundModalVisible" x-cloak
+     class="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+     @click.self="closePayRefundModal()"
+     @keydown.escape.window="closePayRefundModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold text-slate-800 mb-1">Pay Refund</h3>
+        <p class="text-sm text-slate-500 mb-4">Assign a branch for refund payment processing.</p>
+        <div class="space-y-2 text-sm mb-4 p-3 bg-slate-50 rounded-lg">
+            <div class="flex justify-between">
+                <span class="text-slate-500">Passenger</span>
+                <span class="font-medium text-slate-700" x-text="payRefundPassengerName"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">Refund Payable</span>
+                <span class="font-semibold text-blue-600">
+                    <span x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">SAR </span>
+                    <span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span>
+                    <span x-text="$currency(payRefundMaxAmount, 2)"></span>
+                </span>
+            </div>
+        </div>
+        <form @submit.prevent="submitPayRefund()" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Branch *</label>
+                <select x-model="payRefundBranchId" required
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+                    <option value="">Select Branch</option>
+                    @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" :disabled="payRefundLoading || !payRefundBranchId"
+                    class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50">
+                    <span x-show="!payRefundLoading">Pay Refund</span>
+                    <span x-show="payRefundLoading" x-cloak>Processing...</span>
+                </button>
+                <button type="button" @click="closePayRefundModal()"
+                    class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 </div>
 
 <style>
@@ -2892,6 +2955,7 @@ function bookingIndexApp() {
         selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
         selectedPaymentWise: '{{ $selectedPaymentWise ?? '' }}',
+        selectedServiceRequired: '{{ $selectedServiceRequired ?? 'all' }}',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
         totalPackageValue: {{ $totalPackageValue }},
@@ -3185,6 +3249,15 @@ function bookingIndexApp() {
             this.loadPassengerData();
         },
 
+        onServiceRequiredChange() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('service_required', this.selectedServiceRequired || 'all');
+            url.searchParams.delete('page');
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
+        },
+
         onRouteChange() {
             const url = new URL(window.location.href);
             if (this.selectedRouteDisplay) {
@@ -3372,7 +3445,7 @@ function bookingIndexApp() {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'passenger');
             ['fingerprint_status', 'visa_status', 'ticket_status',
-                'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
+                'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'service_required', 'route_display', 'package_id',
                 'booking_branch_id', 'booking_date_from', 'booking_date_to',
                 'actual_flight_from', 'actual_flight_to',
                 'return_date_from', 'return_date_to',
@@ -3416,6 +3489,7 @@ function bookingIndexApp() {
                 if (this.selectedReturnDateFrom) params.set('return_date_from', this.selectedReturnDateFrom);
                 if (this.selectedReturnDateTo) params.set('return_date_to', this.selectedReturnDateTo);
                 if (this.selectedPaymentWise) params.set('payment_wise', this.selectedPaymentWise);
+                params.set('service_required', this.selectedServiceRequired || 'all');
                 if (this.selectedFlightDateRange) {
                     const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
                     if (range) {
@@ -6983,6 +7057,66 @@ function bookingIndexApp() {
             }
         },
 
+        payRefundModalVisible: false,
+        payRefundPassengerIndex: null,
+        payRefundPassengerId: null,
+        payRefundPassengerName: '',
+        payRefundMaxAmount: 0,
+        payRefundBranchId: '',
+        payRefundLoading: false,
+        openPayRefundModal(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+            this.payRefundPassengerIndex = index;
+            this.payRefundPassengerId = row.id;
+            this.payRefundPassengerName = row.passenger_name || '';
+            this.payRefundMaxAmount = parseFloat(row.refund_payable || 0);
+            this.payRefundBranchId = '';
+            this.payRefundLoading = false;
+            this.payRefundModalVisible = true;
+        },
+        closePayRefundModal() {
+            this.payRefundModalVisible = false;
+            this.payRefundPassengerIndex = null;
+            this.payRefundPassengerId = null;
+        },
+        async submitPayRefund() {
+            if (this.payRefundLoading) return;
+            if (!this.payRefundBranchId) {
+                alert('Please select a branch.');
+                return;
+            }
+            if (!confirm('Assign this branch for refund payment processing?')) return;
+            this.payRefundLoading = true;
+            try {
+                const res = await fetch(`/passengers/${this.payRefundPassengerId}/refund-pay-assign-branch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        branch_id: this.payRefundBranchId,
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const idx = this.payRefundPassengerIndex;
+                    if (idx !== null && this.passengersTicketData[idx]) {
+                        this.passengersTicketData[idx].refund_payment_request_status = 'processing';
+                    }
+                    this.payRefundModalVisible = false;
+                    this.showToast('Refund payment branch assigned successfully.');
+                } else {
+                    alert(result.message || 'Failed to assign branch.');
+                }
+            } catch (e) {
+                alert('Failed to assign branch.');
+            } finally {
+                this.payRefundLoading = false;
+            }
+        },
         showToast(message) {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');

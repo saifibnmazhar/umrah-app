@@ -64,3 +64,12 @@ Route::get('/api/cancelled-bookings', [CancelledRecordController::class, 'bookin
     ->name('api.cancelled-bookings.data')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
 Route::get('/api/cancelled-passengers', [CancelledRecordController::class, 'passengerIndexData'])
     ->name('api.cancelled-passengers.data')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+
+Route::get('/ticket-refund-payments', [CancelledRecordController::class, 'ticketRefundIndex'])
+    ->name('ticket-refund-payments.index')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/ticket-refund-payments/{payment}', [CancelledRecordController::class, 'ticketRefundShow'])
+    ->name('ticket-refund-payments.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/ticket-refund-payments/{payment}/print', [CancelledRecordController::class, 'ticketRefundPrint'])
+    ->name('ticket-refund-payments.print')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/api/ticket-refund-payments', [CancelledRecordController::class, 'ticketRefundIndexData'])
+    ->name('api.ticket-refund-payments.data')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');

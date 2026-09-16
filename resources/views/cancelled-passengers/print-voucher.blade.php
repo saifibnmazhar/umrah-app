@@ -39,7 +39,7 @@
         .form-label { font-weight: 700; font-size: 13px; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-field { display: flex; align-items: baseline; margin-bottom: 4px; }
         .form-field .label { font-weight: 600; min-width: 150px; font-size: 13px; color: #475569; }
-        .form-field .blank { border-bottom: 1px dashed #94a3b8; flex: 1; min-height: 20px; display: inline-block; }
+        .form-field .blank, .info-row .blank { border-bottom: 1px dashed #94a3b8; flex: 1; min-height: 20px; display: inline-block; }
         .footer { border-top: 2px solid #e2e8f0; padding-top: 20px; margin-top: 8px; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .sig-block { text-align: center; }
@@ -67,7 +67,7 @@
             .table-wrap { margin-bottom: 8px; }
             .received-section { margin-bottom: 4px; }
             .form-field { margin-bottom: 4px; }
-            .form-field .blank { min-height: 12px; }
+            .form-field .blank, .info-row .blank { min-height: 12px; }
             .form-block { gap: 6px 16px; }
             .footer { padding-top: 4px; margin-top: 0; }
             .sig-line { margin-top: 10px; }
@@ -77,7 +77,7 @@
 </head>
 <body>
     @php $cp = $cancelledPassenger; @endphp
-    <div class="voucher-wrap">
+    <div x-data class="voucher-wrap">
         <div class="toolbar no-print">
             <a href="{{ route('cancelled-passengers.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
@@ -168,31 +168,31 @@
                 <tbody>
                     <tr>
                         <td>Package Value</td>
-                        <td class="text-right font-medium">@currency($cp->package_value, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->package_value, 2)</td>
                     </tr>
                     <tr>
                         <td>Additional Tickets</td>
-                        <td class="text-right font-medium">@currency($cp->additional_ticket_value, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->additional_ticket_value, 2)</td>
                     </tr>
                     <tr>
                         <td>Total Passenger Due</td>
-                        <td class="text-right font-medium">@currency($cp->total_passenger_due, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->total_passenger_due, 2)</td>
                     </tr>
                     <tr>
                         <td>Deduction</td>
-                        <td class="text-right font-medium">@currency($cp->service_charge_deduction, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->service_charge_deduction, 2)</td>
                     </tr>
                     <tr>
                         <td>Refundable Amount</td>
-                        <td class="text-right font-medium">@currency($cp->refundable_amount, 2)</td>
+                        <td class="text-right font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->refundable_amount, 2)</td>
                     </tr>
                     <tr>
                         <td>Adjusted from Due</td>
-                        <td class="text-right adjustment-cell">@currency($cp->balance_adjusted_amount, 2)</td>
+                        <td class="text-right adjustment-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->balance_adjusted_amount, 2)</td>
                     </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell">@currency($cp->refund_amount, 2)</td>
+                        <td class="text-right refund-cell"><span x-show="$store.currency.mode === 'BDT'" x-cloak class="font-semibold">BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" class="font-semibold">SAR </span>@currency($cp->refund_amount, 2)</td>
                     </tr>
                 </tbody>
             </table>
@@ -206,7 +206,11 @@
             </div>
             <div class="info-row">
                 <span class="label">Transaction ID:</span>
-                <span class="value">{{ $cp->refundPayment?->transaction_id ?? '—' }}</span>
+                @if(!empty($cp->refundPayment?->transaction_id))
+                <span class="value">{{ $cp->refundPayment->transaction_id }}</span>
+                @else
+                <span class="blank" style="min-width: 180px;"></span>
+                @endif
             </div>
         </div>
 
