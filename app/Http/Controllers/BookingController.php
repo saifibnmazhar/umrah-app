@@ -224,6 +224,7 @@ class BookingController extends Controller
                     $q->where(function ($query) use ($search) {
                         $query->where('invoice_id', 'like', "%{$search}%")
                             ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                            ->orWhereHas('customer', fn ($q) => $q->where('name', 'like', "%{$search}%"))
                             ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                     });
                 })
@@ -300,7 +301,7 @@ class BookingController extends Controller
 
         $passengers = new LengthAwarePaginator(collect(), 0, 15, 1);
         $passengerStatuses = PassengerStatus::all();
-        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold', 'Ticket Refund Done', 'Departure Done'])
         )->values();
         $statusChangeOptions = $statusChangeOptions->concat(collect([
             (object) ['id' => 'visa_submitted', 'name' => 'Visa Submitted'],
@@ -452,6 +453,7 @@ class BookingController extends Controller
                 'is_ticket_held' => (bool) ($p->is_ticket_held ?? false),
                 'is_visa_held' => (bool) ($p->is_visa_held ?? false),
                 'is_cancelled' => $p->booking?->is_cancelled ?? false,
+                'status_name' => $p->status?->name ?? null,
                 'profit' => (float) ($p->profit ?? 0),
                 'refund_payable' => (float) ($p->refund_payable ?? 0),
                 'route_display' => $p->route_display ?? 'Ã”Ã‡Ã¶',
@@ -885,6 +887,7 @@ class BookingController extends Controller
             'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
             'route' => $this->formatRouteDisplay($lit->ticketFare?->route),
             'route_type' => $lit->ticketFare?->route?->route_type?->value,
+            'flight_type' => $lit->ticketFare?->route?->flight_type?->value ?? '',
             'latest_re_issued_ticket' => $this->computeLatestReIssuedTicket($lit),
             'latest_refunded_ticket' => $this->computeLatestRefundedTicket($lit),
         ];

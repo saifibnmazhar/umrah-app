@@ -58,6 +58,21 @@ $activeFares = \App\Models\TicketFare::where('is_active', true)->with([
 $inactiveFareIds = \App\Models\Passenger::whereNotNull('ticket_fare_id')
     ->whereHas('ticketFare', fn($q) => $q->where('is_active', false))
     ->pluck('ticket_fare_id')
+    ->merge(
+        \App\Models\Passenger::whereNotNull('ticket_fare_inbound_id')
+            ->whereHas('ticketFareInbound', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_inbound_id')
+    )
+    ->merge(
+        \App\Models\Passenger::whereNotNull('ticket_fare_outbound_id')
+            ->whereHas('ticketFareOutbound', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_outbound_id')
+    )
+    ->merge(
+        \App\Models\IssuedTicket::whereNotNull('ticket_fare_id')
+            ->whereHas('ticketFare', fn($q) => $q->where('is_active', false))
+            ->pluck('ticket_fare_id')
+    )
     ->unique();
 
 $inactiveFares = \App\Models\TicketFare::whereIn('id', $inactiveFareIds)->with([
@@ -153,7 +168,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="mb-4 flex flex-wrap items-center gap-4">
-                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Customer Name, Mobile or Invoice No...">
                 <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                 <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                 <select x-model="selectedFingerprintLocation" @change="onFingerprintLocationChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -532,38 +547,38 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Due - ' + $currency(totalDue, 2)">Total Due - @currency($totalDue, 2, null, $totalDueBdt)</span>
                 </div>
             </div>
-            <div class="overflow-auto flex-1 min-h-0">
-                <table class="w-full min-w-[1800px] text-sm">
+            <div x-ref="tableScroll" class="overflow-auto flex-1 min-h-0">
+                <table class="w-full text-sm table-fixed">
                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">Booking Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
-                            <th class="px-3 py-2 text-left font-medium">Customer</th>
-                            <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
-                            <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                            <th class="px-3 py-2 text-left font-medium">Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Current status</th>
-                            <th class="px-3 py-2 text-left font-medium">Passport No</th>
-                            <th class="px-3 py-2 text-left font-medium">Route</th>
-                            <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Return Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Package</th>
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Invoice Info</th>
-                            <th class="px-3 py-2 text-left font-medium">Stay Duration</th>
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Visa Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
-                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Panel</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-28">Booking Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-32">Invoice ID</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Customer</th>
+                            <th class="px-3 py-2 text-left font-medium w-20">PAX QTY</th>
+                            <th class="px-3 py-2 text-left font-medium w-40">Mobile</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Name</th>
+                            <th class="px-3 py-2 text-left font-medium w-60">Current status</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Passport No</th>
+                            <th class="px-3 py-2 text-left font-medium w-56">Route</th>
+                            <th class="px-3 py-2 text-left font-medium w-56 whitespace-nowrap">Required Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-36 whitespace-nowrap">Actual Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Return Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-56">Package</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Package Value</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Markup</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-56">Invoice Info</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Stay Duration</th>
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-72">Visa</th>@endif
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-28">Visa Agent</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-28">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Passenger Type</th>
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium w-64">Ticket Panel</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
-                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium">Actions</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-36">Ticket Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Fingerprint Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-96">Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium w-44">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -588,7 +603,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             x-bind:value="getComputedStatusId(idx)"
-            x-on:change="if ($event.target.value == {{ $passengerStatuses->firstWhere('name', 'Cancel')->id ?? 'null' }}) { openCancelPassengerModal(p.id); $el.value = ''; } else { updatePassengerStatus(p.id, $event.target.value, this) }">
+            x-on:change="if ($event.target.value == {{ $passengerStatuses->firstWhere('name', 'Cancel')->id ?? 'null' }}) { openCancelPassengerModal(p.id); $el.value = ''; } else { updatePassengerStatus(p.id, $event.target.value, $el) }">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
                 @php
@@ -623,15 +638,15 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
               x-text="(p.profit || 0) !== 0 ? $currency(p.profit, 2, p.pass_booking_rate) : '—'">—</span>
         <div x-show="tipOpen" x-cloak
              class="absolute z-50 mt-1 left-0 w-52 bg-slate-900 text-white text-xs rounded-lg shadow-xl p-3 leading-relaxed">
-            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(p.visa_data?.visa?.profit ?? p.profit_breakdown?.visa_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(p.profit_breakdown?.ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(p.profit_breakdown?.additional_ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(p.profit_breakdown?.re_issue_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(p.profit_breakdown?.refund_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(p.profit_breakdown?.re_issue_cost ?? 0, 2, p.pass_booking_rate)"></span></div>
-            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(p.profit_breakdown?.service_charge ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.visa_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.additional_ticket_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.re_issue_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.refund_profit ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(p.ticket_data?.profit_breakdown?.re_issue_cost ?? 0, 2, p.pass_booking_rate)"></span></div>
+            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.service_charge ?? 0, 2, p.pass_booking_rate)"></span></div>
             <div class="border-t border-slate-600 my-1 pt-1 flex justify-between font-semibold">
-                <span>Total</span><span x-text="$currency(p.profit_breakdown?.total ?? 0, 2, p.pass_booking_rate)"></span>
+                <span>Total</span><span x-text="$currency(p.ticket_data?.profit_breakdown?.total ?? 0, 2, p.pass_booking_rate)"></span>
             </div>
         </div>
     </td>
@@ -662,7 +677,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 <span class="text-slate-500 text-xs">N/A</span>
             </template>
 
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && ['Hold', 'Cancel'].includes(p.status_name)">
+            <template x-if="['Hold', 'Cancel'].includes(p.status_name)">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                       :class="p.status_name === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'"
                       x-text="p.status_name"></span>
@@ -683,27 +698,27 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             </template>
             @endif
 
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && !['Hold', 'Cancel'].includes(p.status_name)">
                 <button x-show="p.visa_data?.visa?.status === 'pending' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaSubmitModal(idx)"
                         class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && !['Hold', 'Cancel'].includes(p.status_name)">
                 <button x-show="p.visa_data?.visa?.status === 'submitted' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaIssueModal(idx)"
                         class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && !['Hold', 'Cancel'].includes(p.status_name)">
                 <button x-show="(p.visa_data?.visa?.status === 'submitted' || p.visa_data?.visa?.status === 'issued') && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaEditModal(idx)"
                         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && !['Hold', 'Cancel'].includes(p.status_name)">
                 <button x-show="p.visa_data?.visa?.status === 'submitted' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaCancelModal(idx)"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !p.visa_data?.is_visa_held && !['Hold', 'Cancel'].includes(p.status_name)">
                 <button x-show="p.visa_data?.visa?.status === 'cancelled' && p.ticket_data?.fingerprint_status === 'approved' && (p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'"
                         @click="openVisaResubmitModal(idx)"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
@@ -713,10 +728,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         @click="openVisaRevertModal(idx)"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.fingerprint_status !== 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.fingerprint_status !== 'approved' && !['Hold', 'Cancel'].includes(p.status_name)">
                 <span x-show="(p.visa_data?.service_required ?? p.ticket_data?.service_required) !== 'ticket_only'" class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
-            <template x-if="p.cancelled_passenger || p.booking?.is_cancelled">
+            <template x-if="(p.cancelled_passenger || p.booking?.is_cancelled) && !['Hold', 'Cancel'].includes(p.status_name)">
                 <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
             </template>
         </div>
@@ -756,12 +771,12 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
         }[p.ticket_data?.passenger_type] || '—'">—</span>
     </td>
     @if($canViewTicketFareColumn)
-    <td class="px-3 py-2 text-slate-700">
+    <td class="px-3 py-2 text-slate-700 w-64">
         <div class="flex items-center gap-1 w-full">
             <template x-if="p.service_required !== 'visa_only'">
                 <span class="font-medium text-sm shrink-0" x-text="p.fare_amount > 0 ? $currency(p.fare_amount, 2, p.pass_booking_rate) : '—'"></span>
             </template>
-            <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && ['Hold', 'Cancel'].includes(p.status_name)">
+            <template x-if="['Hold', 'Cancel'].includes(p.status_name)">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                       :class="p.status_name === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'"
                       x-text="p.status_name"></span>
@@ -771,16 +786,16 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 <template x-if="p.ticket_data?.service_required === 'visa_only' && !p.cancelled_passenger && !p.booking?.is_cancelled">
                     <span class="text-xs font-bold text-slate-700">Visa Only</span>
                 </template>
-                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled">
+                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && !['Hold', 'Cancel'].includes(p.status_name)">
                     <button x-show="rowHasPendingRegular(idx) && p.ticket_data?.fingerprint_status === 'approved' && p.ticket_data?.service_required !== 'visa_only'" @click="openTicketFareModal(idx)" :disabled="p.ticket_data?.is_ticket_held" :class="p.ticket_data?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
-                <template x-if="canShowInlineIssueOut(idx) && p.ticket_data?.service_required !== 'visa_only'">
+                <template x-if="canShowInlineIssueOut(idx) && p.ticket_data?.service_required !== 'visa_only' && !p.cancelled_passenger && !p.booking?.is_cancelled && !['Hold', 'Cancel'].includes(p.status_name)">
                     <button @click="handleIssueOutFromMenu(idx)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
-                <template x-if="canShowInlineIssueOutSingle(idx) && p.ticket_data?.service_required !== 'visa_only'">
+                <template x-if="canShowInlineIssueOutSingle(idx) && p.ticket_data?.service_required !== 'visa_only' && !p.cancelled_passenger && !p.booking?.is_cancelled && !['Hold', 'Cancel'].includes(p.status_name)">
                     <button @click="handleIssueOutFromMenu(idx)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
-                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status === 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status === 'approved' && !['Hold', 'Cancel'].includes(p.status_name)">
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -817,10 +832,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </button>
                     </div>
                 </template>
-                <template x-if="p.cancelled_passenger || p.booking?.is_cancelled">
+                <template x-if="(p.cancelled_passenger || p.booking?.is_cancelled) && !['Hold', 'Cancel'].includes(p.status_name)">
                     <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
                 </template>
-                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status !== 'approved' && p.status_name !== 'Hold' && p.status_name !== 'Cancel'">
+                <template x-if="!p.cancelled_passenger && !p.booking?.is_cancelled && p.ticket_data?.service_required !== 'visa_only' && p.ticket_data?.fingerprint_status !== 'approved' && !['Hold', 'Cancel'].includes(p.status_name)">
                     <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
                 </template>
             </div>
@@ -857,13 +872,13 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
         </button>
     </td>
     <td class="px-3 py-2">
-        <template x-if="p.cancelled_passenger?.is_confirmed">
+        <template x-if="p.cancelled_passenger?.is_confirmed && !['Hold', 'Cancel'].includes(p.status_name)">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>
         </template>
-        <template x-if="p.cancelled_passenger?.is_processing">
+        <template x-if="p.cancelled_passenger?.is_processing && !['Hold', 'Cancel'].includes(p.status_name)">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Cancellation Processing</span>
         </template>
-        <template x-if="!p.cancelled_passenger && ['Hold', 'Cancel'].includes(p.status_name) && !p.booking?.is_cancelled">
+        <template x-if="['Hold', 'Cancel'].includes(p.status_name)">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                   :class="p.status_name === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'"
                   x-text="p.status_name"></span>
@@ -1969,7 +1984,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
                             <select x-model="reIssueForm.reason_id"
                                     @change="reIssueForm.errors.reason_id = ''; handleReIssueReasonChange()"
                                     :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
@@ -1982,8 +1997,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By *</label>
                             <select x-model="reIssueForm.payment_by" @change="handleReIssuePaymentByChange()"
+                                    @input="reIssueForm.errors.payment_by = ''"
+                                    :class="reIssueForm.errors.payment_by ? 'border-red-500' : ''"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Payment</option>
                                 <option value="customer">Customer</option>
@@ -1991,6 +2008,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <option value="employee">Employee</option>
                                 <option value="company">Company</option>
                             </select>
+                            <p x-show="reIssueForm.errors.payment_by" x-text="reIssueForm.errors.payment_by" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
@@ -2022,7 +2040,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
                                        :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
@@ -2030,7 +2048,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
                                        :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
@@ -2041,7 +2059,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
                                        @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
                                        :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
@@ -2049,7 +2067,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
                                        @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
                                        :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
@@ -2184,12 +2202,16 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
+                                    @input="reIssueForm.errors.ticket_option = ''"
+                                    :class="reIssueForm.errors.ticket_option ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredReIssueTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
+                            <p x-show="reIssueForm.errors.ticket_option" x-text="reIssueForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Outbound'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
@@ -2359,8 +2381,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By *</label>
                             <select x-model="reIssueForm.payment_by" @change="handleReIssuePaymentByChange()"
+                                    @input="reIssueForm.errors.payment_by = ''"
+                                    :class="reIssueForm.errors.payment_by ? 'border-red-500' : ''"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Payment</option>
                                 <option value="customer">Customer</option>
@@ -2368,6 +2392,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <option value="employee">Employee</option>
                                 <option value="company">Company</option>
                             </select>
+                            <p x-show="reIssueForm.errors.payment_by" x-text="reIssueForm.errors.payment_by" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
@@ -3437,6 +3462,9 @@ function bookingIndexApp() {
         },
 
         async loadPassengerData() {
+            const scrollContainer = this.$refs.tableScroll;
+            const savedScroll = scrollContainer ? scrollContainer.scrollTop : 0;
+
             this.passengersLoading = true;
             try {
                 const params = new URLSearchParams({
@@ -3489,6 +3517,11 @@ function bookingIndexApp() {
                 console.error('Failed to load passenger data', e);
             } finally {
                 this.passengersLoading = false;
+                this.$nextTick(() => {
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = savedScroll;
+                    }
+                });
             }
         },
 
@@ -3587,7 +3620,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return '';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return this.passengerStatusMap[row.status] ?? '';
             }
 
@@ -3622,7 +3656,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return 'None';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return row.status;
             }
 
@@ -3808,6 +3843,7 @@ function bookingIndexApp() {
                     });
                     this.showToast('Visa submitted successfully');
                     this.closeVisaSubmitModal();
+                    this.loadPassengerData();
                 } else {
                     alert(res.message || 'Failed to submit visa');
                 }
@@ -3892,6 +3928,7 @@ function bookingIndexApp() {
                     data.visa.status = 'issued';
                     this.showToast('Visa issued successfully');
                     this.closeVisaIssueModal();
+                    this.loadPassengerData();
                 } else {
                     alert(res.message || 'Failed to issue visa');
                 }
@@ -4004,6 +4041,7 @@ function bookingIndexApp() {
                     });
                     this.closeVisaResubmitModal();
                     this.showToast('Visa re-submitted successfully');
+                    this.loadPassengerData();
                 } else {
                     alert(res.message || 'Re-submit failed');
                 }
@@ -4055,6 +4093,7 @@ function bookingIndexApp() {
                     });
                     this.closeVisaCancelModal();
                     this.showToast('Visa cancelled successfully');
+                    this.loadPassengerData();
                 } else {
                     alert(res.message || 'Cancellation failed');
                 }
@@ -4192,6 +4231,7 @@ function bookingIndexApp() {
                     data.visa.final_cost = sub.final_cost;
                     this.showToast('Visa updated successfully');
                     this.closeVisaEditModal();
+                    this.loadPassengerData();
                 } else {
                     alert(res.message || 'Failed to update visa');
                 }
@@ -4366,6 +4406,8 @@ function bookingIndexApp() {
                 date: '',
                 ticket_agent_id: '',
                 reason_id: '',
+                payment_by: '',
+                ticket_option: '',
                 re_issue_charge: '',
                 fare_difference: '',
                 other_costs: '',
@@ -4427,6 +4469,7 @@ function bookingIndexApp() {
             .then(data => {
                 if (data.success) {
                     this.passengersTicketData[index].is_ticket_held = data.is_ticket_held;
+                    this.loadPassengerData();
                 }
             })
             .finally(() => {
@@ -4743,6 +4786,7 @@ function bookingIndexApp() {
                         });
                     }
                     this.showToast(data.message || 'Tickets confirmed successfully.');
+                    this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to confirm tickets.', 'error');
                 }
@@ -4787,6 +4831,7 @@ function bookingIndexApp() {
                     this.remarksContent = this.remarksForm.text;
                     this.remarksEditMode = false;
                     this.showToast('Remarks updated successfully.');
+                    this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to update remarks.', 'error');
                 }
@@ -4863,6 +4908,7 @@ function bookingIndexApp() {
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
             this.ticketFareForm.ticket_type = '';
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
             this.ticketFareForm.flight_type = '';
             this.ticketFareForm.inbound_date = '';
@@ -4922,6 +4968,7 @@ function bookingIndexApp() {
             this.ticketFareForm.issued_ticket_id = poit.id;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
             this.ticketFareForm.inbound_date = '';
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
@@ -4973,6 +5020,12 @@ function bookingIndexApp() {
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
+
+            this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
+            this.ticketFareForm.pnr = poit.pnr || '';
+            this.ticketFareForm.ticket_number = poit.ticket_number || '';
+            this.ticketFareForm.ticket_agent = poit.ticket_agent_name || '';
+
             this.isEditingReIssued = !!(poit.status === 're-issued' && poit.re_issue_details);
             if (this.isEditingReIssued) {
                 this.populateReIssueEditForm(poit.re_issue_details, poit.id, row, poit.was_refunded, poit.refunded_net_fare || 0);
@@ -5422,6 +5475,10 @@ function bookingIndexApp() {
             this.reIssueForm.fare_difference = 0;
             this.reIssueForm.other_costs = 0;
             this.reIssueForm.service_charge = 0;
+            this.reIssueForm.re_issue_charge_bdt = '';
+            this.reIssueForm.fare_difference_bdt = '';
+            this.reIssueForm.other_costs_bdt = '';
+            this.reIssueForm.service_charge_bdt = '';
             this.reIssueForm.total_cost = 0;
             this.reIssueForm.total_cost_bdt = '';
             this.reIssueForm.total_payment = 0;
@@ -5691,7 +5748,7 @@ function bookingIndexApp() {
                 if (res.success) {
                     this.showToast('Ticket refunded successfully.');
                     this.closeRefundModal();
-                    setTimeout(() => location.reload(), 800);
+                    this.loadPassengerData();
                 } else {
                     this.showToast(res.message || 'Failed to refund ticket.', 'error');
                 }
@@ -5815,6 +5872,25 @@ function bookingIndexApp() {
             const form = this.reIssueForm;
             if (!form.issued_ticket_id) return;
 
+            form.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+
+            if (!form.ticket_option) form.errors.ticket_option = 'Please select a ticket';
+            if (!form.pnr || !form.pnr.trim()) form.errors.pnr = 'PNR is required';
+            if (!form.ticket_number || !form.ticket_number.trim()) form.errors.ticket_number = 'Ticket number is required';
+            if (!form.date || !form.date.trim()) form.errors.date = 'Issue date is required';
+            if (!form.ticket_agent_id) form.errors.ticket_agent_id = 'Please select a ticket agent';
+            if (!form.reason_id) form.errors.reason_id = 'Please select a reason';
+            if (!form.payment_by) form.errors.payment_by = 'Please select a payment method';
+            if (form.re_issue_charge === '' || form.re_issue_charge === null || form.re_issue_charge === undefined || parseFloat(form.re_issue_charge) < 0) form.errors.re_issue_charge = 'Re-issue charge is required';
+            if (form.fare_difference === '' || form.fare_difference === null || form.fare_difference === undefined) form.errors.fare_difference = 'Fare difference is required';
+
+            const firstError = Object.values(form.errors).find(e => e);
+            if (firstError) {
+                this.isSubmitting = false;
+                this.showToast(firstError, 'error');
+                return;
+            }
+
             this.isSubmitting = true;
 
             const payload = {
@@ -5873,7 +5949,7 @@ function bookingIndexApp() {
                 if (res.success) {
                     this.showToast('Ticket re-issued successfully.');
                     this.closeReIssueModal();
-                    setTimeout(() => location.reload(), 800);
+                    this.loadPassengerData();
                 } else {
                     this.showToast(res.message || 'Failed to re-issue ticket.', 'error');
                 }
@@ -5992,7 +6068,7 @@ function bookingIndexApp() {
             const f = this.ticketFareForm;
             f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '', ticket_option: '' };
 
-            if (f.isOutboundMode && !f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
+            if (!f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
             if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
@@ -6007,6 +6083,22 @@ function bookingIndexApp() {
             if (firstError) {
                 this.showToast(firstError, 'error');
                 return;
+            }
+
+            if (this.isEditingReIssued) {
+                const rf = this.reIssueForm;
+                rf.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+
+                if (!rf.reason_id) rf.errors.reason_id = 'Please select a reason';
+                if (!rf.payment_by) rf.errors.payment_by = 'Please select a payment method';
+                if (rf.re_issue_charge === '' || rf.re_issue_charge === null || rf.re_issue_charge === undefined || parseFloat(rf.re_issue_charge) < 0) rf.errors.re_issue_charge = 'Re-issue charge is required';
+                if (rf.fare_difference === '' || rf.fare_difference === null || rf.fare_difference === undefined) rf.errors.fare_difference = 'Fare difference is required';
+
+                const reIssueError = Object.values(rf.errors).find(e => e);
+                if (reIssueError) {
+                    this.showToast(reIssueError, 'error');
+                    return;
+                }
             }
 
             if (!this.validateTicketFareDates()) {
@@ -6093,7 +6185,7 @@ function bookingIndexApp() {
                     if (data.re_issued_ticket) {
                         this.showToast('Ticket updated successfully.');
                         this.closeTicketFareModal();
-                        setTimeout(() => location.reload(), 600);
+                        this.loadPassengerData();
                         return;
                     }
                     if (!this.ticketFareForm.isOutboundMode) {
@@ -6246,6 +6338,7 @@ function bookingIndexApp() {
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
+                    this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to save ticket.', 'error');
                 }
@@ -6303,15 +6396,20 @@ function bookingIndexApp() {
             const tt = this.ticketFareForm.ticket_type;
             const rt = this.ticketFareForm.route_type;
             const ft = this.ticketFareForm.flight_type;
+            const isOutbound = this.ticketFareForm.isOutboundMode;
             const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
             const ftMap = {'Transit':'transit','Direct':'direct'};
             let fares = this.ticketFaresList;
             if (tt) {
                 fares = fares.filter(f => f.ticket_type === tt);
             }
-            if (rt && ft) {
-                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt) && f.flight_type === (ftMap[ft]||ft));
+            if (rt) {
+                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt));
             }
+            if (ft) {
+                fares = fares.filter(f => f.flight_type === (ftMap[ft]||ft));
+            }
+            if (isOutbound && (!tt || !ft)) return [];
             return fares.map(f => {
                 let display = f.route + ' | ' + f.airline + ' | ' + f.airline_class + ' | ' + f.ticket_type;
                 if (f.ticket_type === 'group' && f.pnr && f.ticket_qty) {
@@ -6879,7 +6977,7 @@ function bookingIndexApp() {
                     }),
                 });
                 const data = await res.json();
-                if (data.success) window.location.reload();
+                if (data.success) this.loadPassengerData();
                 else alert(data.message || 'Failed to initiate cancellation');
             } catch (e) {
                 alert('Failed to initiate cancellation');
@@ -6948,7 +7046,7 @@ function bookingIndexApp() {
                 const result = await res.json();
                 if (result.success) {
                     this.cancelPassengerModalVisible = false;
-                    window.location.reload();
+                    this.loadPassengerData();
                 } else {
                     alert(result.message || 'Failed to initiate cancellation');
                 }
@@ -7057,7 +7155,10 @@ function updatePassengerStatus(passengerId, statusId, selectEl) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('Status updated successfully');
+            const component = Alpine.$data(selectEl.closest('[x-data]'));
+            if (component && typeof component.loadPassengerData === 'function') {
+                component.loadPassengerData();
+            }
         } else {
             alert(data.message || 'Failed to update status');
         }
@@ -7084,15 +7185,9 @@ function updateFingerprintLocation(bookingId, location, select) {
     .then(data => {
         if (data.success) {
             selectEl.dataset.original = location;
-            if (data.invoice) {
-                const row = selectEl.closest('tr');
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 12) {
-                    const rate = parseFloat(selectEl.dataset.rate) || 0;
-                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
-                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
-                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
-                }
+            const component = Alpine.$data(selectEl.closest('[x-data]'));
+            if (component && typeof component.loadPassengerData === 'function') {
+                component.loadPassengerData();
             }
         } else {
             alert('Failed to update fingerprint location');
