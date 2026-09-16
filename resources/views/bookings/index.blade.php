@@ -809,7 +809,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                         <template x-if="!showThreeButtonsMode(idx)">
                                             <span>
                                                 <button x-show="showSingleGConfirm(idx)" @click="confirmTickets(idx, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
-                                                <button x-show="showSingleGCancel(idx)" @click="revertTickets(idx, 'all')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel</button>
+                                                <button x-show="showSingleGCancel(idx)" @click="revertTickets(idx, 'in')" class="px-2 py-1 text-xs font-medium text-amber-600 rounded hover:bg-slate-50 transition">G-Cancel</button>
                                             </span>
                                         </template>
                                         <template x-if="showThreeButtonsMode(idx)">
