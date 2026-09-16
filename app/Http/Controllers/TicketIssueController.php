@@ -463,11 +463,17 @@ class TicketIssueController extends Controller
                 'ticketFare.route.multiSegments.toCity',
             ]);
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'message' => 'Ticket updated successfully.',
                 'issued_ticket' => $issuedTicket,
-            ]);
+            ];
+
+            if ($issuedTicket->issue_type === 'pending_outbound') {
+                $response['pending_outbound_ticket'] = $issuedTicket;
+            }
+
+            return response()->json($response);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Ticket edit failed: '.$e->getMessage());

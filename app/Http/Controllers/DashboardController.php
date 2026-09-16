@@ -35,6 +35,8 @@ class DashboardController extends Controller
 
         $branchId = auth()->user()->branch_id;
         $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+        $dateFrom = now()->subDays(30);
+        $dateTo = now();
         $branchScope = fn ($query) => $query
             ->where('booking_branch_id', $branchId);
 
@@ -60,28 +62,28 @@ class DashboardController extends Controller
             ->get();
 
         $visaSubmitted = VisaUpdateLog::where('new_values->status', 'submitted')
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
             ->count();
         $visaIssued = VisaUpdateLog::where('new_values->status', 'issued')
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
             ->count();
         $visaPending = VisaSubmission::where('status', VisaStatus::PENDING)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('passenger.booking', $branchScope))
             ->count();
 
         $fingerprintApproved = FingerprintDetailLog::where('new_values->status', FingerprintStatus::APPROVED->value)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
         $fingerprintDone = FingerprintDetailLog::where('new_values->status', FingerprintStatus::DONE->value)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
         $fingerprintProcessing = FingerprintDetailLog::where('new_values->status', FingerprintStatus::PROCESSING->value)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
 
@@ -302,9 +304,9 @@ class DashboardController extends Controller
         $totalFingerprintProfit = (float) ($fingerprintRow->sar_total ?? 0);
         $totalFingerprintProfitBdt = (float) ($fingerprintRow->bdt_total ?? 0);
 
-        $invoiceCount = Invoice::where('created_at', '>=', now()->subDays(30))
+        $invoiceCount = Invoice::whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->count();
-        $invoiceRow = Invoice::where('invoices.created_at', '>=', now()->subDays(30))
+        $invoiceRow = Invoice::whereDate('invoices.created_at', '>=', $dateFrom)->whereDate('invoices.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('invoices.branch_id', $branchId))
             ->leftJoin('bookings', 'invoices.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
@@ -321,23 +323,23 @@ class DashboardController extends Controller
         $totalDueBdt = $invoiceRow->due_bdt ?? 0;
 
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('inbound_date'))
             ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
-            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('outbound_date'))
             ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
-        $pendingTicket = IssuedTicket::where('created_at', '>=', now()->subDays(30))
+        $pendingTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('booking', $branchScope))
             ->where('status', TicketStatus::PENDING)
             ->count();
 
-        $dueCollectionRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+        $dueCollectionRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)->whereDate('vouchers.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->whereHas('transactionType', fn ($q) => $q->where('name', 'Due Collection'))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
@@ -358,7 +360,7 @@ class DashboardController extends Controller
         $dueCollectionBank = $dueCollectionRow->bank_sar ?? 0;
         $dueCollectionBankBdt = $dueCollectionRow->bank_bdt ?? 0;
 
-        $scDeductionRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+        $scDeductionRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)->whereDate('vouchers.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->whereHas('transactionType', fn ($q) => $q->where('name', 'Service Charge Deduction'))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
@@ -371,7 +373,7 @@ class DashboardController extends Controller
         $totalServiceChargeDeduction = $scDeductionRow->sar_total ?? 0;
         $totalServiceChargeDeductionBdt = $scDeductionRow->bdt_total ?? 0;
 
-        $refundRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+        $refundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)->whereDate('vouchers.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->whereHas('transactionType', fn ($q) => $q->where('name', 'Customer Refund'))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
@@ -384,7 +386,7 @@ class DashboardController extends Controller
         $totalRefund = $refundRow->sar_total ?? 0;
         $totalRefundBdt = $refundRow->bdt_total ?? 0;
 
-        $ticketRefundRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+        $ticketRefundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)->whereDate('vouchers.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->whereHas('transactionType', fn ($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
@@ -397,10 +399,10 @@ class DashboardController extends Controller
         $totalTicketRefund = $ticketRefundRow->sar_total ?? 0;
         $totalTicketRefundBdt = $ticketRefundRow->bdt_total ?? 0;
 
-        $totalPassengers = Passenger::where('created_at', '>=', now()->subDays(30))
+        $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->whereHas('booking', $branchScope))->count();
 
-        $initialPaymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
+        $initialPaymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)->whereDate('payments.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('payments.branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn ($q) => $q->where('name', 'Initial Payment'))
             ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
@@ -421,7 +423,7 @@ class DashboardController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
-        $paymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
+        $paymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)->whereDate('payments.created_at', '<=', $dateTo)
             ->when($branchId, fn ($q) => $q->where('payments.branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
