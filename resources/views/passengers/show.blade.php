@@ -105,7 +105,7 @@
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Status</span>
-                            <p class="text-slate-800">{{ $passenger->status?->name ?? '-' }}</p>
+                            <p class="text-slate-800">{{ $passenger->display_status ?? '-' }}</p>
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Fingerprint Location</span>
