@@ -10,6 +10,8 @@ use App\Models\PassengerStatus;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -18,6 +20,15 @@ class PassengerManualStatusTest extends TestCase
     use RefreshDatabase;
 
     protected function beginDatabaseTransaction(): void {}
+
+    public static function tearDownAfterClass(): void
+    {
+        try {
+            Artisan::call('migrate:fresh');
+        } catch (\Throwable $e) {
+            RefreshDatabaseState::$migrated = false;
+        }
+    }
 
     protected function setUp(): void
     {

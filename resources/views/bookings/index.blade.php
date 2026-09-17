@@ -548,37 +548,37 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 </div>
             </div>
             <div x-ref="tableScroll" class="overflow-auto flex-1 min-h-0">
-                <table class="w-full text-sm table-fixed">
+                <table class="w-full text-sm min-w-[1800px]">
                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium w-28">Booking Date</th>
-                            <th class="px-3 py-2 text-left font-medium w-32">Invoice ID</th>
-                            <th class="px-3 py-2 text-left font-medium w-28">Customer</th>
-                            <th class="px-3 py-2 text-left font-medium w-20">PAX QTY</th>
-                            <th class="px-3 py-2 text-left font-medium w-40">Mobile</th>
-                            <th class="px-3 py-2 text-left font-medium w-48">Name</th>
-                            <th class="px-3 py-2 text-left font-medium w-60">Current status</th>
-                            <th class="px-3 py-2 text-left font-medium w-28">Passport No</th>
-                            <th class="px-3 py-2 text-left font-medium w-56">Route</th>
-                            <th class="px-3 py-2 text-left font-medium w-56 whitespace-nowrap">Required Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium w-36 whitespace-nowrap">Actual Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium w-28">Return Date</th>
-                            <th class="px-3 py-2 text-left font-medium w-56">Package</th>
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Package Value</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Markup</th>@endif
-                            <th class="px-3 py-2 text-left font-medium w-56">Invoice Info</th>
-                            <th class="px-3 py-2 text-left font-medium w-28">Stay Duration</th>
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-72">Visa</th>@endif
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-28">Visa Agent</th>@endif
-                            <th class="px-3 py-2 text-left font-medium w-28">Visa Status</th>
-                            <th class="px-3 py-2 text-left font-medium w-28">Passenger Type</th>
-                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium w-64">Ticket Panel</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Booking Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                            <th class="px-3 py-2 text-left font-medium">Customer</th>
+                            <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
+                            <th class="px-3 py-2 text-left font-medium">Mobile</th>
+                            <th class="px-3 py-2 text-left font-medium">Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Current status</th>
+                            <th class="px-3 py-2 text-left font-medium">Passport No</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-left font-medium whitespace-nowrap">Required Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium whitespace-nowrap">Actual Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Return Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Package</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Invoice Info</th>
+                            <th class="px-3 py-2 text-left font-medium">Stay Duration</th>
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Panel</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
-                            <th class="px-3 py-2 text-left font-medium w-48">Ticket Status</th>
-                            <th class="px-3 py-2 text-left font-medium w-36">Ticket Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium w-48">Fingerprint Status</th>
-                            <th class="px-3 py-2 text-left font-medium w-96">Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium w-44">Actions</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
