@@ -3847,7 +3847,8 @@ function bookingIndexApp() {
                             };
                         }
                     });
-                    this.showToast('Visa submitted successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa submitted successfully for ${passengerName}`, 'info');
                     this.closeVisaSubmitModal();
                     this.loadPassengerData();
                 } else {
@@ -3932,7 +3933,8 @@ function bookingIndexApp() {
                     data.visa.final_cost = sub.final_cost;
                     data.visa.remarks = sub.remarks || '';
                     data.visa.status = 'issued';
-                    this.showToast('Visa issued successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa issued successfully for ${passengerName}`, 'success');
                     this.closeVisaIssueModal();
                     this.loadPassengerData();
                 } else {
@@ -4045,8 +4047,9 @@ function bookingIndexApp() {
                             data.visa.status = 'submitted';
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaResubmitModal();
-                    this.showToast('Visa re-submitted successfully');
+                    this.showToast(`Visa re-submitted successfully for ${passengerName}`, 'info');
                     this.loadPassengerData();
                 } else {
                     alert(res.message || 'Re-submit failed');
@@ -4097,8 +4100,9 @@ function bookingIndexApp() {
                             data.visa.agent_id = null;
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaCancelModal();
-                    this.showToast('Visa cancelled successfully');
+                    this.showToast(`Visa cancelled successfully for ${passengerName}`, 'error');
                     this.loadPassengerData();
                 } else {
                     alert(res.message || 'Cancellation failed');
@@ -4144,8 +4148,9 @@ function bookingIndexApp() {
                             data.visa.status = 'submitted';
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaRevertModal();
-                    this.showToast('Visa reverted successfully');
+                    this.showToast(`Visa reverted successfully for ${passengerName}`, 'warning');
                 } else {
                     alert(res.message || 'Revert failed');
                 }
@@ -4235,7 +4240,8 @@ function bookingIndexApp() {
                     data.visa.additional_cost = sub.additional_cost;
                     data.visa.remarks = sub.remarks || '';
                     data.visa.final_cost = sub.final_cost;
-                    this.showToast('Visa updated successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa updated successfully for ${passengerName}`, 'primary');
                     this.closeVisaEditModal();
                     this.loadPassengerData();
                 } else {
@@ -4289,6 +4295,7 @@ function bookingIndexApp() {
             airline: '',
             travel_class: '',
             reason_id: '',
+            rowIndex: null,
             iata_refund: 0,
             iata_refund_bdt: 0,
             customer_refund: 0,
@@ -4384,6 +4391,7 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             reason_id: '',
+            rowIndex: null,
             re_issue_charge: 0,
             re_issue_charge_bdt: '',
             fare_difference: 0,
@@ -4831,7 +4839,8 @@ function bookingIndexApp() {
                             issue_type: 'pending_outbound'
                         });
                     }
-                    this.showToast(data.message || 'Tickets confirmed successfully.');
+                    const passengerName = row.passenger_name || (this.passengersList[index]?.first_name + ' ' + this.passengersList[index]?.last_name);
+                    this.showToast(`Tickets confirmed successfully for ${passengerName}`, 'success');
                     this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to confirm tickets.', 'error');
@@ -4870,7 +4879,8 @@ function bookingIndexApp() {
                     if (row.pending_outbound_issued_ticket && data.updated_ids.includes(row.pending_outbound_issued_ticket.id)) {
                         row.pending_outbound_issued_ticket.status = 'pending';
                     }
-                    this.showToast(data.message || 'Tickets reverted successfully.');
+                    const passengerName = row.passenger_name || (this.passengersList[index]?.first_name + ' ' + this.passengersList[index]?.last_name);
+                    this.showToast(`Tickets reverted successfully for ${passengerName}`, 'warning');
                 } else {
                     this.showToast(data.message || 'Failed to revert tickets.', 'error');
                 }
@@ -5515,6 +5525,7 @@ function bookingIndexApp() {
             this.reIssueForm.isOutboundMode = isOutbound;
             this.reIssueForm.passenger_id = row.id;
             this.reIssueForm.booking_id = row.booking_id;
+            this.reIssueForm.rowIndex = rowIndex;
 
             this.reIssueForm.selling_fare = fareSrc.selling_fare || 0;
             this.reIssueForm.net_fare = fareSrc.net_fare || 0;
@@ -5713,6 +5724,7 @@ function bookingIndexApp() {
             f.airline = src.airline || '';
             f.travel_class = src.travel_class || '';
             f.reason_id = '';
+            f.rowIndex = rowIndex;
             f.iata_refund = 0;
             f.customer_refund = 0;
             f.service_charge = 0;
@@ -5830,7 +5842,9 @@ function bookingIndexApp() {
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    this.showToast('Ticket refunded successfully.');
+                    const passenger = this.passengersList[this.refundForm.rowIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket refunded successfully for ${passengerName}`, 'warning');
                     this.closeRefundModal();
                     this.loadPassengerData();
                 } else {
@@ -6031,7 +6045,9 @@ function bookingIndexApp() {
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    this.showToast('Ticket re-issued successfully.');
+                    const passenger = this.passengersList[this.reIssueForm.rowIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket re-issued successfully for ${passengerName}`, 'primary');
                     this.closeReIssueModal();
                     this.loadPassengerData();
                 } else {
@@ -6267,7 +6283,9 @@ function bookingIndexApp() {
             .then(data => {
                 if (data.success) {
                     if (data.re_issued_ticket) {
-                        this.showToast('Ticket updated successfully.');
+                        const passenger = this.passengersList[this.editingPassengerIndex];
+                        const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                        this.showToast(`Ticket updated successfully for ${passengerName}`, 'info');
                         this.closeTicketFareModal();
                         this.loadPassengerData();
                         return;
@@ -6420,7 +6438,9 @@ function bookingIndexApp() {
                         row.all_issued_tickets = (row.all_issued_tickets || []).filter(t => !(t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status)));
                         row.pending_outbound_issued_ticket = null;
                     }
-                    this.showToast(data.message || 'Ticket saved successfully.');
+                    const passenger = this.passengersList[this.editingPassengerIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket saved successfully for ${passengerName}`, 'info');
                     this.closeTicketFareModal();
                     this.loadPassengerData();
                 } else {
@@ -6847,7 +6867,7 @@ function bookingIndexApp() {
                         this.ticketFareForm.ticket_option = fare.id;
                         this.handleTicketOptionChange();
                     }
-                    this.showToast('Ticket fare created successfully.');
+                    this.showToast('Ticket fare created successfully.', 'secondary');
                     this.newTicketFareForm.visible = false;
                 } else {
                     this.showToast(data.message || 'Failed to create ticket fare.', 'error');
@@ -7201,7 +7221,7 @@ function bookingIndexApp() {
                 this.payRefundLoading = false;
             }
         },
-        showToast(message) {
+        showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');
                 el.id = 'toastContainer';
@@ -7210,8 +7230,17 @@ function bookingIndexApp() {
                 return el;
             })();
 
+            const colorMap = {
+                'info': 'bg-sky-600',
+                'success': 'bg-emerald-600',
+                'error': 'bg-red-600',
+                'warning': 'bg-amber-600',
+                'primary': 'bg-indigo-600',
+                'secondary': 'bg-violet-600'
+            };
+
             const toast = document.createElement('div');
-            toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white font-medium bg-slate-700 translate-x-full opacity-0';
+            toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white font-medium ' + (colorMap[type] || colorMap.info) + ' translate-x-full opacity-0';
             toast.textContent = message;
             container.appendChild(toast);
 
