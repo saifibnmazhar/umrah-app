@@ -665,6 +665,69 @@ class TicketIssueController extends Controller
         }
     }
 
+    public function revertGroup(Request $request, Passenger $passenger)
+    {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:in,out,both',
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
+
+        $booking = Booking::findOrFail($validated['booking_id']);
+        if ($passenger->booking_id !== $booking->id) {
+            abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        $allTickets = $passenger->allIssuedTickets;
+        $regularTicket = $allTickets->first(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+        $outboundTicket = $allTickets->first(fn ($t) => $t->issue_type === 'pending_outbound');
+
+        $updatedIds = [];
+
+        try {
+            DB::beginTransaction();
+            $action = $validated['action'];
+
+            if ($action === 'in' || $action === 'both') {
+                if ($regularTicket && $regularTicket->status === 'awaiting-group') {
+                    $oldData = $regularTicket->toArray();
+                    $regularTicket->update(['status' => 'pending']);
+                    $regularTicket->logAction('reverted_group', $oldData, $regularTicket->toArray());
+                    $updatedIds[] = $regularTicket->id;
+                }
+            }
+
+            if ($action === 'out' || $action === 'both') {
+                if ($outboundTicket && $outboundTicket->status === 'awaiting-group') {
+                    $oldData = $outboundTicket->toArray();
+                    $outboundTicket->update(['status' => 'pending']);
+                    $outboundTicket->logAction('reverted_group', $oldData, $outboundTicket->toArray());
+                    $updatedIds[] = $outboundTicket->id;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tickets reverted successfully.',
+                'updated_ids' => $updatedIds,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Ticket revert group failed: '.$e->getMessage());
+
+            return response()->json(['message' => 'Failed to revert tickets.'], 500);
+        }
+    }
+
     private function serviceValue(Passenger $passenger): ?string
     {
         $service = $passenger->service_required;
