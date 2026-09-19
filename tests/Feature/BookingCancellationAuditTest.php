@@ -42,11 +42,16 @@ class BookingCancellationAuditTest extends TestCase
 
         Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('cancelled_bookings');
+        Schema::dropIfExists('passenger_update_logs');
         Schema::dropIfExists('payments');
         Schema::dropIfExists('vouchers');
+        Schema::dropIfExists('refunded_tickets');
+        Schema::dropIfExists('issued_tickets');
+        Schema::dropIfExists('ticket_fares');
         Schema::dropIfExists('invoices');
-        Schema::dropIfExists('bookings');
         Schema::dropIfExists('passengers');
+        Schema::dropIfExists('passenger_statuses');
+        Schema::dropIfExists('bookings');
         Schema::dropIfExists('transaction_types');
         Schema::dropIfExists('currency_rates');
         Schema::dropIfExists('customers');
@@ -96,9 +101,16 @@ class BookingCancellationAuditTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('passenger_statuses', function ($table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->timestamps();
+        });
+
         Schema::create('passengers', function ($table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->foreignId('booking_id')->constrained()->restrictOnDelete();
+            $table->foreignId('passenger_status_id')->nullable()->constrained('passenger_statuses')->nullOnDelete();
             $table->string('first_name');
             $table->string('last_name');
             $table->decimal('package_value', 12, 2)->default(0);
@@ -112,6 +124,44 @@ class BookingCancellationAuditTest extends TestCase
             $table->timestamp('service_charge_effective_at')->nullable();
             $table->boolean('is_cancelled')->default(false);
             $table->timestamp('cancelled_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('passenger_update_logs', function ($table) {
+            $table->id();
+            $table->foreignId('passenger_id')->constrained()->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->string('passport_no')->nullable();
+            $table->string('action');
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('ticket_fares', function ($table) {
+            $table->id();
+            $table->timestamps();
+        });
+
+        Schema::create('issued_tickets', function ($table) {
+            $table->id();
+            $table->foreignId('passenger_id')->constrained()->restrictOnDelete();
+            $table->string('ticket_number')->nullable();
+            $table->string('status')->default('issued');
+            $table->decimal('net_fare', 14, 6)->default(0);
+            $table->decimal('selling_fare', 14, 6)->nullable();
+            $table->decimal('offer_price', 14, 6)->nullable();
+            $table->string('issue_type')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('refunded_tickets', function ($table) {
+            $table->id();
+            $table->foreignId('issued_ticket_id')->constrained()->restrictOnDelete();
+            $table->decimal('refund_to_customer', 14, 6)->default(0);
+            $table->decimal('net_fare', 14, 6)->default(0);
+            $table->softDeletes();
             $table->timestamps();
         });
 
