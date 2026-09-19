@@ -1,7 +1,7 @@
 # Re-Issue Form Change Plan — Hide `fare_difference` / `other_costs`, Derive `service_charge` from `total_customer_payment`
 
 > Status: PLAN (not implemented)
-> Date: 2026-09-19
+> Date: 2026-09-19 (v2 — edit-form legacy preservation + all gaps addressed)
 
 ## 1. Background — how it works now
 
@@ -72,23 +72,43 @@ Model/columns already exist — no migration needed:
 * `app/Models/ReIssuedTicket.php:15-48` (`re_issue_charge`, `fare_difference`, `other_costs`,
   `service_charge`, `total_cost`, `total_customer_payment` fillable + `decimal:6` casts).
 
+### 1.3 Submit paths (four total)
+
+| # | Path | Method | Route | Controller |
+|---|------|--------|-------|------------|
+| 1 | `handleReIssueSubmit()` `index.blade.php:5954` | POST | `/bookings/{b}/passengers/{p}/re-issue` | `ReIssueController::store` |
+| 2 | `confirmProcess()` `confirmation.blade.php:954` | PUT | `/ticket-requests/{id}/process-reissue` | `TicketRequestController::processReIssue` |
+| 3 | `handleTicketFareSubmit()` `index.blade.php:6148` (when `isEditingReIssued`) | PUT | `/bookings/{b}/passengers/{p}/ticket-edit` | `TicketIssueController::edit` |
+| 4 | `openReIssueModal()` + `populateReIssueEditForm()` `index.blade.php:5444` (data loading) | — | — | — |
+
 ## 2. Goal (confirmed with user)
 
-1. Hide `fare_difference` + `other_costs` in **both** forms
-   (`re-issues/confirmation.blade.php` + `bookings/index.blade.php` modals).
-   Default `0`. Calculation stays the same (those terms are just 0).
-2. Customer flow inversion: when `payment_by === 'customer'`, the user inputs
+1. Hide `fare_difference` + `other_costs` in **all forms** (`re-issues/confirmation.blade.php`,
+   `bookings/index.blade.php` re-issue modal, `bookings/index.blade.php` ticket-fare modal).
+2. **New saves**: these fields default to `0`. The user never inputs them.
+3. **Edit saves**: legacy non-zero values are **preserved** from the existing record and continue
+   to contribute to `total_cost`. The total_cost calculation formula is unchanged — only the
+   source of `fare_difference`/`other_costs` changes (from user input to stored legacy value).
+4. Customer flow inversion: when `payment_by === 'customer'`, the user inputs
    **`total_customer_payment`**, and **`service_charge` is auto-calculated** as
    `service_charge = total_customer_payment - total_cost` (readonly).
-3. Backend validation: make `fare_difference` / `other_costs` optional with default `0`.
+5. Backend validation: make `fare_difference` / `other_costs` optional with default `0`.
 
 ## 3. New calculation spec (source of truth)
 
+**Formula is identical in create and edit paths:**
+
 ```text
-refundedNetFare = wasRefunded ? latestRefunded.net_fare ?? issued.net_fare : 0
-rawCost         = re_issue_charge + 0 + 0 + refundedNetFare
+rawCost         = re_issue_charge + fare_difference + other_costs + refundedNetFare
 total_cost      = rawCost - refund_adjustment_amount   (round to 6)
 ```
+
+Only the **source** of `fare_difference`/`other_costs` differs:
+
+| Field | Create | Edit |
+|-------|--------|------|
+| `fare_difference` | `0` (no user input) | Existing record's value (preserved) |
+| `other_costs` | `0` (no user input) | Existing record's value (preserved) |
 
 Customer (`payment_by === 'customer'`):
 
@@ -115,7 +135,7 @@ INVOICE: no change
   Payment option UI is already forced to `refund_adjustment` in this sub-case
   (`confirmation.blade.php:896-899`).
 
-New server validation: reject `total_customer_payment < total_cost` with 422
+New server validation (both create AND edit): reject `total_customer_payment < total_cost` with 422
 (`Total customer payment must be at least total cost.`), preventing negative derived service.
 
 Unchanged validations: `refund_adjustment_amount <= rawCost` and
@@ -169,27 +189,34 @@ Payload keys are identical so frontend can share logic.
 ### 4.3 `TicketIssueController::update` — edit re-issued ticket (`:200-209,:265-311`)
 
 1. Validation already `nullable` — no rule change required; add a comment that
-   `fare_difference`/`other_costs` are legacy (always 0 for new saves).
-2. Recalc (`:265-268`) — force 0 for new edits:
+   `fare_difference`/`other_costs` are legacy (preserved from existing record, default 0).
+2. Recalc (`:265-268`) — **preserve legacy values** (do NOT force 0):
    ```php
-   $fareDifference = array_key_exists('fare_difference', $validated) ? (float) $validated['fare_difference'] : 0.0;
-   $otherCosts = array_key_exists('other_costs', $validated) ? (float) $validated['other_costs'] : 0.0;
+   $fareDifference = array_key_exists('fare_difference', $validated)
+       ? (float) $validated['fare_difference']
+       : (float) $latestRe->fare_difference;
+   $otherCosts = array_key_exists('other_costs', $validated)
+       ? (float) $validated['other_costs']
+       : (float) $latestRe->other_costs;
    ```
    Then after `$totalCost`, if `$effectivePaymentBy === 'customer'`:
    ```php
    $inputTotal = array_key_exists('total_customer_payment', $validated)
        ? (float) $validated['total_customer_payment']
        : (float) $latestRe->total_customer_payment;
-   if ($inputTotal < $totalCost) { DB::rollBack(); return 422 ...; }
+   if ($inputTotal < $totalCost) {
+       DB::rollBack();
+       return response()->json(['message' => 'Total customer payment must be at least total cost.'], 422);
+   }
    $derivedService = round($inputTotal - $totalCost, 6);
    ```
    Store `'fare_difference' => $fareDifference, 'other_costs' => $otherCosts,
    'service_charge' => $derivedService ?? 0` in the `:288-302` update block.
    Invoice delta logic (`:304-315,380-390`, `'re_issue_edited'`) stays — it diffs old vs new
    `total_customer_payment`, which still works because the new value is the input total.
-3. NOTE (release-notes item): forcing 0 wipes legacy non-zero `fare_difference`/`other_costs`
-   on any edit. Alternative is preserve via `?? (float) $latestRe->...`. Recommended: force 0
-   per the "default 0" requirement.
+3. Legacy non-zero `fare_difference`/`other_costs` are preserved through the `?? $latestRe->...`
+   fallback. New edits (from frontend) send `0` for these fields; when the key is absent from
+   the request, the existing value is preserved.
 
 ## 5. Frontend — `resources/views/re-issues/confirmation.blade.php` (request-approval modal)
 
@@ -205,9 +232,10 @@ HTML (`~:220-285`):
 * `#fieldTotalPayment` (`:275-285`): invert — make `inputTotalPayment` / `inputTotalPaymentBdt`
   **editable** (remove `readonly`, add `oninput`, e.g. `handleTotalPaymentInput(); updateTotals()`).
   Keep visible only when `payment_by==='customer'` (existing `handlePaymentByChange:904-905`).
-* `syncCurrencyFields()` (`:383-395`) + `syncReadonlyMirrors()` (`:405-425`): drop fare/other rows
-  (or keep pointing at hidden inputs); keep total-payment editable pair + service readonly mirror.
-  Service BDT mirror derives from SAR service (no direct BDT-service input).
+* `syncCurrencyFields()` (`:383-395`): remove `fieldFareDifferenceSar/Bdt` and
+  `fieldOtherCostsSar/Bdt` from the `wrappers` array. Keep all other pairs.
+* `syncReadonlyMirrors()` (`:405-425`): remove `inputFareDifference`/`inputFareDifferenceBdtSar`
+  and `inputOtherCosts`/`inputOtherCostsBdtSar` from the `pairs` array. Keep all other pairs.
 
 JS:
 
@@ -235,7 +263,8 @@ JS:
 * New `handleTotalPaymentInput()`: SAR↔BDT conversion for total payment
   (mirror `handleFieldSarInput/BdtInput`), then `updateTotals()`.
 * `handlePaymentByChange()` (`:885-910`): when non-customer also clear
-  `inputTotalPayment/Bdt` (in addition to existing `:893-899` resets).
+  `inputTotalPayment` (set to `''`) and `inputTotalPaymentBdt` (set to `''`)
+  (in addition to existing `:893-899` resets).
 * `confirmProcess()` payload (`:957-977`): send `fare_difference: 0, other_costs: 0`,
   `total_customer_payment: parseFloat(inputTotalPayment)||0`,
   `service_charge: parseFloat(inputServiceCharge)||0` (derived; server re-derives as authority).
@@ -267,7 +296,10 @@ Alpine methods (`~:5849-5960`):
   `refund_adjustment_amount`, new `total_payment`; unbind fare/other/service.
 * Rewrite `recalcReIssueTotals()` (`:5873-5901`):
   ```js
-  const rawCost = (parseFloat(f.re_issue_charge)||0) + 0 + 0 + (parseFloat(f.refunded_net_fare)||0);
+  const rawCost = (parseFloat(f.re_issue_charge)||0)
+      + (parseFloat(f.fare_difference)||0)   // legacy value preserved from populateReIssueEditForm
+      + (parseFloat(f.other_costs)||0)        // legacy value preserved from populateReIssueEditForm
+      + (parseFloat(f.refunded_net_fare)||0);
   // adj validation unchanged (:5881-5894)
   const totalCost = rawCost - adj;
   f.total_cost = totalCost; f.total_cost_bdt = ...;
@@ -281,23 +313,72 @@ Alpine methods (`~:5849-5960`):
       f.total_payment_bdt = ...; // from input, not derived
   } else { f.service_charge = 0; ... }
   ```
-  Delete/reverse old `:5899` (`f.total_payment = totalCost + service`) — that direction no longer
-  exists; `total_payment` is now the input.
+  Note: `fare_difference` and `other_costs` are read from the form state. For new re-issues
+  they are `0`. For edits of legacy records, `populateReIssueEditForm` loads the stored values
+  into the form state, so they contribute to `total_cost` correctly.
 * Deprecate `recalcReIssueFareDifference()` (`:5903-5911`) → set `fare_difference=0`,
-  `_bdt=''`, call `recalcReIssueTotals()`; remove calls at `:2337,:2344,:6660,:6699`.
+  `_bdt=''`, call `recalcReIssueTotals()`; remove ALL calls:
+  * `:2337` — `@input="handleReIssueSarInput('net_fare'); recalcReIssueFareDifference()"`
+  * `:2344` — BDT input equivalent
+  * `:6660` — inside `handleReIssueTicketOptionChange()` (ticket selected)
+  * `:6699` — inside `handleReIssueTicketOptionChange()` (fallback)
+  After removal, `handleReIssueTicketOptionChange()` just updates selling/net/offer display.
 * `handleReIssuePaymentByChange()` (`:5918-5927`): on non-customer also clear
-  `total_payment/_bdt` + errors.
-* Init/reset (`~:4387,5484-5485,5558-5562`) + `populateReIssueEditForm` (`~:5453+`): defaults to 0;
-  load stored `total_customer_payment` into `total_payment` input and derive service.
+  `total_payment` (set to `0`), `total_payment_bdt` (set to `''`), and errors.
+* `populateReIssueEditForm()` (`~:5453+`): load legacy `fare_difference`, `other_costs` from
+  existing re-issued ticket into form state. Load `total_customer_payment` into `total_payment`.
+  ```js
+  this.reIssueForm.fare_difference = re.fare_difference || 0;
+  this.reIssueForm.other_costs = re.other_costs || 0;
+  this.reIssueForm.service_charge = re.service_charge || 0;
+  this.reIssueForm.total_payment = re.total_customer_payment || 0;
+  // ... BDT mirrors ...
+  this.recalcReIssueTotals();
+  ```
+* `resetReIssueEditFields()` (`~:5478`): reset fare/other to `0`, total_payment to `0`,
+  service_charge to `0`. (No change needed — already does this.)
+* `openReIssueModal()` (`~:5503`): For new re-issues, reset `fare_difference=0` and
+  `other_costs=0`. When `re != null` (editing existing), load legacy values from `re`
+  via `populateReIssueEditForm`. The `recalcReIssueTotals()` call at the end uses these
+  values correctly.
 * `handleReIssueSubmit()` validation (`:5959-5976`): drop `fare_difference` required (`:5969`);
   keep `fare_difference`/`other_costs`/`service_charge` error keys as `''`; add
   `payment_by==='customer' && (total_payment==='' || parseFloat(total_payment) < totalCost)` →
-  `Total customer payment must be at least total cost`. Payload (`:5980+`, second path `:6174+`,
-  refund-adjust guard `:6010`): `fare_difference: 0, other_costs: 0`,
+  `Total customer payment must be at least total cost`.
+* `handleReIssueSubmit()` payload (`:5980+`): send `fare_difference: form.fare_difference || 0`,
+  `other_costs: form.other_costs || 0`,
   `service_charge: derived, total_customer_payment: total_payment`.
+* **`handleTicketFareSubmit()` (`:6148-6265`)** — **must apply same changes**:
+  * Remove fare_difference required validation (`:6179`)
+  * Update error initialization (`:6172-6176`) — keep keys, remove required assertion
+  * Update payload (`:6244-6245`) — send `fare_difference: rf.fare_difference || 0`,
+    `other_costs: rf.other_costs || 0`
+  * Add `total_customer_payment < totalCost` validation when `payment_by === 'customer'`
 
-`resources/views/bookings/show.blade.php:1420` history display: **no change**
-(stored legacy values still displayed).
+### 6.1 `resources/views/bookings/show.blade.php:1420` history display
+
+**Must update** to use stored `total_cost` instead of recomputing from components:
+
+```js
+// Before (wrong for new records):
+const totalCost = (parseFloat(r.re_issue_charge) || 0)
+    + (parseFloat(r.fare_difference) || 0)
+    + (parseFloat(r.other_costs) || 0);
+
+// After (correct for all records):
+const totalCost = parseFloat(r.total_cost) || 0;
+```
+
+This ensures:
+- Legacy records with non-zero fare/other display correctly (their `total_cost` was computed
+  with those values).
+- New records with fare/other = 0 display correctly (their `total_cost` was computed
+  with the same formula).
+- Refunded tickets with refund adjustments display correctly (the old formula ignored
+  `refundedNetFare` and `refund_adjustment_amount`).
+
+The profit line (`const profit = customerPayment - totalCost`) remains correct since
+`customerPayment` is `total_customer_payment` from the database.
 
 ## 7. Tests (TDD per AGENTS.md)
 
@@ -309,12 +390,14 @@ Existing tests referencing these fields:
   `tests/Feature/PassengerCancellationServiceTest.php:576-577,619-620` — service-level, keep.
 * `tests/Feature/BookingReIssueBdtResetTest.php:61-68` — asserts
   `reIssueForm.fare_difference_bdt / other_costs_bdt` reset strings exist; **must update**
-  (fields become hidden/removed).
-* `tests/Feature/ReIssuedTicketObserverProfitTest.php`,
-  `tests/Feature/ReIssueEditRefundedNonCustomerTest.php`,
-  `tests/Feature/ReIssueEditRefundPayableAdjustTest.php`,
-  `tests/Feature/ProfitEffectiveDateComponentsTest.php:286-379` — run; update only if asserting
-  required-validation of hidden fields.
+  (remove `fare_difference_bdt` and `other_costs_bdt` assertions, keep `re_issue_charge_bdt`
+  and `service_charge_bdt`).
+* `tests/Feature/ReIssuedTicketObserverProfitTest.php` — uses `service_charge` for profit;
+  keep as-is (service_charge is still stored, just derived).
+* `tests/Feature/ReIssueEditRefundedNonCustomerTest.php`,
+  `tests/Feature/ReIssueEditRefundPayableAdjustTest.php` — no assertions on target fields, keep.
+* `tests/Feature/ProfitEffectiveDateComponentsTest.php:286-379` — uses `service_charge`;
+  keep as-is.
 
 New tests (write failing first):
 
@@ -326,12 +409,17 @@ New tests (write failing first):
    `payment_by=customer, re_issue_charge=100, total_customer_payment=150` →
    stored `service_charge=50`, `total_cost=100`, invoice `+=150`.
 3. `test_customer_payment_below_cost_rejected` — `total_customer_payment < total_cost` → 422.
+   Cover both create and edit paths.
 4. `test_non_customer_forces_zero_service_and_payment` — `payment_by=company` →
    `service_charge=0`, payment col `0`, no invoice change.
-5. `test_edit_reissue_recomputes_service_from_total_payment` —
+5. `test_edit_reissue_preserves_legacy_fare_difference_and_other_costs` —
+   Create with `fare_difference=50, other_costs=25`, then edit via
+   `TicketIssueController@update` without sending those fields → stored values preserved,
+   `total_cost` includes them.
+6. `test_edit_reissue_recomputes_service_from_total_payment` —
    `TicketIssueController@update` with new `total_customer_payment` → re-derived service,
    invoice delta = new − old total.
-6. Manual QA checklist (no JS unit harness in repo): customer flow SAR + BDT, non-customer flow,
+7. Manual QA checklist (no JS unit harness in repo): customer flow SAR + BDT, non-customer flow,
    refund_adjustment flow, wasRefunded flow, edit flow with legacy non-zero record.
 
 Verify per commit checklist: `php artisan test`, `vendor/bin/pint`, `npm run build`,
@@ -339,8 +427,9 @@ Verify per commit checklist: `php artisan test`, `vendor/bin/pint`, `npm run bui
 
 ## 8. Risks & open decisions
 
-* Edit of legacy records with non-zero fare/other zeroes them — intended per "default 0",
-  but flag in release notes.
+* Edit of legacy records with non-zero fare/other: **preserved** (backend fallback to
+  `$latestRe->fare_difference`/`$latestRe->other_costs`). Frontend sends 0 for new forms;
+  legacy values persist through edits unless explicitly changed.
 * Pre-existing customer rows keep stored `service_charge`; only new saves derive it.
   Profit reports mix both until data ages out — math semantics identical, acceptable.
 * BDT mode: total-payment is the conversion source; service BDT mirror derives from SAR service.
@@ -352,7 +441,8 @@ Verify per commit checklist: `php artisan test`, `vendor/bin/pint`, `npm run bui
 ## 9. Implementation order
 
 1. Backend: `ReIssueController` + `TicketRequestController` + tests 1–4.
-2. Backend edit: `TicketIssueController` + test 5.
+2. Backend edit: `TicketIssueController` (preserve legacy, add 422 guard) + tests 5–6.
 3. Frontend: `confirmation.blade.php` (§5).
-4. Frontend: `index.blade.php` (§6) + `BookingReIssueBdtResetTest` update.
-5. Full suite + pint + build + docker config; commit per AGENTS.md.
+4. Frontend: `index.blade.php` — re-issue modal + ticket-fare modal (§6) + `show.blade.php` history fix (§6.1).
+5. Update `BookingReIssueBdtResetTest` + full suite + pint + build + docker config.
+6. Commit per AGENTS.md.
