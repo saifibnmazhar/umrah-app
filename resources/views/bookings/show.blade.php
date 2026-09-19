@@ -891,12 +891,21 @@ function round2(n) {
     return Math.round(n * 100) / 100;
 }
 
-function showToast(message, type = 'success') {
+function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
+    const colorMap = {
+        'info': 'bg-sky-600',
+        'success': 'bg-emerald-600',
+        'error': 'bg-red-600',
+        'warning': 'bg-amber-600',
+        'primary': 'bg-indigo-600',
+        'secondary': 'bg-violet-600'
+    };
+
     const toast = document.createElement('div');
-    toast.className = `px-4 py-2 rounded shadow text-white ${type === 'error' ? 'bg-red-600' : 'bg-slate-700'}`;
+    toast.className = `px-4 py-2 rounded shadow text-white ${colorMap[type] || colorMap.info}`;
     toast.textContent = message;
     container.appendChild(toast);
 
@@ -1082,7 +1091,7 @@ function applyInvoiceDiscount() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast('Discount applied successfully');
+            showToast('Discount applied successfully', 'success');
             currentDiscountState.type = discountType;
             currentDiscountState.value = discountValue;
             closeDiscountModal();
@@ -1344,7 +1353,9 @@ function submitReIssueRequest() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showToast('Re-issue request submitted successfully!', 'success');
+            const names = selectedPassengers.map(p => p.name || p.passenger_name).filter(Boolean);
+            const nameStr = names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+            showToast(`Re-issue request submitted successfully for ${nameStr}!`, 'success');
             closeReIssueModal();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
@@ -1417,9 +1428,7 @@ function renderReissueHistory() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
             const p = r.issued_ticket?.passenger || {};
-            const totalCost = (parseFloat(r.re_issue_charge) || 0)
-                + (parseFloat(r.fare_difference) || 0)
-                + (parseFloat(r.other_costs) || 0);
+            const totalCost = parseFloat(r.total_cost) || 0;
             const customerPayment = parseFloat(r.total_customer_payment) || 0;
             const profit = customerPayment - totalCost;
             tr.innerHTML = `
@@ -1522,7 +1531,9 @@ function submitAddTicketRequest() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showToast('Additional ticket request submitted successfully!', 'success');
+            const names = selectedPassengers.map(p => p.name || p.passenger_name).filter(Boolean);
+            const nameStr = names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+            showToast(`Additional ticket request submitted successfully for ${nameStr}!`, 'info');
             closeAddTicketModal();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
@@ -1615,7 +1626,9 @@ function submitRefundRequest() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showToast('Refund request submitted successfully!', 'success');
+            const names = selectedPassengers.map(p => p.name || p.passenger_name).filter(Boolean);
+            const nameStr = names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+            showToast(`Refund request submitted successfully for ${nameStr}!`, 'warning');
             closeRefundModal();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
@@ -1819,7 +1832,7 @@ function handleCustomerDocSelect(event) {
     })
     .then(data => {
         if (data.success && data.documents && data.documents.length > 0) {
-            showToast('Documents uploaded successfully');
+            showToast('Documents uploaded successfully', 'success');
             const list = document.getElementById('customerDocumentsList');
             if (!list) return;
             const emptyState = list.querySelector('p');
@@ -1880,7 +1893,7 @@ function deleteDocument(docId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast('Document deleted successfully');
+            showToast('Document deleted successfully', 'warning');
             const list = document.getElementById('customerDocumentsList');
             const docItem = document.querySelector(`button[onclick*="deleteDocument(${docId})"]`)?.closest('.flex.justify-between');
             if (docItem) docItem.remove();
