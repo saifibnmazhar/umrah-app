@@ -154,9 +154,9 @@ class TicketRequestController extends Controller
         $validated = $request->validate([
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'required|numeric|min:0',
-            'fare_difference' => 'required|numeric',
-            'other_costs' => 'required|numeric|min:0',
-            'service_charge' => 'required|numeric|min:0',
+            'fare_difference' => 'nullable|numeric',
+            'other_costs' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee,company',
@@ -247,9 +247,9 @@ class TicketRequestController extends Controller
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
                 'baggage_outbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'outbound')->value('allowance'),
                 're_issue_charge' => $validated['re_issue_charge'],
-                'fare_difference' => $validated['fare_difference'],
-                'other_costs' => $validated['other_costs'],
-                'service_charge' => $validated['service_charge'],
+                'fare_difference' => (float) ($validated['fare_difference'] ?? 0),
+                'other_costs' => (float) ($validated['other_costs'] ?? 0),
+                'service_charge' => 0,
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
@@ -295,7 +295,22 @@ class TicketRequestController extends Controller
             ]);
 
             if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
-                $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
+                if (($validated['payment_by'] ?? null) === 'customer') {
+                    $inputTotal = (float) $validated['total_customer_payment'];
+                    if ($inputTotal < $totalCost) {
+                        throw new \InvalidArgumentException('Total customer payment must be at least total cost.');
+                    }
+                    $serviceCharge = round($inputTotal - $totalCost, 6);
+                    $totalCustomerPayment = $inputTotal;
+                } else {
+                    $serviceCharge = 0;
+                    $totalCustomerPayment = $totalCost;
+                }
+
+                $reIssuedTicket->update([
+                    'service_charge' => $serviceCharge,
+                    'total_customer_payment' => round($totalCustomerPayment, 6),
+                ]);
 
                 $passenger = $ticketRequest->passenger;
                 $booking = $ticketRequest->booking;

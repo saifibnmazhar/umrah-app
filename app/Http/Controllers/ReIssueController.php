@@ -57,9 +57,9 @@ class ReIssueController extends Controller
 
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'required|numeric|min:0',
-            'fare_difference' => 'required|numeric',
-            'other_costs' => 'required|numeric|min:0',
-            'service_charge' => 'required|numeric|min:0',
+            'fare_difference' => 'nullable|numeric',
+            'other_costs' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee,company',
@@ -123,6 +123,9 @@ class ReIssueController extends Controller
 
             $reIssueData = array_merge($validated, [
                 'user_id' => auth()->id(),
+                'fare_difference' => (float) ($validated['fare_difference'] ?? 0),
+                'other_costs' => (float) ($validated['other_costs'] ?? 0),
+                'service_charge' => 0,
                 'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
                 'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
                 'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
@@ -162,7 +165,22 @@ class ReIssueController extends Controller
             $issuedTicket->logAction('re-issued', $oldData, $newData);
 
             if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
-                $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
+                if (($validated['payment_by'] ?? null) === 'customer') {
+                    $inputTotal = (float) $validated['total_customer_payment'];
+                    if ($inputTotal < $totalCost) {
+                        throw new \InvalidArgumentException('Total customer payment must be at least total cost.');
+                    }
+                    $serviceCharge = round($inputTotal - $totalCost, 6);
+                    $totalCustomerPayment = $inputTotal;
+                } else {
+                    $serviceCharge = 0;
+                    $totalCustomerPayment = $totalCost;
+                }
+
+                $reIssuedTicket->update([
+                    'service_charge' => $serviceCharge,
+                    'total_customer_payment' => round($totalCustomerPayment, 6),
+                ]);
 
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];

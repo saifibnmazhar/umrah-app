@@ -1417,9 +1417,7 @@ function renderReissueHistory() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
             const p = r.issued_ticket?.passenger || {};
-            const totalCost = (parseFloat(r.re_issue_charge) || 0)
-                + (parseFloat(r.fare_difference) || 0)
-                + (parseFloat(r.other_costs) || 0);
+            const totalCost = parseFloat(r.total_cost) || 0;
             const customerPayment = parseFloat(r.total_customer_payment) || 0;
             const profit = customerPayment - totalCost;
             tr.innerHTML = `
