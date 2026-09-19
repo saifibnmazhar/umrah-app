@@ -361,6 +361,12 @@ function handleFieldBdtInput(sarId, bdtId) {
     var mirror = document.getElementById(bdtId + 'Sar');
     if (mirror) mirror.value = sarVal;
 }
+function handleTotalPaymentSarInput() {
+    handleFieldSarInput('inputTotalPayment', 'inputTotalPaymentBdt');
+}
+function handleTotalPaymentBdtInput() {
+    handleFieldBdtInput('inputTotalPayment', 'inputTotalPaymentBdt');
+}
 function syncCurrencyFields() {
     var mode = getCurrencyMode();
     var isBdt = mode === 'BDT';
@@ -397,12 +403,6 @@ function syncReadonlyMirrors() {
         ['inputTotalPayment', 'inputTotalPaymentBdtSar'],
         ['inputRefundAdjustment', 'inputRefundAdjustmentBdtSar'],
     ];
-function handleTotalPaymentSarInput() {
-    handleFieldSarInput('inputTotalPayment', 'inputTotalPaymentBdt');
-}
-function handleTotalPaymentBdtInput() {
-    handleFieldBdtInput('inputTotalPayment', 'inputTotalPaymentBdt');
-}
     pairs.forEach(function(p) {
         var sarEl = document.getElementById(p[0]);
         var mirrorEl = document.getElementById(p[1]);

@@ -129,10 +129,12 @@ INVOICE: no change
 
 `wasRefunded` edge (ticket was `refunded` before re-issue):
 
-* Keep the existing trigger (invoice impact when `payment_by==customer OR wasRefunded`).
-* `payment_by==customer` → customer derivation above.
-* `wasRefunded && payment_by!=customer` → `service_charge = 0`, invoice impact `= total_cost`.
-  Payment option UI is already forced to `refund_adjustment` in this sub-case
+* `payment_by==customer` → customer derivation above (invoice `+= total_customer_payment`).
+* `wasRefunded && payment_by!=customer` → `service_charge = 0`, stored
+  `total_customer_payment = 0`, **no invoice impact** (revised per user 2026-09-19;
+  company bears the cost). The refund-adjustment Payment/Voucher +
+  `decreaseRefundPayable` flow still runs in this sub-case. Payment option UI is
+  already forced to `refund_adjustment` in this sub-case
   (`confirmation.blade.php:896-899`).
 
 New server validation (both create AND edit): reject `total_customer_payment < total_cost` with 422
@@ -169,8 +171,10 @@ Unchanged validations: `refund_adjustment_amount <= rawCost` and
            $serviceCharge = round($inputTotal - $totalCost, 6);
            $totalCustomerPayment = $inputTotal;
        } else {
+           // wasRefunded, non-customer: company bears the cost — no stored
+           // customer payment, no invoice impact (existing `> 0` guard skips it).
            $serviceCharge = 0;
-           $totalCustomerPayment = $totalCost; // wasRefunded non-customer
+           $totalCustomerPayment = 0;
        }
        $reIssuedTicket->update([
            'service_charge' => $serviceCharge,
@@ -435,8 +439,8 @@ Verify per commit checklist: `php artisan test`, `vendor/bin/pint`, `npm run bui
 * BDT mode: total-payment is the conversion source; service BDT mirror derives from SAR service.
   Never allow direct BDT-service input (avoid double-source).
 * Rounding: `round(...,6)` server-side, `Math.round(x*1e6)/1e6` in JS (existing convention).
-* `wasRefunded` non-customer invoice path preserved as `totalCost`; confirm with product if that
-  sub-case should also require a total-payment input.
+* `wasRefunded` non-customer: decided 2026-09-19 — stored `total_customer_payment = 0`,
+  no invoice impact; refund-adjustment Payment/Voucher + `refund_payable` consumption unchanged.
 
 ## 9. Implementation order
 

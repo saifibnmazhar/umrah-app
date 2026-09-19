@@ -303,8 +303,10 @@ class TicketRequestController extends Controller
                     $serviceCharge = round($inputTotal - $totalCost, 6);
                     $totalCustomerPayment = $inputTotal;
                 } else {
+                    // wasRefunded, non-customer: company bears the cost.
+                    // No stored customer payment, no invoice impact.
                     $serviceCharge = 0;
-                    $totalCustomerPayment = $totalCost;
+                    $totalCustomerPayment = 0;
                 }
 
                 $reIssuedTicket->update([

@@ -16,6 +16,7 @@ use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\PassengerStatus;
+use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\ReIssueRefundReason;
 use App\Models\Role;
@@ -277,6 +278,112 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
                 0.001
             );
         }
+    }
+
+    private function createBookingWithRefundedTicket(): array
+    {
+        [$booking, $passenger, $issuedTicket] = $this->createBookingWithIssuedTicket();
+
+        RefundedTicket::create([
+            'issued_ticket_id' => $issuedTicket->id,
+            'user_id' => $this->user->id,
+            'net_fare' => 1000,
+        ]);
+        $issuedTicket->update(['status' => 'refunded']);
+        $passenger->update(['refund_payable' => 500]);
+
+        return [$booking->fresh(), $passenger->fresh(), $issuedTicket->fresh()];
+    }
+
+    public function test_was_refunded_non_customer_refund_adjustment_has_no_customer_payment_or_invoice_impact(): void
+    {
+        [$booking, $passenger, $issuedTicket] = $this->createBookingWithRefundedTicket();
+        $invoiceBefore = (float) ($booking->invoice?->fresh()->total_amount ?? 0);
+
+        $response = $this->postJson(route('bookings.passengers.re-issue', [$booking->id, $passenger->id]), [
+            'issued_ticket_id' => $issuedTicket->id,
+            'reason_id' => $this->deps['reason']->id,
+            're_issue_charge' => 100,
+            'payment_by' => 'company',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 200,
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $reIssued = ReIssuedTicket::latest('id')->first();
+        // total_cost = 100 (charge) + 1000 (refunded fare) - 200 (adjustment)
+        $this->assertEqualsWithDelta(900, (float) $reIssued->total_cost, 0.001);
+        $this->assertEqualsWithDelta(0, (float) $reIssued->service_charge, 0.001);
+        $this->assertEqualsWithDelta(0, (float) $reIssued->total_customer_payment, 0.001);
+
+        if ($booking->invoice) {
+            $this->assertEqualsWithDelta(
+                $invoiceBefore,
+                (float) $booking->invoice->fresh()->total_amount,
+                0.001
+            );
+        }
+
+        // Refund-adjustment flow itself is preserved: balance consumed + trail rows.
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 300,
+        ]);
+        $this->assertDatabaseHas('payments', [
+            're_issued_ticket_id' => $reIssued->id,
+            'amount' => 200,
+        ]);
+    }
+
+    public function test_process_reissue_was_refunded_non_customer_has_no_customer_payment_or_invoice_impact(): void
+    {
+        [$booking, $passenger, $issuedTicket] = $this->createBookingWithRefundedTicket();
+        $invoiceBefore = (float) ($booking->invoice?->fresh()->total_amount ?? 0);
+
+        $ticketRequest = TicketRequest::create([
+            'user_id' => $this->user->id,
+            'request_branch_id' => $this->user->branch_id,
+            'booking_id' => $booking->id,
+            'passenger_id' => $passenger->id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'request_type' => 're_issue',
+            'status' => 'pending',
+            'requested_at' => now(),
+        ]);
+
+        $response = $this->putJson(route('ticket-requests.process-reissue', $ticketRequest->id), [
+            'reason_id' => $this->deps['reason']->id,
+            're_issue_charge' => 100,
+            'payment_by' => 'company',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 200,
+            'ticket_fare_id' => $this->deps['fare']->id,
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $reIssued = ReIssuedTicket::latest('id')->first();
+        $this->assertEqualsWithDelta(900, (float) $reIssued->total_cost, 0.001);
+        $this->assertEqualsWithDelta(0, (float) $reIssued->service_charge, 0.001);
+        $this->assertEqualsWithDelta(0, (float) $reIssued->total_customer_payment, 0.001);
+
+        if ($booking->invoice) {
+            $this->assertEqualsWithDelta(
+                $invoiceBefore,
+                (float) $booking->invoice->fresh()->total_amount,
+                0.001
+            );
+        }
+
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 300,
+        ]);
+        $this->assertDatabaseHas('payments', [
+            're_issued_ticket_id' => $reIssued->id,
+            'amount' => 200,
+        ]);
     }
 
     public function test_process_reissue_derives_service_charge_from_total_customer_payment(): void
