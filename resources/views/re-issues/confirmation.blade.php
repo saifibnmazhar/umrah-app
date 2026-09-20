@@ -217,28 +217,12 @@
                             <input type="number" id="inputReIssueChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
-                    <div>
-                        <div id="fieldFareDifferenceSar">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
-                            <input type="number" id="inputFareDifference" oninput="handleFieldSarInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                        </div>
-                        <div id="fieldFareDifferenceBdt" class="hidden">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
-                            <input type="number" id="inputFareDifferenceBdt" oninput="handleFieldBdtInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                            <input type="number" id="inputFareDifferenceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
-                        </div>
-                    </div>
-                    <div>
-                        <div id="fieldOtherCostsSar">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
-                            <input type="number" id="inputOtherCosts" oninput="handleFieldSarInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                        </div>
-                        <div id="fieldOtherCostsBdt" class="hidden">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
-                            <input type="number" id="inputOtherCostsBdt" oninput="handleFieldBdtInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                            <input type="number" id="inputOtherCostsBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
-                        </div>
-                    </div>
+                    <input type="hidden" id="inputFareDifference" value="0">
+                    <input type="hidden" id="inputFareDifferenceBdt" value="">
+                    <input type="hidden" id="inputFareDifferenceBdtSar" value="">
+                    <input type="hidden" id="inputOtherCosts" value="0">
+                    <input type="hidden" id="inputOtherCostsBdt" value="">
+                    <input type="hidden" id="inputOtherCostsBdtSar" value="">
                     <div id="fieldRefundedTicketFare" class="hidden">
                         <div id="fieldRefundedTicketFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
@@ -263,23 +247,23 @@
                     </div>
                     <div id="fieldServiceCharge">
                         <div id="fieldServiceChargeSar">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
-                            <input type="number" id="inputServiceCharge" oninput="handleFieldSarInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) — auto</label>
+                            <input type="number" id="inputServiceCharge" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldServiceChargeBdt" class="hidden">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                            <input type="number" id="inputServiceChargeBdt" oninput="handleFieldBdtInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) — auto</label>
+                            <input type="number" id="inputServiceChargeBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputServiceChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div id="fieldTotalPayment">
                         <div id="fieldTotalPaymentSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
-                            <input type="number" id="inputTotalPayment" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalPayment" oninput="handleTotalPaymentSarInput(); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                         <div id="fieldTotalPaymentBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
-                            <input type="number" id="inputTotalPaymentBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalPaymentBdt" oninput="handleTotalPaymentBdtInput(); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                             <input type="number" id="inputTotalPaymentBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
@@ -377,6 +361,12 @@ function handleFieldBdtInput(sarId, bdtId) {
     var mirror = document.getElementById(bdtId + 'Sar');
     if (mirror) mirror.value = sarVal;
 }
+function handleTotalPaymentSarInput() {
+    handleFieldSarInput('inputTotalPayment', 'inputTotalPaymentBdt');
+}
+function handleTotalPaymentBdtInput() {
+    handleFieldBdtInput('inputTotalPayment', 'inputTotalPaymentBdt');
+}
 function syncCurrencyFields() {
     var mode = getCurrencyMode();
     var isBdt = mode === 'BDT';
@@ -385,8 +375,6 @@ function syncCurrencyFields() {
         ['fieldNetFareSar', 'fieldNetFareBdt'],
         ['fieldOfferPriceSar', 'fieldOfferPriceBdt'],
         ['fieldReIssueChargeSar', 'fieldReIssueChargeBdt'],
-        ['fieldFareDifferenceSar', 'fieldFareDifferenceBdt'],
-        ['fieldOtherCostsSar', 'fieldOtherCostsBdt'],
         ['fieldRefundedTicketFareSar', 'fieldRefundedTicketFareBdt'],
         ['fieldTotalCostSar', 'fieldTotalCostBdt'],
         ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
@@ -409,8 +397,6 @@ function syncReadonlyMirrors() {
         ['inputNetFare', 'inputNetFareBdtSar'],
         ['inputOfferPrice', 'inputOfferPriceBdtSar'],
         ['inputReIssueCharge', 'inputReIssueChargeBdtSar'],
-        ['inputFareDifference', 'inputFareDifferenceBdtSar'],
-        ['inputOtherCosts', 'inputOtherCostsBdtSar'],
         ['inputRefundedTicketFare', 'inputRefundedTicketFareBdtSar'],
         ['inputServiceCharge', 'inputServiceChargeBdtSar'],
         ['inputTotalCost', 'inputTotalCostBdtSar'],
@@ -636,14 +622,13 @@ function syncFareFields() {
     }
     syncReadonlyMirrors();
     updateNetFareEditable();
-    recalcFareDifference();
+    updateTotals();
 }
 
 function recalcFareDifference() {
-    var newNetFare = parseFloat(document.getElementById('inputNetFare').value) || 0;
-    var diff = Math.round((newNetFare - originalTicketNetFare) * 1e6) / 1e6;
-    document.getElementById('inputFareDifference').value = diff || '';
-    handleFieldSarInput('inputFareDifference', 'inputFareDifferenceBdt');
+    // Deprecated: fare_difference is hidden and always 0 for new saves.
+    // Kept as a no-op so legacy oninput hooks (if any) don't break.
+    document.getElementById('inputFareDifference').value = 0;
     updateTotals();
 }
 
@@ -761,9 +746,16 @@ function processConfirmation(ticketRequestId) {
     const todayDD = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
     document.getElementById('inputTravelDate').value = todayDD;
     document.getElementById('inputReIssueCharge').value = '';
-    document.getElementById('inputFareDifference').value = '';
-    document.getElementById('inputOtherCosts').value = '';
+    document.getElementById('inputReIssueChargeBdt').value = '';
+    document.getElementById('inputReIssueChargeBdtSar').value = '';
+    document.getElementById('inputFareDifference').value = 0;
+    document.getElementById('inputOtherCosts').value = 0;
     document.getElementById('inputServiceCharge').value = '';
+    document.getElementById('inputServiceChargeBdt').value = '';
+    document.getElementById('inputServiceChargeBdtSar').value = '';
+    document.getElementById('inputTotalPayment').value = '';
+    document.getElementById('inputTotalPaymentBdt').value = '';
+    document.getElementById('inputTotalPaymentBdtSar').value = '';
     // document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('inputAgent').value = src.ticket_agent_id || '';
     // document.getElementById('bankMethodSection').classList.add('hidden');
@@ -839,9 +831,9 @@ function applyRouteType() {
 
 function updateTotals() {
     var reIssue = parseFloat(document.getElementById('inputReIssueCharge').value) || 0;
-    var difference = parseFloat(document.getElementById('inputFareDifference').value) || 0;
-    var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
-    var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
+    // fare_difference / other_costs are hidden and always 0 for new saves.
+    var difference = 0;
+    var other = 0;
 
     var rawCost = reIssue + difference + other + (parseFloat(currentRefundedNetFare) || 0);
 
@@ -867,16 +859,37 @@ function updateTotals() {
     var totalCost = rawCost - refundAdj;
     document.getElementById('inputTotalCost').value = totalCost;
 
-    var totalPayment = totalCost + service;
-    document.getElementById('inputTotalPayment').value = totalPayment;
+    // service_charge is derived: total_customer_payment (input) - total_cost.
+    var serviceEl = document.getElementById('inputServiceCharge');
+    var totalPaymentEl = document.getElementById('inputTotalPayment');
+    if (isCustomer) {
+        var inputTotal = parseFloat(totalPaymentEl.value) || 0;
+        var service = Math.round((inputTotal - totalCost) * 1e6) / 1e6;
+        serviceEl.value = service >= 0 ? service : 0;
+        if (inputTotal > 0 && inputTotal < totalCost) {
+            totalPaymentEl.setCustomValidity('Total customer payment must be at least total cost.');
+        } else {
+            totalPaymentEl.setCustomValidity('');
+        }
+    } else {
+        serviceEl.value = '';
+        totalPaymentEl.setCustomValidity('');
+    }
 
     var rate = window.__currencyRate || 0;
     if (rate > 0) {
         document.getElementById('inputTotalCostBdt').value = sarToBdt(totalCost);
-        document.getElementById('inputTotalPaymentBdt').value = sarToBdt(totalPayment);
+        var svc = parseFloat(serviceEl.value) || 0;
+        document.getElementById('inputServiceChargeBdt').value = svc ? sarToBdt(svc) : '';
+        // Only push SAR -> BDT for the total-payment input when the SAR field is
+        // the visible source; in BDT mode the typed BDT value is the source.
+        if (getCurrencyMode() !== 'BDT') {
+            var tot = parseFloat(totalPaymentEl.value) || 0;
+            document.getElementById('inputTotalPaymentBdt').value = tot ? sarToBdt(tot) : '';
+        }
     } else {
         document.getElementById('inputTotalCostBdt').value = '';
-        document.getElementById('inputTotalPaymentBdt').value = '';
+        document.getElementById('inputServiceChargeBdt').value = '';
     }
 
     syncReadonlyMirrors();
@@ -892,11 +905,13 @@ function handlePaymentByChange() {
         paymentOptionEl.disabled = true;
         document.getElementById('inputServiceCharge').value = '';
         document.getElementById('inputServiceChargeBdt').value = '';
-        document.getElementById('inputTotalPayment').value = 0;
+        document.getElementById('inputTotalPayment').value = '';
+        document.getElementById('inputTotalPaymentBdt').value = '';
     } else if (isRefunded && !isCustomer) {
         paymentOptionEl.value = 'refund_adjustment';
         paymentOptionEl.disabled = true;
-        document.getElementById('inputTotalPayment').value = 0;
+        document.getElementById('inputTotalPayment').value = '';
+        document.getElementById('inputTotalPaymentBdt').value = '';
     } else {
         paymentOptionEl.disabled = false;
     }
@@ -984,6 +999,14 @@ function confirmProcess() {
     if (!payload.ticket_fare_id) {
         showToast('Please select a ticket', 'error');
         return;
+    }
+
+    if (payload.payment_by === 'customer') {
+        var _totalCost = parseFloat(document.getElementById('inputTotalCost').value) || 0;
+        if (payload.total_customer_payment < _totalCost) {
+            showToast('Total customer payment must be at least total cost.', 'error');
+            return;
+        }
     }
 
     if ((payload.payment_by === 'customer' || currentTicketStatus === 'refunded') && payload.payment_option === 'refund_adjustment') {

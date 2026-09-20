@@ -2063,61 +2063,16 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
-                        <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
-                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
-                                       @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
-                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
-                                <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
-                                       @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
-                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                        </div>
-                        <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
-                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
-                                       @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
-                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
-                                <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
-                                       @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
-                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                        </div>
+                        <!-- fare_difference / other_costs are hidden: 0 for new saves, legacy values preserved on edit via form state -->
                         <div x-show="reIssueForm.payment_by === 'customer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
-                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
-                                       @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
-                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) — auto</label>
+                                <input type="number" x-model="reIssueForm.service_charge" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                                <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
-                                       @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
-                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) — auto</label>
+                                <input type="number" x-model="reIssueForm.service_charge_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.service_charge" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div x-show="reIssueForm.refunded_net_fare > 0">
@@ -2144,13 +2099,21 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
-                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR) *</label>
+                                <input type="number" x-model="reIssueForm.total_payment" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('total_payment'); reIssueForm.errors.total_payment = ''"
+                                       :class="reIssueForm.errors.total_payment ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.total_payment" x-text="reIssueForm.errors.total_payment" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
-                                <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
-                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT) *</label>
+                                <input type="number" x-model="reIssueForm.total_payment_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('total_payment'); reIssueForm.errors.total_payment = ''"
+                                       :class="reIssueForm.errors.total_payment ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.total_payment" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.total_payment" x-text="reIssueForm.errors.total_payment" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
                         <div class="md:col-span-2">
@@ -2334,14 +2297,14 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
-                                       @input="handleReIssueSarInput('net_fare'); recalcReIssueFareDifference()"
+                                       @input="handleReIssueSarInput('net_fare')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
-                                       @input="handleReIssueBdtInput('net_fare'); recalcReIssueFareDifference()"
+                                       @input="handleReIssueBdtInput('net_fare')"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2451,61 +2414,16 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
-                        <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
-                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
-                                       @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
-                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
-                                <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
-                                       @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
-                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                        </div>
-                        <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
-                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
-                                       @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
-                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
-                                <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
-                                       @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
-                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
-                            </div>
-                        </div>
+                        <!-- fare_difference / other_costs are hidden: 0 for new saves, legacy values preserved on edit via form state -->
                         <div x-show="reIssueForm.payment_by === 'customer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
-                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
-                                       @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
-                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) — auto</label>
+                                <input type="number" x-model="reIssueForm.service_charge" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                                <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
-                                       @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
-                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
-                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) — auto</label>
+                                <input type="number" x-model="reIssueForm.service_charge_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.service_charge" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div x-show="reIssueForm.refunded_net_fare > 0">
@@ -2532,13 +2450,21 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
-                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR) *</label>
+                                <input type="number" x-model="reIssueForm.total_payment" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('total_payment'); reIssueForm.errors.total_payment = ''"
+                                       :class="reIssueForm.errors.total_payment ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.total_payment" x-text="reIssueForm.errors.total_payment" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
-                                <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
-                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT) *</label>
+                                <input type="number" x-model="reIssueForm.total_payment_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('total_payment'); reIssueForm.errors.total_payment = ''"
+                                       :class="reIssueForm.errors.total_payment ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.total_payment" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.total_payment" x-text="reIssueForm.errors.total_payment" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
                         <div class="md:col-span-2">
@@ -3847,7 +3773,8 @@ function bookingIndexApp() {
                             };
                         }
                     });
-                    this.showToast('Visa submitted successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa submitted successfully for ${passengerName}`, 'info');
                     this.closeVisaSubmitModal();
                     this.loadPassengerData();
                 } else {
@@ -3932,7 +3859,8 @@ function bookingIndexApp() {
                     data.visa.final_cost = sub.final_cost;
                     data.visa.remarks = sub.remarks || '';
                     data.visa.status = 'issued';
-                    this.showToast('Visa issued successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa issued successfully for ${passengerName}`, 'success');
                     this.closeVisaIssueModal();
                     this.loadPassengerData();
                 } else {
@@ -4045,8 +3973,9 @@ function bookingIndexApp() {
                             data.visa.status = 'submitted';
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaResubmitModal();
-                    this.showToast('Visa re-submitted successfully');
+                    this.showToast(`Visa re-submitted successfully for ${passengerName}`, 'info');
                     this.loadPassengerData();
                 } else {
                     alert(res.message || 'Re-submit failed');
@@ -4097,8 +4026,9 @@ function bookingIndexApp() {
                             data.visa.agent_id = null;
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaCancelModal();
-                    this.showToast('Visa cancelled successfully');
+                    this.showToast(`Visa cancelled successfully for ${passengerName}`, 'error');
                     this.loadPassengerData();
                 } else {
                     alert(res.message || 'Cancellation failed');
@@ -4144,8 +4074,9 @@ function bookingIndexApp() {
                             data.visa.status = 'submitted';
                         }
                     });
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
                     this.closeVisaRevertModal();
-                    this.showToast('Visa reverted successfully');
+                    this.showToast(`Visa reverted successfully for ${passengerName}`, 'warning');
                 } else {
                     alert(res.message || 'Revert failed');
                 }
@@ -4235,7 +4166,8 @@ function bookingIndexApp() {
                     data.visa.additional_cost = sub.additional_cost;
                     data.visa.remarks = sub.remarks || '';
                     data.visa.final_cost = sub.final_cost;
-                    this.showToast('Visa updated successfully');
+                    const passengerName = this.passengersList[this.editingVisaIndex]?.first_name + ' ' + this.passengersList[this.editingVisaIndex]?.last_name;
+                    this.showToast(`Visa updated successfully for ${passengerName}`, 'primary');
                     this.closeVisaEditModal();
                     this.loadPassengerData();
                 } else {
@@ -4289,6 +4221,7 @@ function bookingIndexApp() {
             airline: '',
             travel_class: '',
             reason_id: '',
+            rowIndex: null,
             iata_refund: 0,
             iata_refund_bdt: 0,
             customer_refund: 0,
@@ -4384,6 +4317,7 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             reason_id: '',
+            rowIndex: null,
             re_issue_charge: 0,
             re_issue_charge_bdt: '',
             fare_difference: 0,
@@ -4418,6 +4352,7 @@ function bookingIndexApp() {
                 fare_difference: '',
                 other_costs: '',
                 service_charge: '',
+                total_payment: '',
                 refund_adjustment_amount: '',
                 inbound_date: '',
                 outbound_date: '',
@@ -4831,7 +4766,8 @@ function bookingIndexApp() {
                             issue_type: 'pending_outbound'
                         });
                     }
-                    this.showToast(data.message || 'Tickets confirmed successfully.');
+                    const passengerName = row.passenger_name || (this.passengersList[index]?.first_name + ' ' + this.passengersList[index]?.last_name);
+                    this.showToast(`Tickets confirmed successfully for ${passengerName}`, 'success');
                     this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to confirm tickets.', 'error');
@@ -4870,7 +4806,8 @@ function bookingIndexApp() {
                     if (row.pending_outbound_issued_ticket && data.updated_ids.includes(row.pending_outbound_issued_ticket.id)) {
                         row.pending_outbound_issued_ticket.status = 'pending';
                     }
-                    this.showToast(data.message || 'Tickets reverted successfully.');
+                    const passengerName = row.passenger_name || (this.passengersList[index]?.first_name + ' ' + this.passengersList[index]?.last_name);
+                    this.showToast(`Tickets reverted successfully for ${passengerName}`, 'warning');
                 } else {
                     this.showToast(data.message || 'Failed to revert tickets.', 'error');
                 }
@@ -5454,6 +5391,7 @@ function bookingIndexApp() {
             this.reIssueForm.fare_difference = re.fare_difference || 0;
             this.reIssueForm.other_costs = re.other_costs || 0;
             this.reIssueForm.service_charge = re.service_charge || 0;
+            this.reIssueForm.total_payment = re.total_customer_payment || 0;
             this.reIssueForm.remarks = re.remarks || '';
             this.reIssueForm.refunded_ticket = !!wasRefunded;
             this.reIssueForm.refunded_net_fare = !!wasRefunded ? (refundedNetFare || 0) : 0;
@@ -5468,6 +5406,7 @@ function bookingIndexApp() {
                 this.reIssueForm.fare_difference_bdt = Math.round((parseFloat(this.reIssueForm.fare_difference) || 0) * rate);
                 this.reIssueForm.other_costs_bdt = Math.round((parseFloat(this.reIssueForm.other_costs) || 0) * rate);
                 this.reIssueForm.service_charge_bdt = Math.round((parseFloat(this.reIssueForm.service_charge) || 0) * rate);
+                this.reIssueForm.total_payment_bdt = Math.round((parseFloat(this.reIssueForm.total_payment) || 0) * rate);
             }
 
             const consumedAdjustment = (re.payment_option === 'refund_adjustment') ? (parseFloat(re.refund_adjustment_amount) || 0) : 0;
@@ -5515,6 +5454,7 @@ function bookingIndexApp() {
             this.reIssueForm.isOutboundMode = isOutbound;
             this.reIssueForm.passenger_id = row.id;
             this.reIssueForm.booking_id = row.booking_id;
+            this.reIssueForm.rowIndex = rowIndex;
 
             this.reIssueForm.selling_fare = fareSrc.selling_fare || 0;
             this.reIssueForm.net_fare = fareSrc.net_fare || 0;
@@ -5713,6 +5653,7 @@ function bookingIndexApp() {
             f.airline = src.airline || '';
             f.travel_class = src.travel_class || '';
             f.reason_id = '';
+            f.rowIndex = rowIndex;
             f.iata_refund = 0;
             f.customer_refund = 0;
             f.service_charge = 0;
@@ -5830,7 +5771,9 @@ function bookingIndexApp() {
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    this.showToast('Ticket refunded successfully.');
+                    const passenger = this.passengersList[this.refundForm.rowIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket refunded successfully for ${passengerName}`, 'warning');
                     this.closeRefundModal();
                     this.loadPassengerData();
                 } else {
@@ -5873,6 +5816,8 @@ function bookingIndexApp() {
         recalcReIssueTotals() {
             const f = this.reIssueForm;
             const rate = window.__currencyRate || 0;
+            // fare_difference / other_costs: 0 for new saves; legacy values preserved
+            // in form state by populateReIssueEditForm for edits.
             const rawCost = (parseFloat(f.re_issue_charge) || 0)
                             + (parseFloat(f.fare_difference) || 0)
                             + (parseFloat(f.other_costs) || 0)
@@ -5896,17 +5841,34 @@ function bookingIndexApp() {
             const totalCost = rawCost - adj;
             f.total_cost = totalCost;
             f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
-            f.total_payment = totalCost + (parseFloat(f.service_charge) || 0);
-            f.total_payment_bdt = rate > 0 ? Math.round(f.total_payment * rate) : '';
+
+            // service_charge is derived: total_customer_payment (input) - total_cost.
+            if (f.payment_by === 'customer') {
+                const inputTotal = parseFloat(f.total_payment) || 0;
+                const svc = Math.round((inputTotal - totalCost) * 1e6) / 1e6;
+                f.service_charge = svc >= 0 ? svc : 0;
+                f.service_charge_bdt = rate > 0 && f.service_charge ? Math.round(f.service_charge * rate) : '';
+                if (inputTotal > 0 && inputTotal < totalCost) {
+                    f.errors.total_payment = 'Total customer payment must be at least total cost.';
+                } else {
+                    f.errors.total_payment = '';
+                }
+                // total_payment_bdt is the input in BDT mode; only push SAR -> BDT
+                // when the SAR field is the source to avoid clobbering typed BDT.
+                var currencyMode = (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? (Alpine.store('currency').mode || 'SAR') : 'SAR';
+                if (currencyMode !== 'BDT' && rate > 0) {
+                    f.total_payment_bdt = inputTotal ? Math.round(inputTotal * rate) : '';
+                }
+            } else {
+                f.service_charge = 0;
+                f.service_charge_bdt = '';
+                f.errors.total_payment = '';
+            }
         },
 
         recalcReIssueFareDifference() {
-            const origNet = parseFloat(this.reIssueOriginalFares?.net_fare) || 0;
-            const newNet = parseFloat(this.reIssueForm.net_fare) || 0;
-            const diff = Math.round((newNet - origNet) * 1e6) / 1e6;
-            this.reIssueForm.fare_difference = diff;
-            const rate = window.__currencyRate || 0;
-            this.reIssueForm.fare_difference_bdt = rate > 0 ? Math.round(diff * rate) : '';
+            // Deprecated: fare_difference is hidden (0 for new saves, legacy preserved
+            // for edits). Kept as a no-op recalc so any remaining hooks don't break.
             this.recalcReIssueTotals();
         },
 
@@ -5956,7 +5918,7 @@ function bookingIndexApp() {
             const form = this.reIssueForm;
             if (!form.issued_ticket_id) return;
 
-            form.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+            form.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', total_payment: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
 
             if (!form.ticket_option) form.errors.ticket_option = 'Please select a ticket';
             if (!form.pnr || !form.pnr.trim()) form.errors.pnr = 'PNR is required';
@@ -5966,7 +5928,7 @@ function bookingIndexApp() {
             if (!form.reason_id) form.errors.reason_id = 'Please select a reason';
             if (!form.payment_by) form.errors.payment_by = 'Please select a payment method';
             if (form.re_issue_charge === '' || form.re_issue_charge === null || form.re_issue_charge === undefined || parseFloat(form.re_issue_charge) < 0) form.errors.re_issue_charge = 'Re-issue charge is required';
-            if (form.fare_difference === '' || form.fare_difference === null || form.fare_difference === undefined) form.errors.fare_difference = 'Fare difference is required';
+            if (form.payment_by === 'customer' && (form.total_payment === '' || form.total_payment === null || form.total_payment === undefined || parseFloat(form.total_payment) < (parseFloat(form.total_cost) || 0))) form.errors.total_payment = 'Total customer payment must be at least total cost';
 
             const firstError = Object.values(form.errors).find(e => e);
             if (firstError) {
@@ -6031,7 +5993,9 @@ function bookingIndexApp() {
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    this.showToast('Ticket re-issued successfully.');
+                    const passenger = this.passengersList[this.reIssueForm.rowIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket re-issued successfully for ${passengerName}`, 'primary');
                     this.closeReIssueModal();
                     this.loadPassengerData();
                 } else {
@@ -6171,12 +6135,12 @@ function bookingIndexApp() {
 
             if (this.isEditingReIssued) {
                 const rf = this.reIssueForm;
-                rf.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
+                rf.errors = { pnr: '', ticket_number: '', date: '', ticket_agent_id: '', reason_id: '', payment_by: '', ticket_option: '', re_issue_charge: '', fare_difference: '', other_costs: '', service_charge: '', total_payment: '', refund_adjustment_amount: '', inbound_date: '', outbound_date: '' };
 
                 if (!rf.reason_id) rf.errors.reason_id = 'Please select a reason';
                 if (!rf.payment_by) rf.errors.payment_by = 'Please select a payment method';
                 if (rf.re_issue_charge === '' || rf.re_issue_charge === null || rf.re_issue_charge === undefined || parseFloat(rf.re_issue_charge) < 0) rf.errors.re_issue_charge = 'Re-issue charge is required';
-                if (rf.fare_difference === '' || rf.fare_difference === null || rf.fare_difference === undefined) rf.errors.fare_difference = 'Fare difference is required';
+                if (rf.payment_by === 'customer' && (rf.total_payment === '' || rf.total_payment === null || rf.total_payment === undefined || parseFloat(rf.total_payment) < (parseFloat(rf.total_cost) || 0))) rf.errors.total_payment = 'Total customer payment must be at least total cost';
 
                 const reIssueError = Object.values(rf.errors).find(e => e);
                 if (reIssueError) {
@@ -6267,7 +6231,9 @@ function bookingIndexApp() {
             .then(data => {
                 if (data.success) {
                     if (data.re_issued_ticket) {
-                        this.showToast('Ticket updated successfully.');
+                        const passenger = this.passengersList[this.editingPassengerIndex];
+                        const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                        this.showToast(`Ticket updated successfully for ${passengerName}`, 'info');
                         this.closeTicketFareModal();
                         this.loadPassengerData();
                         return;
@@ -6420,7 +6386,9 @@ function bookingIndexApp() {
                         row.all_issued_tickets = (row.all_issued_tickets || []).filter(t => !(t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status)));
                         row.pending_outbound_issued_ticket = null;
                     }
-                    this.showToast(data.message || 'Ticket saved successfully.');
+                    const passenger = this.passengersList[this.editingPassengerIndex];
+                    const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
+                    this.showToast(`Ticket saved successfully for ${passengerName}`, 'info');
                     this.closeTicketFareModal();
                     this.loadPassengerData();
                 } else {
@@ -6657,7 +6625,7 @@ function bookingIndexApp() {
                     this.reIssueForm.net_fare_bdt = this.reIssueOriginalFares.net_fare_bdt || '';
                     this.reIssueForm.offer_price_bdt = this.reIssueOriginalFares.offer_price_bdt || '';
                 }
-                this.recalcReIssueFareDifference();
+                this.recalcReIssueTotals();
                 return;
             }
             const fare = this.ticketFaresList.find(f => f.id == val);
@@ -6696,7 +6664,7 @@ function bookingIndexApp() {
                         this.reIssueForm.baggage_outbound = outboundAllowance.allowance;
                     }
                 }
-                this.recalcReIssueFareDifference();
+                this.recalcReIssueTotals();
             }
         },
 
@@ -6847,7 +6815,7 @@ function bookingIndexApp() {
                         this.ticketFareForm.ticket_option = fare.id;
                         this.handleTicketOptionChange();
                     }
-                    this.showToast('Ticket fare created successfully.');
+                    this.showToast('Ticket fare created successfully.', 'secondary');
                     this.newTicketFareForm.visible = false;
                 } else {
                     this.showToast(data.message || 'Failed to create ticket fare.', 'error');
@@ -7203,7 +7171,7 @@ function bookingIndexApp() {
                 this.payRefundLoading = false;
             }
         },
-        showToast(message) {
+        showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');
                 el.id = 'toastContainer';
@@ -7212,8 +7180,17 @@ function bookingIndexApp() {
                 return el;
             })();
 
+            const colorMap = {
+                'info': 'bg-sky-600',
+                'success': 'bg-emerald-600',
+                'error': 'bg-red-600',
+                'warning': 'bg-amber-600',
+                'primary': 'bg-indigo-600',
+                'secondary': 'bg-violet-600'
+            };
+
             const toast = document.createElement('div');
-            toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white font-medium bg-slate-700 translate-x-full opacity-0';
+            toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white font-medium ' + (colorMap[type] || colorMap.info) + ' translate-x-full opacity-0';
             toast.textContent = message;
             container.appendChild(toast);
 

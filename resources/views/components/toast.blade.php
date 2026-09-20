@@ -14,10 +14,12 @@ x-transition:leave-start="translate-x-0 opacity-100"
 x-transition:leave-end="translate-x-full opacity-0"
 class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white font-medium"
 :class="{
-    'bg-slate-700': type === 'info',
+    'bg-sky-600': type === 'info',
     'bg-emerald-600': type === 'success', 
-    'bg-red-500': type === 'error',
-    'bg-amber-500': type === 'warning'
+    'bg-red-600': type === 'error',
+    'bg-amber-600': type === 'warning',
+    'bg-indigo-600': type === 'primary',
+    'bg-violet-600': type === 'secondary'
 }">
     <span x-text="message"></span>
 </div>

@@ -58,19 +58,24 @@ class BookingReIssueBdtResetTest extends TestCase
             'openReIssueModal must reset re_issue_charge_bdt'
         );
         $this->assertStringContainsString(
-            "this.reIssueForm.fare_difference_bdt = '';",
-            $html,
-            'openReIssueModal must reset fare_difference_bdt'
-        );
-        $this->assertStringContainsString(
-            "this.reIssueForm.other_costs_bdt = '';",
-            $html,
-            'openReIssueModal must reset other_costs_bdt'
-        );
-        $this->assertStringContainsString(
             "this.reIssueForm.service_charge_bdt = '';",
             $html,
             'openReIssueModal must reset service_charge_bdt'
+        );
+        $this->assertStringContainsString(
+            "this.reIssueForm.total_payment_bdt = '';",
+            $html,
+            'openReIssueModal must reset total_payment_bdt'
+        );
+        $this->assertStringNotContainsString(
+            'x-model="reIssueForm.fare_difference"',
+            $html,
+            'fare_difference must not have a visible form input'
+        );
+        $this->assertStringNotContainsString(
+            'x-model="reIssueForm.other_costs"',
+            $html,
+            'other_costs must not have a visible form input'
         );
     }
 }
