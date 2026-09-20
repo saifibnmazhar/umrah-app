@@ -209,6 +209,7 @@ class BookingCancellationPassengerStatusTest extends TestCase
             $table->decimal('service_charge_deduction', 14, 6)->nullable();
             $table->decimal('refund_amount', 14, 6)->default(0);
             $table->decimal('total_passenger_refundable', 14, 6)->default(0);
+            $table->json('passenger_statuses_snapshot')->nullable();
             $table->foreignId('cancellation_branch_id')->constrained('branches')->restrictOnDelete();
             $table->enum('status', ['cancellation processing', 'cancelled'])->default('cancellation processing');
             $table->foreignId('refund_payment_id')->nullable()->constrained('payments')->nullOnDelete();
@@ -353,7 +354,7 @@ class BookingCancellationPassengerStatusTest extends TestCase
         }
     }
 
-    public function test_revert_restores_from_update_logs(): void
+    public function test_revert_restores_exact_pre_initiate_statuses(): void
     {
         ['booking' => $booking, 'branch' => $branch, 'pNull' => $pNull, 'pHold' => $pHold, 'pCancel' => $pCancel, 'pDelivered' => $pDelivered, 'deliveredStatus' => $deliveredStatus] = $this->createBookingWithMixedStatusPassengers();
 
@@ -370,6 +371,23 @@ class BookingCancellationPassengerStatusTest extends TestCase
         $this->assertNotNull($pCancel->fresh()->passenger_status_id);
         $this->assertEquals('Cancel', $pCancel->fresh()->status->name);
         $this->assertEquals($deliveredStatus->id, $pDelivered->fresh()->passenger_status_id);
+    }
+
+    public function test_revert_preserves_cancel_passenger_that_was_cancel_before_initiate(): void
+    {
+        ['booking' => $booking, 'branch' => $branch, 'pCancel' => $pCancel, 'cancelStatus' => $cancelStatus] = $this->createBookingWithMixedStatusPassengers();
+
+        $service = $this->serviceWithCost(0);
+        $cancelledBooking = $service->initiateCancellation($booking, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        $this->assertDatabaseHas('passengers', ['id' => $pCancel->id, 'passenger_status_id' => $cancelStatus->id]);
+
+        $service->revertCancellation($cancelledBooking);
+
+        $this->assertEquals('Cancel', $pCancel->fresh()->status->name);
+        $this->assertFalse($pCancel->fresh()->is_cancelled);
     }
 
     public function test_initiate_does_not_touch_is_cancelled(): void

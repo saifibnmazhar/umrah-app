@@ -7,7 +7,6 @@ use App\Enums\InvoiceStatus;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
 use App\Models\PassengerStatus;
-use App\Models\PassengerUpdateLog;
 use App\Models\Payment;
 use App\Models\TransactionType;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +57,12 @@ class CancellationService
             $holdId = PassengerStatus::firstOrCreate(['name' => 'Hold'])->id;
             $cancelId = PassengerStatus::where('name', 'Cancel')->value('id');
 
+            $snapshot = $booking->passengers()
+                ->pluck('passenger_status_id', 'id')
+                ->map(fn ($statusId) => $statusId)
+                ->toArray();
+            $cancelledBooking->update(['passenger_statuses_snapshot' => $snapshot]);
+
             $booking->passengers()
                 ->where(fn ($q) => $q->whereNull('passenger_status_id')
                     ->orWhereNotIn('passenger_status_id', [$holdId, $cancelId]))
@@ -77,22 +82,11 @@ class CancellationService
             $booking = $cancelledBooking->booking;
             $invoice = $cancelledBooking->invoice;
 
-            $holdId = PassengerStatus::where('name', 'Hold')->value('id');
-
-            $passengerIds = $booking->passengers()->pluck('id');
-            $logs = PassengerUpdateLog::whereIn('passenger_id', $passengerIds)
-                ->where('action', 'updated')
-                ->where('new_values->passenger_status_id', $holdId)
-                ->orderByDesc('id')
-                ->get()
-                ->keyBy('passenger_id');
-
+            $snapshot = $cancelledBooking->passenger_statuses_snapshot ?? [];
             foreach ($booking->passengers as $passenger) {
-                if (! isset($logs[$passenger->id])) {
-                    continue;
+                if (array_key_exists((string) $passenger->id, $snapshot)) {
+                    $passenger->update(['passenger_status_id' => $snapshot[(string) $passenger->id]]);
                 }
-                $oldStatusId = $logs[$passenger->id]->old_values['passenger_status_id'] ?? null;
-                $passenger->update(['passenger_status_id' => $oldStatusId]);
             }
 
             $booking->passengers()
