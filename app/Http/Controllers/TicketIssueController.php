@@ -199,8 +199,11 @@ class TicketIssueController extends Controller
             'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
             'reason_id' => 'nullable|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'nullable|numeric|min:0',
+            // Legacy fields: hidden in forms for new saves (default 0);
+            // preserved from the existing record on edit via fallback below.
             'fare_difference' => 'nullable|numeric',
             'other_costs' => 'nullable|numeric|min:0',
+            // Accepted but ignored when payment_by=customer (derived from total_customer_payment).
             'service_charge' => 'nullable|numeric|min:0',
             'total_customer_payment' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string',
@@ -263,8 +266,13 @@ class TicketIssueController extends Controller
                 ]);
 
                 $reIssueCharge = $validated['re_issue_charge'] ?? (float) $latestRe->re_issue_charge;
-                $fareDifference = $validated['fare_difference'] ?? (float) $latestRe->fare_difference;
-                $otherCosts = $validated['other_costs'] ?? (float) $latestRe->other_costs;
+                // Preserve legacy values when the keys are absent (new forms send 0 / omit them).
+                $fareDifference = array_key_exists('fare_difference', $validated)
+                    ? (float) $validated['fare_difference']
+                    : (float) $latestRe->fare_difference;
+                $otherCosts = array_key_exists('other_costs', $validated)
+                    ? (float) $validated['other_costs']
+                    : (float) $latestRe->other_costs;
                 $refundAdjustment = $validated['refund_adjustment_amount'] ?? (float) $latestRe->refund_adjustment_amount;
                 $refundedNetFare = $issuedTicket->latestRefundedTicket
                     ? (float) ($issuedTicket->latestRefundedTicket->net_fare ?? $issuedTicket->net_fare ?? 0)
@@ -272,6 +280,20 @@ class TicketIssueController extends Controller
                 $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts + $refundedNetFare - (float) $refundAdjustment;
 
                 $effectivePaymentBy = array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $oldPaymentBy;
+
+                // Derive service_charge from total_customer_payment for customer payments.
+                $derivedServiceCharge = null;
+                if ($effectivePaymentBy === 'customer') {
+                    $inputTotal = array_key_exists('total_customer_payment', $validated)
+                        ? (float) $validated['total_customer_payment']
+                        : (float) $latestRe->total_customer_payment;
+                    if ($inputTotal < $totalCost) {
+                        DB::rollBack();
+
+                        return response()->json(['message' => 'Total customer payment must be at least total cost.'], 422);
+                    }
+                    $derivedServiceCharge = round($inputTotal - $totalCost, 6);
+                }
 
                 if ($effectivePaymentBy === 'customer') {
                     $resolvedPaymentOption = array_key_exists('payment_option', $validated)
@@ -290,7 +312,7 @@ class TicketIssueController extends Controller
                     're_issue_charge' => $reIssueCharge,
                     'fare_difference' => $fareDifference,
                     'other_costs' => $otherCosts,
-                    'service_charge' => array_key_exists('service_charge', $validated) ? (float) $validated['service_charge'] : $latestRe->service_charge,
+                    'service_charge' => $derivedServiceCharge ?? (array_key_exists('service_charge', $validated) ? (float) $validated['service_charge'] : $latestRe->service_charge),
                     'total_customer_payment' => ($validated['payment_by'] ?? $latestRe->payment_by) === 'customer'
                         ? (array_key_exists('total_customer_payment', $validated) ? (float) $validated['total_customer_payment'] : $latestRe->total_customer_payment)
                         : 0,

@@ -654,6 +654,7 @@ function pendingOutboundReport(options = {}) {
                 invoice: row.invoice || '',
                 booking_id: row.booking_id,
                 passenger_id: row.passenger_id,
+                passenger_name: row.passenger_name || '',
                 issued_ticket_id: row.id,
                 ticket_type: '',
                 ticket_option: '',
@@ -700,6 +701,7 @@ function pendingOutboundReport(options = {}) {
                 invoice: row.invoice || '',
                 booking_id: row.booking_id,
                 passenger_id: row.passenger_id,
+                passenger_name: row.passenger_name || '',
                 issued_ticket_id: row.id,
                 ticket_type: '',
                 ticket_option: '',
@@ -813,7 +815,8 @@ function pendingOutboundReport(options = {}) {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    this.showToast(data.message || (this.isEdit ? 'Ticket updated successfully.' : 'Ticket issued successfully.'));
+                    const passengerName = this.form.passenger_name || '';
+                    this.showToast(this.isEdit ? `Ticket updated successfully for ${passengerName}.` : `Ticket issued successfully for ${passengerName}.`, 'success');
                     this.closeModal();
                     this.loadData();
                 } else {
@@ -827,10 +830,18 @@ function pendingOutboundReport(options = {}) {
             }
         },
 
-        showToast(message, type) {
+        showToast(message, type = 'info') {
+            const colorMap = {
+                'info': '#0284c7',
+                'success': '#059669',
+                'error': '#dc2626',
+                'warning': '#d97706',
+                'primary': '#4f46e5',
+                'secondary': '#7c3aed'
+            };
             const toast = document.createElement('div');
             toast.className = 'fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white text-sm font-medium shadow-lg z-50 transition-all duration-300';
-            toast.style.backgroundColor = type === 'error' ? '#ef4444' : '#22c55e';
+            toast.style.backgroundColor = colorMap[type] || colorMap.info;
             toast.textContent = message;
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);

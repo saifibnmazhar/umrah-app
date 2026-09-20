@@ -670,7 +670,10 @@ function confirmProcess() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showToast('Additional ticket issued successfully!', 'success');
+            const req = allRequests.find(x => x.id === currentTicketRequestId);
+            const p = req?.passenger || {};
+            const passengerName = (p.first_name || '') + ' ' + (p.last_name || '');
+            showToast(`Additional ticket issued successfully for ${passengerName}!`, 'success');
             closeProcessConfirmationModal();
             loadConfirmation();
         } else {
