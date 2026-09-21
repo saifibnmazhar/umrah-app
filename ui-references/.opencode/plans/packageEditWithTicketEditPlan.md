@@ -1,14 +1,16 @@
-# Open Edit Access for In-Use Packages & Ticket Fares
+# Open Edit Access for In-Use Packages & Ticket Fares + Fare Snapshot System
 
 ## Goal
 
-Allow editing of packages and ticket fares that are already in use by existing bookings, while preserving historical passenger `package_value` and profit calculations at their original booking-time prices.
+Allow editing of packages and ticket fares already in use by existing bookings. Preserve historical fare values via snapshots on `issued_tickets.selling_fare`/`offer_price` for profit calculations. Control fare field visibility across all forms.
 
 ## Constraints
 
-1. **Package edit**: Only `service_charge` is editable on locked packages. No fare reference changes (`ticket_fare_id`, `ticket_fare_inbound_id`, `ticket_fare_outbound_id`), no `is_double_ticket` toggle.
-2. **Ticket fare edit**: Only `selling_fare` and `offer_price` are editable when the fare is used by packages. Other fields (airline, route, class, net_fare, child/infant percentages) remain locked.
-3. **Historic profit**: Passenger profit must always be calculated using the prices that were in effect at booking/issuance time, not current prices.
+1. **Package edit**: Only `service_charge` is editable on locked packages. No fare reference changes, no `is_double_ticket` toggle.
+2. **Ticket fare edit**: When in use by packages, only `selling_fare`, `offer_price`, `effective_from`, `effective_to` are editable. Other fields remain locked.
+3. **Historic profit**: Uses snapshotted `selling_fare`/`offer_price` from `issued_tickets` (not live TicketFare values).
+4. **`ticket_fares.net_fare`**: Always 0 — hidden from create/edit forms. Net fare entered by agents at issuance time.
+5. **`issued_tickets.selling_fare`/`offer_price`**: Historical snapshot taken at passenger creation, adjusted for passenger_type.
 
 ---
 
@@ -16,7 +18,7 @@ Allow editing of packages and ticket fares that are already in use by existing b
 
 ### 1a. `app/Http/Controllers/PackageController.php`
 
-**`edit()` (line 211-213):** Remove the `isLocked()` redirect. Allow editing even when package has bookings.
+**`edit()` (line 211-213):** Remove the `isLocked()` redirect.
 
 ```php
 // REMOVE:
@@ -57,237 +59,161 @@ if (!$isLocked) {
 
 ### 1b. `app/Http/Controllers/TicketFareController.php`
 
-**`update()` (line 182-192):** Remove the `$hasPackages` early-return. Add conditional validation — when in use, only allow `selling_fare` and `offer_price`:
+**`update()` (line 182-192):** Remove the `$hasPackages` early-return. Conditional validation:
 
 ```php
 $hasPackages = $ticketFare->packages()->exists();
-
-// REMOVE the early return:
-// if ($hasPackages) {
-//     $validated = $request->validate([...]);
-//     $ticketFare->update([...]);
-//     return redirect(...);
-// }
 
 if ($hasPackages) {
     $validated = $request->validate([
         'selling_fare' => 'required|numeric|min:0',
         'offer_price' => 'nullable|numeric|min:0',
+        'effective_from' => 'required|date',
+        'effective_to' => 'required|date|after_or_equal:effective_from',
     ]);
     $ticketFare->update($validated);
     return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
 }
 
-// Full validation for non-locked fares (existing logic)...
+// Full validation for non-locked fares...
+```
+
+**`store()` (line 65-150):** Remove `net_fare` from validation. Force to 0 in create:
+
+```php
+'net_fare' => 0,
 ```
 
 ### 1c. `resources/views/ticket-fares/edit.blade.php`
 
-- Remove `$locked` variable (line 17) and the `@php $locked = $hasPackages; @endphp` block.
-- Remove all `{{ $locked ? ... : '' }}` conditional disabling throughout the form.
-- Add a new `@php $inUse = $hasPackages; @endphp` variable.
-- When `$inUse` is true, make all fields except `selling_fare` and `offer_price` display as readonly/disabled.
-- Update the submit button text: `{{ $inUse ? 'Update Fare Price' : 'Update Ticket Fare' }}`.
+- Replace `$locked` with `$inUse` for in-use fares
+- When `$inUse`: all fields except `selling_fare`, `offer_price`, `effective_from`, `effective_to` are readonly/disabled
+- **Hide `net_fare` field entirely** (see Part 7c)
 
 ---
 
-## Part 2: Snapshot Historic Prices for Profit Calculation
+## Part 2: Fare Snapshot System
 
-### Problem
+### Design
 
-`ProfitCalculationService` currently reads **live** prices from `TicketFare` and `Package`:
+The existing `issued_tickets.selling_fare` and `issued_tickets.offer_price` columns become the **historical snapshot** of fare values at passenger creation time. The child/infant passenger_type percentage is applied at snapshot time, so the stored values are the final adjusted amounts.
 
-| Method | Reads from | Used in |
-|--------|-----------|---------|
-| `getPackageTicketSellingFare()` (line 746) | `package->ticketFare->selling_fare` / `offer_price` | `calculateTicketProfit()` |
-| `calculateServiceCharge()` (line 655) | `package->service_charge` | Profit breakdown |
-| `fareSellingPrice()` (line 762) | `fare->selling_fare`, `fare->offer_price` | `calculateAdditionalTicketProfit()` |
+- **Source of snapshot**: `ticket_fares.selling_fare`/`offer_price` via the passenger's `ticket_fare_id`, `ticket_fare_inbound_id`, or `ticket_fare_outbound_id`
+- **Snapshot timing**: Passenger creation, package change, passenger_type change
+- **Profit calculation reads**: `issued_tickets.selling_fare`/`offer_price` (NOT `ticket_fares`)
+- **`ticket_fares.selling_fare`/`offer_price`**: Always editable by admins (rate card)
 
-If these live values change, profit would recalculate using new prices for old bookings.
-
-### Solution: Snapshot columns on Passenger and IssuedTicket
-
-### 2a. Migration: `add_historical_price_snapshots_to_passengers_table`
+### 2a. Migration: Add `booking_service_charge` to passengers
 
 ```php
 Schema::table('passengers', function (Blueprint $table) {
-    $table->decimal('fare_selling_fare', 14, 6)->nullable()->after('ticket_fare_outbound_id');
-    $table->decimal('booked_service_charge', 14, 6)->nullable()->after('fare_selling_fare');
+    $table->decimal('booking_service_charge', 14, 6)->default(0)->after('service_charge');
 });
 ```
 
-- `fare_selling_fare`: Effective fare at booking time (with child/infant multiplier applied). Computed from `package->ticketFare->selling_fare` × passenger type percentage.
-- `booked_service_charge`: Package's `service_charge` at booking time.
+Add to `Passenger::$fillable`.
 
-### 2b. Migration: `add_fare_selling_fare_to_issued_tickets_table`
+### 2b. Backfill Migration
+
+**`passengers.booking_service_charge`:**
 
 ```php
-Schema::table('issued_tickets', function (Blueprint $table) {
-    $table->decimal('fare_selling_fare', 14, 6)->nullable()->after('offer_price');
-});
+DB::table('passengers')
+    ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
+    ->join('packages', 'bookings.package_id', '=', 'packages.id')
+    ->where('passengers.is_cancelled', false)
+    ->update(['passengers.booking_service_charge' => DB::raw('packages.service_charge')]);
 ```
 
-- `fare_selling_fare`: Fare's selling price at issuance time (with child/infant multiplier applied). Used for additional ticket profit.
+**`issued_tickets.selling_fare`/`offer_price`** — three cases:
 
-### 2c. Backfill Migration
-
-Populate snapshots for all existing passengers and issued tickets:
-
+**Case A — Single-ticket, no pending outbound:**
 ```php
-// Passengers: compute from current fare references
-Passenger::with('booking.package', 'ticketFare', 'ticketFareInbound', 'ticketFareOutbound')
-    ->chunkById(100, function ($passengers) {
-        foreach ($passengers as $passenger) {
-            $fareSellingFare = computeEffectiveFare($passenger);
-            $bookedServiceCharge = $passenger->booking->package->service_charge ?? null;
-            $passenger->updateQuietly([
-                'fare_selling_fare' => $fareSellingFare,
-                'booked_service_charge' => $bookedServiceCharge,
-            ]);
-        }
-    });
+$passengers = Passenger::whereNotNull('ticket_fare_id')
+    ->whereNull('ticket_fare_inbound_id')
+    ->whereNull('ticket_fare_outbound_id')
+    ->whereDoesntHave('issuedTickets', fn($q) => $q->where('issue_type', 'pending_outbound'))
+    ->with('ticketFare', 'issuedTickets')
+    ->cursor();
 
-// IssuedTickets: compute from fare reference
-DB::statement('UPDATE issued_tickets it
-    JOIN passengers p ON p.id = it.passenger_id
-    JOIN ticket_fares tf ON tf.id = it.ticket_fare_id
-    SET it.fare_selling_fare = CASE
-        WHEN tf.ticket_type = "offer" THEN COALESCE(tf.offer_price, tf.selling_fare)
-        ELSE tf.selling_fare
-    END * CASE
-        WHEN p.passenger_type = "child" THEN tf.child_fare_percentage / 100
-        WHEN p.passenger_type = "infant" THEN tf.infant_fare_percentage / 100
-        ELSE 1
-    END
-    WHERE it.fare_selling_fare IS NULL');
-```
-
-### 2d. `app/Services/BookingService.php` — `recalculateBookingTotal()`
-
-After computing `package_value`, also set snapshot values (only when null to preserve on subsequent recalculations):
-
-```php
-public function recalculateBookingTotal(Booking $booking): float
-{
-    foreach ($booking->passengers as $passenger) {
-        $passenger->package_value = $this->calculatePackageValue($passenger);
-
-        // Set historical snapshots only if not already set
-        if (is_null($passenger->fare_selling_fare)) {
-            $passenger->fare_selling_fare = $this->computeEffectiveFare($passenger);
-        }
-        if (is_null($passenger->booked_service_charge)) {
-            $passenger->booked_service_charge = $passenger->booking->package->service_charge ?? 0;
-        }
-
-        $passenger->save();
-    }
-    // ... rest of method unchanged ...
+foreach ($passengers as $p) {
+    $fare = $p->ticketFare;
+    if (!$fare) continue;
+    $sellingFare = (float) ($fare->selling_fare ?? 0);
+    $offerPrice = ($fare->ticket_type === 'offer') ? (float) ($fare->offer_price ?? 0) : 0;
+    [$sellingFare, $offerPrice] = $this->adjustFaresForType($sellingFare, $offerPrice, $p, $fare);
+    $p->issuedTickets()->whereNull('issue_type')
+        ->orWhere('issue_type', 'regular')
+        ->update(['selling_fare' => $sellingFare, 'offer_price' => $offerPrice]);
 }
 ```
 
-Extract fare computation into a new `computeEffectiveFare(Passenger)` method:
-
+**Case B — Single-ticket, has pending outbound:**
 ```php
-private function computeEffectiveFare(Passenger $passenger): float
-{
-    $package = $passenger->booking->package;
-    if (!$package) return 0.0;
+// Same as A, plus zero out pending_outbound ticket
+$pendingOutbound = $p->issuedTickets()->where('issue_type', 'pending_outbound')->first();
+if ($pendingOutbound) {
+    $pendingOutbound->update(['selling_fare' => 0, 'offer_price' => 0]);
+}
+```
 
-    $passengerType = strtolower($passenger->passenger_type instanceof \BackedEnum
-        ? $passenger->passenger_type->value
-        : $passenger->passenger_type);
+**Case C — Double-ticket:**
+```php
+$passengers = Passenger::whereNull('ticket_fare_id')
+    ->whereNotNull('ticket_fare_inbound_id')
+    ->whereNotNull('ticket_fare_outbound_id')
+    ->with('ticketFareInbound', 'ticketFareOutbound', 'issuedTickets')
+    ->cursor();
 
-    if ($package->is_double_ticket) {
-        $inboundFare = $package->ticketFareInbound;
-        $outboundFare = $package->ticketFareOutbound;
-        $inboundAmount = $inboundFare ? (float) $inboundFare->selling_fare : 0;
-        $outboundAmount = $outboundFare ? (float) $outboundFare->selling_fare : 0;
-        $baseFare = $inboundAmount + $outboundAmount;
+foreach ($passengers as $p) {
+    $inboundFare = $p->ticketFareInbound;
+    $outboundFare = $p->ticketFareOutbound;
+
+    // Backfill NULL/regular ticket from inbound fare
+    $inSelling = $inboundFare ? (float) ($inboundFare->selling_fare ?? 0) : 0;
+    $inOffer = ($inboundFare && $inboundFare->ticket_type === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0;
+    [$inSelling, $inOffer] = $this->adjustFaresForType($inSelling, $inOffer, $p, $inboundFare);
+    $p->issuedTickets()->whereNull('issue_type')
+        ->orWhere('issue_type', 'regular')
+        ->update(['selling_fare' => $inSelling, 'offer_price' => $inOffer]);
+
+    // Create or backfill outbound ticket from outbound fare
+    $outSelling = $outboundFare ? (float) ($outboundFare->selling_fare ?? 0) : 0;
+    $outOffer = ($outboundFare && $outboundFare->ticket_type === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0;
+    [$outSelling, $outOffer] = $this->adjustFaresForType($outSelling, $outOffer, $p, $outboundFare);
+
+    $outboundTicket = $p->issuedTickets()->where('issue_type', 'pending_outbound')->first();
+    if ($outboundTicket) {
+        $outboundTicket->update(['selling_fare' => $outSelling, 'offer_price' => $outOffer]);
     } else {
-        $ticketFare = $passenger->ticketFare;
-        if (!$ticketFare) return 0.0;
-        $baseFare = $ticketFare->ticket_type === TicketType::OFFER
-            ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
-            : (float) $ticketFare->selling_fare;
+        IssuedTicket::create([
+            'passenger_id' => $p->id,
+            'booking_id' => $p->booking_id,
+            'user_id' => 1,
+            'status' => 'pending',
+            'issue_type' => 'pending_outbound',
+            'selling_fare' => $outSelling,
+            'offer_price' => $outOffer,
+        ]);
     }
+}
+```
 
-    return match ($passengerType) {
-        'child' => $baseFare * ((float) ($inboundFare->child_fare_percentage ?? 70)) / 100,
-        'infant' => $baseFare * ((float) ($inboundFare->infant_fare_percentage ?? 30)) / 100,
-        default => $baseFare,
+**Helper:**
+```php
+private function adjustFaresForType(float $sellingFare, float $offerPrice, Passenger $p, ?TicketFare $fare): array
+{
+    if (!$fare) return [$sellingFare, $offerPrice];
+    $pct = match($p->passenger_type) {
+        'child' => (float) ($fare->child_fare_percentage ?? 70),
+        'infant' => (float) ($fare->infant_fare_percentage ?? 30),
+        default => 100,
     };
-}
-```
-
-### 2e. `app/Http/Controllers/TicketIssueController.php` — `issue()`
-
-When issuing a ticket, also set `$ticket->fare_selling_fare`:
-
-```php
-// After issuing the ticket:
-$fareSellingFare = app(BookingService::class)->computeEffectiveFare($passenger);
-$ticket->update(['fare_selling_fare' => $fareSellingFare]);
-```
-
-### 2f. `app/Services/ProfitCalculationService.php` — 3 changes
-
-**`getPackageTicketSellingFare()` (line 746):** Use snapshot if available:
-
-```php
-private function getPackageTicketSellingFare(Passenger $passenger): float
-{
-    // Use historical snapshot if available
-    if (!is_null($passenger->fare_selling_fare)) {
-        return (float) $passenger->fare_selling_fare;
+    if ($pct != 100) {
+        $sellingFare = round($sellingFare * $pct / 100, 6);
+        $offerPrice = round($offerPrice * $pct / 100, 6);
     }
-
-    // Fallback for un-backfilled data
-    $package = $passenger->booking->package;
-    if (!$package) return 0.0;
-
-    if ($package->is_double_ticket) {
-        return $this->fareSellingPrice($package->ticketFareInbound, $passenger)
-            + $this->fareSellingPrice($package->ticketFareOutbound, $passenger);
-    }
-
-    return $this->fareSellingPrice($package->ticketFare, $passenger);
-}
-```
-
-**`calculateServiceCharge()` (line 655):** Use snapshot if available:
-
-```php
-private function calculateServiceCharge(Passenger $passenger): float
-{
-    if (!$this->isVisaProfitEffective($passenger) || !$this->isTicketProfitEffective($passenger)) {
-        return 0.0;
-    }
-
-    // Use historical snapshot if available
-    if (!is_null($passenger->booked_service_charge)) {
-        return (float) $passenger->booked_service_charge;
-    }
-
-    // Fallback for un-backfilled data
-    return (float) ($passenger->booking->package->service_charge ?? 0);
-}
-```
-
-**`calculateAdditionalTicketProfit()` (line 412):** Use snapshot if available:
-
-```php
-private function calculateAdditionalTicketProfit(Passenger $passenger): float
-{
-    return (float) $passenger->allIssuedTickets
-        ->filter(fn ($t) => $t->issue_type === 'additional'
-            && in_array($t->status, ['issued', 're-issued', 'refunded'], true))
-        ->sum(function ($t) use ($passenger) {
-            $sellingFare = !is_null($t->fare_selling_fare)
-                ? (float) $t->fare_selling_fare
-                : $this->fareSellingPrice($t->ticketFare, $passenger);
-            return $sellingFare - (float) ($t->net_fare ?? 0);
-        });
+    return [$sellingFare, $offerPrice];
 }
 ```
 
@@ -600,36 +526,357 @@ TicketFare::observe(TicketFareObserver::class);
 
 ---
 
+## Part 4: Fare Snapshot at Passenger Creation & Package Change
+
+### 4a. `BookingController::store()` — Create issued tickets with fare snapshot
+
+**Current (line 1434-1440):** Creates one IssuedTicket with `selling_fare=0, offer_price=0`.
+
+**New — single-ticket passengers:**
+
+```php
+$fare = $booking->package?->ticketFare;
+$sellingFare = 0;
+$offerPrice = 0;
+if ($fare && $passengerType !== 'visa_only') {
+    $sellingFare = (float) ($fare->selling_fare ?? 0);
+    $offerPrice = ($fare->ticket_type === 'offer') ? (float) ($fare->offer_price ?? 0) : 0;
+    [$sellingFare, $offerPrice] = $this->adjustFaresForType($sellingFare, $offerPrice, $passenger, $fare);
+}
+Passenger::create([
+    // ... fields ...
+    'booking_service_charge' => $booking->package->service_charge ?? 0,
+]);
+IssuedTicket::create([
+    'booking_id' => $booking->id,
+    'passenger_id' => $passenger->id,
+    'ticket_fare_id' => $passenger->ticket_fare_id,
+    'user_id' => auth()->id(),
+    'status' => 'pending',
+    'selling_fare' => $sellingFare,
+    'offer_price' => $offerPrice,
+]);
+```
+
+**New — double-ticket passengers (create two tickets):**
+
+```php
+$inboundFare = $booking->package?->ticketFareInbound;
+$outboundFare = $booking->package?->ticketFareOutbound;
+
+// Inbound (NULL/regular) ticket
+$inSelling = $inboundFare ? (float) ($inboundFare->selling_fare ?? 0) : 0;
+$inOffer = ($inboundFare && $inboundFare->ticket_type === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0;
+[$inSelling, $inOffer] = $this->adjustFaresForType($inSelling, $inOffer, $passenger, $inboundFare);
+
+Passenger::create([
+    // ...
+    'booking_service_charge' => $booking->package->service_charge ?? 0,
+]);
+IssuedTicket::create([
+    'booking_id' => $booking->id,
+    'passenger_id' => $passenger->id,
+    'ticket_fare_id' => null,
+    'user_id' => auth()->id(),
+    'status' => 'pending',
+    'selling_fare' => $inSelling,
+    'offer_price' => $inOffer,
+]);
+
+// Outbound (pending_outbound) ticket
+$outSelling = $outboundFare ? (float) ($outboundFare->selling_fare ?? 0) : 0;
+$outOffer = ($outboundFare && $outboundFare->ticket_type === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0;
+[$outSelling, $outOffer] = $this->adjustFaresForType($outSelling, $outOffer, $passenger, $outboundFare);
+
+IssuedTicket::create([
+    'booking_id' => $booking->id,
+    'passenger_id' => $passenger->id,
+    'ticket_fare_id' => null,
+    'user_id' => auth()->id(),
+    'status' => 'pending',
+    'issue_type' => 'pending_outbound',
+    'selling_fare' => $outSelling,
+    'offer_price' => $outOffer,
+]);
+```
+
+### 4b. `BookingController::addPassenger()` — Same pattern as `store()`
+
+### 4c. `BookingController::update()` — Package change handling (lines 1892-1919)
+
+After updating passenger fare IDs, iterate over affected passengers and update snapshots:
+
+```php
+foreach ($booking->passengers()->where(...)->get() as $passenger) {
+    $passenger->update(['booking_service_charge' => $package->service_charge ?? 0]);
+
+    $regularTicket = $passenger->issuedTickets()
+        ->where(fn($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+        ->first();
+    $outboundTicket = $passenger->issuedTickets()
+        ->where('issue_type', 'pending_outbound')->first();
+
+    if ($package->is_double_ticket) {
+        // Update regular ticket from inbound fare
+        $inboundFare = $passenger->ticketFareInbound;
+        if ($regularTicket && $inboundFare) {
+            [$s, $o] = $this->adjustFaresForType(
+                (float) ($inboundFare->selling_fare ?? 0),
+                ($inboundFare->ticket_type === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0,
+                $passenger, $inboundFare
+            );
+            $regularTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
+        }
+
+        // Create or update outbound ticket
+        $outboundFare = $passenger->ticketFareOutbound;
+        [$os, $oo] = $outboundFare
+            ? $this->adjustFaresForType(
+                (float) ($outboundFare->selling_fare ?? 0),
+                ($outboundFare->ticket_type === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0,
+                $passenger, $outboundFare
+            )
+            : [0, 0];
+
+        if ($outboundTicket) {
+            $outboundTicket->update(['selling_fare' => $os, 'offer_price' => $oo]);
+        } else {
+            IssuedTicket::create([
+                'passenger_id' => $passenger->id,
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+                'issue_type' => 'pending_outbound',
+                'selling_fare' => $os,
+                'offer_price' => $oo,
+            ]);
+        }
+    } else {
+        // Single-ticket: update regular ticket from new fare
+        $newFare = $passenger->ticketFare;
+        if ($regularTicket && $newFare) {
+            [$s, $o] = $this->adjustFaresForType(
+                (float) ($newFare->selling_fare ?? 0),
+                ($newFare->ticket_type === 'offer') ? (float) ($newFare->offer_price ?? 0) : 0,
+                $passenger, $newFare
+            );
+            $regularTicket->update([
+                'ticket_fare_id' => $passenger->ticket_fare_id,
+                'selling_fare' => $s,
+                'offer_price' => $o,
+            ]);
+        }
+
+        // Delete outbound ticket if transitioning double->single
+        if ($outboundTicket) {
+            $outboundTicket->delete();
+        }
+    }
+}
+```
+
+---
+
+## Part 5: Passenger Type Change — Recalculate Snapshots
+
+### `PassengerController::update()`
+
+When `passenger_type` changes, recalculate all related issued tickets' selling_fare/offer_price:
+
+```php
+if (array_key_exists('passenger_type', $validated) && $validated['passenger_type'] !== $passenger->passenger_type) {
+    $passenger->update(['passenger_type' => $validated['passenger_type']]);
+    $this->recalculateFareSnapshots($passenger);
+    $this->bookingService->syncFinancials($passenger->booking, 'passenger_type_changed');
+} else {
+    $passenger->update($validated);
+}
+```
+
+**Helper `recalculateFareSnapshots(Passenger $passenger)`:**
+
+```php
+private function recalculateFareSnapshots(Passenger $passenger): void
+{
+    // a. Regular ticket — use ticket_fare_id or ticket_fare_inbound_id
+    $regularTicket = $passenger->issuedTickets()
+        ->where(fn($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+        ->first();
+    if ($regularTicket) {
+        $fare = $passenger->ticketFare ?? $passenger->ticketFareInbound;
+        if ($fare) {
+            [$s, $o] = $this->adjustFaresForType(
+                (float) ($fare->selling_fare ?? 0),
+                ($fare->ticket_type === 'offer') ? (float) ($fare->offer_price ?? 0) : 0,
+                $passenger, $fare
+            );
+            $regularTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
+        }
+    }
+
+    // b. pending_outbound ticket — use ticket_fare_outbound_id
+    $outboundTicket = $passenger->issuedTickets()->where('issue_type', 'pending_outbound')->first();
+    if ($outboundTicket) {
+        $outFare = $passenger->ticketFareOutbound;
+        if ($outFare) {
+            [$s, $o] = $this->adjustFaresForType(
+                (float) ($outFare->selling_fare ?? 0),
+                ($outFare->ticket_type === 'offer') ? (float) ($outFare->offer_price ?? 0) : 0,
+                $passenger, $outFare
+            );
+            $outboundTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
+        }
+    }
+
+    // c. Additional tickets — each uses its own ticket_fare
+    $additionalTickets = $passenger->issuedTickets()->where('issue_type', 'additional')->get();
+    foreach ($additionalTickets as $ticket) {
+        $fare = $ticket->ticketFare;
+        if ($fare) {
+            [$s, $o] = $this->adjustFaresForType(
+                (float) ($fare->selling_fare ?? 0),
+                ($fare->ticket_type === 'offer') ? (float) ($fare->offer_price ?? 0) : 0,
+                $passenger, $fare
+            );
+            $ticket->update(['selling_fare' => $s, 'offer_price' => $o]);
+        }
+    }
+}
+```
+
+---
+
+## Part 6: Controller Changes — Issue / Re-Issue / Additional
+
+### 6a. `TicketIssueController::issue()` and `edit()`
+
+- **Remove** `selling_fare`, `offer_price` from `$request->validate()` entirely
+- **Keep** `net_fare` as `nullable|numeric|min:0`
+- In update data, explicitly preserve snapshot:
+  ```php
+  'selling_fare' => $issuedTicket->selling_fare,
+  'offer_price' => $issuedTicket->offer_price,
+  ```
+- **Pending outbound creation**: Set `selling_fare=0`, `offer_price=0`
+
+### 6b. `ReIssueController::store()`
+
+- **Remove** `selling_fare`, `offer_price` from validation
+- **Keep** `net_fare` as `nullable|numeric|min:0`
+- ReIssuedTicket snapshot: `'selling_fare' => $issuedTicket->selling_fare, 'offer_price' => $issuedTicket->offer_price`
+
+### 6c. `TicketRequestController::processReIssue()`
+
+Same as ReIssueController.
+
+### 6d. `TicketRequestController::processAdditional()`
+
+- **Remove** `selling_fare`, `offer_price` from validation
+- **Add** `net_fare` as `nullable|numeric|min:0` (editable from form)
+- Selling_fare/offer_price: computed server-side from selected TicketFare, adjusted for passenger_type
+- Net_fare: taken from `$validated['net_fare']`
+
+### 6e. Refund controllers — No changes
+
+---
+
+## Part 7: Blade View Changes
+
+### 7a. `bookings/index.blade.php` — Issue/Edit Modal (lines 1885-1944)
+
+- **selling_fare**: Readonly display showing snapshot value. Not submitted.
+- **offer_price**: Readonly display showing snapshot value. Not submitted. Only shown when `ticket_type === 'offer'`.
+- **net_fare**: **Editable** (SAR + BDT). Agent enters the airline's cost.
+
+### 7b. `bookings/index.blade.php` — Re-Issue Modal (lines 2310-2370)
+
+- **selling_fare**: Readonly display. Not submitted.
+- **offer_price**: Readonly display. Not submitted.
+- **net_fare**: **Readonly**. Not submitted. (fare_difference always 0)
+
+### 7c. `bookings/index.blade.php` — Inline newTicketFareForm (lines 1813-1821)
+
+- **net_fare**: Hidden, default 0
+- **selling_fare**: Visible, editable
+- **offer_price**: Visible, editable
+
+### 7d. `ticket-fares/create.blade.php` (lines 124-157)
+
+- **net_fare**: Hidden, default 0
+- **selling_fare**: Visible, editable
+- **offer_price**: Visible, editable
+
+### 7e. `ticket-fares/edit.blade.php` (lines 184-243)
+
+Same as create.
+
+### 7f. `re-issues/confirmation.blade.php` (lines 158-190)
+
+- **selling_fare**: Readonly display. Not submitted.
+- **offer_price**: Readonly display. Not submitted.
+- **net_fare**: Readonly. Not submitted.
+
+### 7g. `tickets/add-confirmation.blade.php` (lines 158-194)
+
+- **selling_fare**: Readonly display. Not submitted.
+- **offer_price**: Readonly display. Not submitted.
+- **net_fare**: **Editable** — agent enters the cost.
+
+---
+
+## Summary: Field Visibility
+
+| Form | selling_fare | offer_price | net_fare |
+|------|-------------|-------------|----------|
+| **TicketFare Create/Edit** | Visible, editable | Visible, editable | **Hidden, default 0** |
+| **Inline TicketFare Create** | Visible, editable | Visible, editable | **Hidden, default 0** |
+| **Issue/Edit Modal** | Readonly display (snapshot) | Readonly display (snapshot) | **Editable** |
+| **Re-Issue Modal** | Readonly display (snapshot) | Readonly display (snapshot) | **Readonly** |
+| **Re-Issue Confirmation** | Readonly display | Readonly display | Readonly |
+| **Additional Ticket Confirmation** | Readonly display | Readonly display | **Editable** |
+| **Refund Modal** | Readonly (from source) | Readonly (from source) | Readonly (from source) |
+
+---
+
 ## Complete File Change List
 
 | File | Action |
 |------|--------|
 | `app/Http/Controllers/PackageController.php` | Modify — remove lock checks, conditional validation |
-| `app/Http/Controllers/TicketFareController.php` | Modify — remove $hasPackages early-return, conditional validation |
-| `resources/views/ticket-fares/edit.blade.php` | Modify — remove $locked, conditional readonly for in-use fares |
+| `app/Http/Controllers/TicketFareController.php` | Modify — remove $hasPackages early-return, hide net_fare |
+| `app/Http/Controllers/BookingController.php` | Modify — fare snapshot at creation, package change, double-ticket creation |
+| `app/Http/Controllers/PassengerController.php` | Modify — recalculate snapshots on type change |
+| `app/Http/Controllers/TicketIssueController.php` | Modify — remove selling_fare/offer_price from validation |
+| `app/Http/Controllers/ReIssueController.php` | Modify — remove selling_fare/offer_price from validation |
+| `app/Http/Controllers/TicketRequestController.php` | Modify — processReIssue + processAdditional |
 | `app/Models/PackageUpdateLog.php` | Create |
 | `app/Models/TicketFareUpdateLog.php` | Create |
-| `database/migrations/xxxx_create_package_update_logs_table.php` | Create |
-| `database/migrations/xxxx_create_ticket_fare_update_logs_table.php` | Create |
-| `database/migrations/xxxx_add_historical_price_snapshots_to_passengers_table.php` | Create |
-| `database/migrations/xxxx_add_fare_selling_fare_to_issued_tickets_table.php` | Create |
-| `database/migrations/xxxx_backfill_historical_prices.php` | Create |
-| `app/Observers/TicketFareObserver.php` | Create |
-| `app/Observers/PackageObserver.php` | Modify — add logging (created/updated/deleting) |
+| `app/Models/Passenger.php` | Modify — add `booking_service_charge` to $fillable |
 | `app/Models/Package.php` | Modify — add `updateLogs()` |
 | `app/Models/TicketFare.php` | Modify — add `updateLogs()` |
+| `app/Observers/PackageObserver.php` | Modify — add logging |
+| `app/Observers/TicketFareObserver.php` | Create |
 | `app/Providers/AppServiceProvider.php` | Modify — register TicketFareObserver |
-| `app/Services/BookingService.php` | Modify — snapshot values in `recalculateBookingTotal()`, add `computeEffectiveFare()` |
-| `app/Services/ProfitCalculationService.php` | Modify — read from snapshots in 3 methods |
-| `app/Http/Controllers/TicketIssueController.php` | Modify — snapshot fare_selling_fare on issuance |
+| `app/Services/ProfitCalculationService.php` | Modify — read from issued_tickets snapshots |
+| `database/migrations/xxxx_add_booking_service_charge_and_backfill.php` | Create |
+| `database/migrations/xxxx_create_package_update_logs_table.php` | Create |
+| `database/migrations/xxxx_create_ticket_fare_update_logs_table.php` | Create |
+| `resources/views/bookings/index.blade.php` | Modify — fare field visibility in issue/reissue modals |
+| `resources/views/ticket-fares/create.blade.php` | Modify — hide net_fare |
+| `resources/views/ticket-fares/edit.blade.php` | Modify — $inUse, hide net_fare |
+| `resources/views/re-issues/confirmation.blade.php` | Modify — hide selling_fare/offer_price |
+| `resources/views/tickets/add-confirmation.blade.php` | Modify — hide selling_fare/offer_price, editable net_fare |
 
 ## Execution Order
 
-1. Migrations (schema + backfill)
-2. Models (PackageUpdateLog, TicketFareUpdateLog)
+1. Migrations (booking_service_charge column + backfill + log tables)
+2. Models (PackageUpdateLog, TicketFareUpdateLog, Passenger update)
 3. Observers (TicketFareObserver, update PackageObserver)
 4. Relationships (Package, TicketFare, AppServiceProvider)
-5. Profit calculation changes (ProfitCalculationService)
-6. Snapshot population (BookingService, TicketIssueController)
-7. Controller changes (PackageController, TicketFareController)
-8. View changes (ticket-fares/edit.blade.php)
+5. Passenger creation snapshots (BookingController store/addPassenger)
+6. Package change snapshots (BookingController update)
+7. Passenger type change snapshots (PassengerController update)
+8. Profit calculation changes (ProfitCalculationService)
+9. Controller changes (TicketIssueController, ReIssueController, TicketRequestController, TicketFareController)
+10. View changes (all Blade files)
+11. Test (`php artisan test`, `vendor/bin/pint`)
