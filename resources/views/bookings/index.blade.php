@@ -7029,8 +7029,10 @@ function bookingIndexApp() {
                     }),
                 });
                 const data = await res.json();
-                if (data.success) this.loadPassengerData();
-                else alert(data.message || 'Failed to initiate cancellation');
+                if (data.success) {
+                    this.closeCancelModal();
+                    this.loadPassengerData();
+                } else alert(data.message || 'Failed to initiate cancellation');
             } catch (e) {
                 alert('Failed to initiate cancellation');
             } finally {
