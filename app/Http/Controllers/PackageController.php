@@ -208,10 +208,6 @@ class PackageController extends Controller
 
     public function edit(Package $package)
     {
-        if ($package->isLocked()) {
-            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
-        }
-
         $ticketFares = $this->loadTicketFares();
         $inboundFares = $this->loadTicketFares(RouteType::ONE_WAY_INBOUND);
         $outboundFares = $this->loadTicketFares(RouteType::ONE_WAY_OUTBOUND);
@@ -222,8 +218,21 @@ class PackageController extends Controller
 
     public function update(Request $request, Package $package)
     {
-        if ($package->isLocked()) {
-            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
+        $isLocked = $package->isLocked();
+
+        if ($isLocked) {
+            $validated = $request->validate([
+                'package_name' => 'required|string|max:255',
+                'service_charge' => 'nullable|numeric|min:0',
+            ]);
+
+            if ($request->boolean('use_current_visa')) {
+                $validated['visa_selling_price_id'] = VisaSellingPrice::latest('id')->value('id');
+            }
+
+            $package->update($validated);
+
+            return redirect()->route('packages.index')->with('success', 'Package updated successfully.');
         }
 
         $isDoubleTicket = $request->boolean('is_double_ticket');

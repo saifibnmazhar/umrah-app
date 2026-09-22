@@ -8,6 +8,7 @@ use App\Models\AirlineClass;
 use App\Models\BaggageAllowance;
 use App\Models\FlightDateGap;
 use App\Models\GroupTicket;
+use App\Models\Package;
 use App\Models\Route;
 use App\Models\TicketFare;
 use App\Models\TravelClass;
@@ -72,7 +73,6 @@ class TicketFareController extends Controller
             'ticket_type' => 'required|in:regular,offer,group',
             'effective_from' => 'required|date',
             'effective_to' => 'required|date|after_or_equal:effective_from',
-            'net_fare' => 'required|numeric|min:0',
             'selling_fare' => 'required|numeric|min:0',
             'child_fare_percentage' => 'required|numeric|min:0|max:100',
             'infant_fare_percentage' => 'required|numeric|min:0|max:100',
@@ -111,7 +111,7 @@ class TicketFareController extends Controller
                 'ticket_type' => $validated['ticket_type'],
                 'effective_from' => $validated['effective_from'],
                 'effective_to' => $validated['effective_to'],
-                'net_fare' => $validated['net_fare'],
+                'net_fare' => 0,
                 'selling_fare' => $validated['selling_fare'],
                 'offer_price' => $validated['offer_price'] ?? null,
                 'child_fare_percentage' => $validated['child_fare_percentage'],
@@ -168,9 +168,12 @@ class TicketFareController extends Controller
         $airlineClasses = AirlineClass::with('travelClass')->get();
         $travelClasses = TravelClass::orderBy('name')->get();
         $routes = Route::with(['airline', 'fromCity', 'toCity', 'returnCity'])->get();
-        $hasPackages = $ticketFare->packages()->exists();
+        $inUse = $ticketFare->packages()->exists()
+            || Package::where('ticket_fare_inbound_id', $ticketFare->id)->exists()
+            || Package::where('ticket_fare_outbound_id', $ticketFare->id)->exists()
+            || $ticketFare->passengers()->exists();
 
-        return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'travelClasses', 'routes', 'hasPackages'));
+        return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'travelClasses', 'routes', 'inUse'));
     }
 
     public function update(Request $request, TicketFare $ticketFare)
@@ -179,16 +182,21 @@ class TicketFareController extends Controller
             abort(403);
         }
 
-        $hasPackages = $ticketFare->packages()->exists();
+        $inUse = $ticketFare->packages()->exists()
+            || Package::where('ticket_fare_inbound_id', $ticketFare->id)->exists()
+            || Package::where('ticket_fare_outbound_id', $ticketFare->id)->exists()
+            || $ticketFare->passengers()->exists();
 
         try {
-            if ($hasPackages) {
+            if ($inUse) {
                 $validated = $request->validate([
-                    'effective_to' => 'required|date|after_or_equal:effective_from',
+                    'selling_fare' => 'required|numeric|min:0',
+                    'offer_price' => 'nullable|numeric|min:0',
+                    'effective_to' => 'required|date',
                 ]);
-                $ticketFare->update(['effective_to' => $validated['effective_to']]);
+                $ticketFare->update($validated);
 
-                return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Effective to date updated successfully.');
+                return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
             }
 
             $rules = [
@@ -199,7 +207,6 @@ class TicketFareController extends Controller
                 'ticket_type' => 'required|in:regular,offer,group',
                 'effective_from' => 'required|date',
                 'effective_to' => 'required|date|after_or_equal:effective_from',
-                'net_fare' => 'required|numeric|min:0',
                 'selling_fare' => 'required|numeric|min:0',
                 'child_fare_percentage' => 'required|numeric|min:0|max:100',
                 'infant_fare_percentage' => 'required|numeric|min:0|max:100',
@@ -235,7 +242,7 @@ class TicketFareController extends Controller
                 'ticket_type' => $validated['ticket_type'],
                 'effective_from' => $validated['effective_from'],
                 'effective_to' => $validated['effective_to'],
-                'net_fare' => $validated['net_fare'],
+                'net_fare' => 0,
                 'selling_fare' => $validated['selling_fare'],
                 'offer_price' => $validated['offer_price'] ?? null,
                 'child_fare_percentage' => $validated['child_fare_percentage'],
@@ -483,7 +490,6 @@ class TicketFareController extends Controller
             'effective_from' => 'nullable|date',
             'effective_to' => 'nullable|date',
             'with_meal' => 'boolean',
-            'net_fare' => 'required|numeric|min:0',
             'selling_fare' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
             'child_fare_percentage' => 'nullable|numeric|min:0|max:100',
@@ -513,7 +519,7 @@ class TicketFareController extends Controller
                 'ticket_type' => $validated['ticket_type'],
                 'effective_from' => $validated['effective_from'] ?? now(),
                 'effective_to' => $validated['effective_to'] ?? now()->addYear(),
-                'net_fare' => $validated['net_fare'],
+                'net_fare' => 0,
                 'selling_fare' => $validated['selling_fare'],
                 'offer_price' => $validated['offer_price'] ?? null,
                 'child_fare_percentage' => $validated['child_fare_percentage'] ?? 70,

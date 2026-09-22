@@ -51,9 +51,7 @@ class ReIssueController extends Controller
             'is_exchangeable' => 'boolean',
             'baggage_inbound' => 'nullable|string|max:255',
             'baggage_outbound' => 'nullable|string|max:255',
-            'selling_fare' => 'nullable|numeric|min:0',
             'net_fare' => 'nullable|numeric|min:0',
-            'offer_price' => 'nullable|numeric|min:0',
 
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'required|numeric|min:0',
@@ -126,9 +124,9 @@ class ReIssueController extends Controller
                 'fare_difference' => (float) ($validated['fare_difference'] ?? 0),
                 'other_costs' => (float) ($validated['other_costs'] ?? 0),
                 'service_charge' => 0,
-                'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
+                'selling_fare' => $issuedTicket->selling_fare ?? 0,
                 'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
-                'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
+                'offer_price' => $issuedTicket->offer_price ?? 0,
                 'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,

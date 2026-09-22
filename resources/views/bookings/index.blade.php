@@ -1811,10 +1811,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                        <div>
-                            <label class="block text-xs text-slate-600 mb-1">Net Fare (SAR)</label>
-                            <input type="number" x-model="newTicketFareForm.net_fare" min="0" step="0.01" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
-                        </div>
+                        <input type="hidden" x-model="newTicketFareForm.net_fare" value="0">
                         <div>
                             <label class="block text-xs text-slate-600 mb-1">Selling Fare (SAR)</label>
                             <input type="number" x-model="newTicketFareForm.selling_fare" min="0" step="0.01" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
@@ -1887,11 +1884,9 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001"
-                                       @input="handleTicketFareSarInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
-                                       :class="ticketFareForm.errors.selling_fare ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) * (snapshot, readonly)</label>
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001" readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                                 <p x-show="ticketFareForm.errors.selling_fare" x-text="ticketFareForm.errors.selling_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
@@ -1925,11 +1920,9 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001"
-                                       @input="handleTicketFareSarInput('offer_price'); ticketFareForm.errors.offer_price = ''"
-                                       :class="ticketFareForm.errors.offer_price ? 'border-red-500' : ''"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) * (snapshot, readonly)</label>
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                                 <p x-show="ticketFareForm.errors.offer_price" x-text="ticketFareForm.errors.offer_price" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
@@ -2275,11 +2268,9 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
-                                <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
-                                       :readonly="!isReIssueDifferentTicket()"
-                                       @input="handleReIssueSarInput('selling_fare')"
-                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) (snapshot, readonly)</label>
+                                <input type="number" x-model="reIssueForm.selling_fare" step="0.000001" readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
@@ -2294,11 +2285,9 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                                <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
-                                       :readonly="!isReIssueDifferentTicket()"
-                                       @input="handleReIssueSarInput('net_fare')"
-                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) (readonly)</label>
+                                <input type="number" x-model="reIssueForm.net_fare" step="0.000001" readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
@@ -2313,11 +2302,9 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div x-show="reIssueForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                                <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
-                                       :readonly="!isReIssueDifferentTicket()"
-                                       @input="handleReIssueSarInput('offer_price')"
-                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) (snapshot, readonly)</label>
+                                <input type="number" x-model="reIssueForm.offer_price" step="0.000001" readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
@@ -4970,6 +4957,12 @@ function bookingIndexApp() {
                 }
             }
 
+            const pendingSnap = (row.all_issued_tickets || []).find(t => ['pending', 'awaiting-group'].includes(t.status) && (!t.issue_type || t.issue_type === 'regular'));
+            if (pendingSnap) {
+                this.ticketFareForm.selling_fare = pendingSnap.selling_fare || 0;
+                this.ticketFareForm.offer_price = pendingSnap.offer_price || 0;
+            }
+
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
             this.isTicketFareModalOpen = true;
@@ -5946,9 +5939,7 @@ function bookingIndexApp() {
                 ticket_agent_id: form.ticket_agent_id,
                 ticket_fare_id: form.ticket_option || null,
                 route_id: form.route_id || null,
-                selling_fare: form.selling_fare || 0,
                 net_fare: form.net_fare || 0,
-                offer_price: form.offer_price || 0,
                 re_issue_date: this.parseDDMMMYY(form.date),
                 inbound_date: this.parseDDMMMYY(form.inbound_date),
                 outbound_date: this.parseDDMMMYY(form.outbound_date),
@@ -6191,9 +6182,7 @@ function bookingIndexApp() {
                 issued_date: this.parseDDMMMYY(this.ticketFareForm.date) || '',
                 inbound_date: this.parseDDMMMYY(this.ticketFareForm.inbound_date) || null,
                 outbound_date: this.parseDDMMMYY(this.ticketFareForm.outbound_date) || null,
-                selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
                 net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
-                offer_price: parseFloat(this.ticketFareForm.offer_price) || 0,
                 is_refundable: !this.ticketFareForm.non_refundable,
                 is_exchangeable: !this.ticketFareForm.non_exchangeable,
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',

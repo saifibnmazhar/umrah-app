@@ -88,6 +88,11 @@ class TicketFare extends Model
         return $this->hasMany(IssuedTicket::class, 'ticket_fare_id');
     }
 
+    public function updateLogs(): HasMany
+    {
+        return $this->hasMany(TicketFareUpdateLog::class);
+    }
+
     public function getIsLockedAttribute(): bool
     {
         return ($this->packages_count ?? 0) > 0 || ($this->passengers_count ?? 0) > 0;

@@ -174,9 +174,7 @@ class TicketRequestController extends Controller
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'route_id' => 'nullable|exists:routes,id',
-            'selling_fare' => 'nullable|numeric|min:0',
             'net_fare' => 'nullable|numeric|min:0',
-            'offer_price' => 'nullable|numeric|min:0',
             'route' => 'nullable|string|max:255',
             'agent' => 'nullable|string|max:255',
             'payment_method' => 'nullable|string|max:255',
@@ -193,9 +191,9 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
-        $sellingFare = (float) ($validated['selling_fare'] ?? $selectedFare->selling_fare ?? $issuedTicket->selling_fare ?? 0);
-        $netFare = (float) ($validated['net_fare'] ?? $selectedFare->net_fare ?? $issuedTicket->net_fare ?? 0);
-        $offerPrice = (float) ($validated['offer_price'] ?? $selectedFare->offer_price ?? $issuedTicket->offer_price ?? 0);
+        $sellingFare = (float) ($issuedTicket->selling_fare ?? 0);
+        $netFare = (float) ($validated['net_fare'] ?? $issuedTicket->net_fare ?? 0);
+        $offerPrice = (float) ($issuedTicket->offer_price ?? 0);
 
         try {
             DB::beginTransaction();
@@ -526,6 +524,7 @@ class TicketRequestController extends Controller
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
             'remarks' => 'nullable|string',
+            'net_fare' => 'nullable|numeric|min:0',
         ]);
 
         $passenger = $ticketRequest->passenger;
@@ -540,16 +539,14 @@ class TicketRequestController extends Controller
         $infantPct = (float) ($selectedFare->infant_fare_percentage ?: 30);
 
         $sellingFare = (float) ($selectedFare->selling_fare ?? 0);
-        $netFare = (float) ($selectedFare->net_fare ?? 0);
+        $netFare = (float) ($validated['net_fare'] ?? 0);
         $offerPrice = (float) ($selectedFare->offer_price ?? 0);
 
         if ($passengerType === 'child') {
             $sellingFare = round($sellingFare * $childPct / 100, 6);
-            $netFare = round($netFare * $childPct / 100, 6);
             $offerPrice = round($offerPrice * $childPct / 100, 6);
         } elseif ($passengerType === 'infant') {
             $sellingFare = round($sellingFare * $infantPct / 100, 6);
-            $netFare = round($netFare * $infantPct / 100, 6);
             $offerPrice = round($offerPrice * $infantPct / 100, 6);
         }
 

@@ -1088,7 +1088,39 @@ private function regularTickets(Passenger $passenger)
 ### 8d. `ticket-fares/create.blade.php` (lines 124-157)
 
 - **net_fare**: Hidden, default 0. Remove currency widget for net_fare.
-- **selling_fare**: Visible, editable
+- **selling_fare**: Visible, editableshanto@fedora:~/Desktop/project/techCandle-umrah$ php artisan migrate;
+
+   INFO  Running migrations.  
+
+  2026_09_22_000001_add_booking_service_charge_and_backfill .......................................................................... 597.15ms DONE
+  2026_09_22_000002_create_package_update_logs_table .................................................................................. 45.61ms FAIL
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000]: General error: 1005 Can't create table `laravel_db`.`package_update_logs` (errno: 150 "Foreign key constraint is incorrectly formed") (Connection: mysql, Host: 127.0.0.1, Port: 3306, Database: laravel_db, SQL: alter table `package_update_logs` add constraint `package_update_logs_package_id_foreign` foreign key (`package_id`) references `packages` (`id`) on delete set null)
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
+    834▕             $exceptionType = $this->isUniqueConstraintError($e)
+    835▕                 ? UniqueConstraintViolationException::class
+    836▕                 : QueryException::class;
+    837▕ 
+  ➜ 838▕             throw new $exceptionType(
+    839▕                 $this->getNameWithReadWriteType(),
+    840▕                 $query,
+    841▕                 $this->prepareBindings($bindings),
+    842▕                 $e,
+
+      +9 vendor frames 
+
+  10  database/migrations/2026_09_22_000002_create_package_update_logs_table.php:11
+      Illuminate\Support\Facades\Facade::__callStatic()
+      +26 vendor frames 
+
+  37  artisan:16
+      Illuminate\Foundation\Application::handleCommand()
+
+shanto@fedora:~/Desktop/project/techCandle-umrah$ 
+
 - **offer_price**: Visible, editable
 
 ### 8e. `ticket-fares/edit.blade.php` (lines 184-243)

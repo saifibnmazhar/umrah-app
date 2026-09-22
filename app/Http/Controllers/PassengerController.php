@@ -8,6 +8,7 @@ use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
+use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\PassengerStatus;
@@ -593,7 +594,20 @@ class PassengerController extends Controller
         ]);
 
         try {
+            $oldPassengerType = $passenger->passenger_type;
+            $oldServiceRequired = $passenger->service_required;
             $passenger->update($validated);
+
+            if (isset($validated['passenger_type']) && $validated['passenger_type'] !== ($oldPassengerType instanceof \BackedEnum ? $oldPassengerType->value : $oldPassengerType)) {
+                $this->recalculateFareSnapshots($passenger->fresh());
+            }
+
+            $oldServiceValue = $oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired;
+            if ($oldServiceValue === 'visa_only'
+                && isset($validated['service_required'])
+                && $validated['service_required'] !== 'visa_only') {
+                $this->handleServiceRequiredChangeFromVisaOnly($passenger->fresh());
+            }
 
             $newServiceRequired = $validated['service_required'] ?? null;
             if ($newServiceRequired && $newServiceRequired !== 'ticket_only' && ! $passenger->visaSubmission()->exists()) {
@@ -864,5 +878,156 @@ class PassengerController extends Controller
             'success' => true,
             'message' => 'Remarks updated successfully.',
         ]);
+    }
+
+    private function adjustFaresForType(float $sellingFare, float $offerPrice, string $passengerType, ?TicketFare $fare): array
+    {
+        if (! $fare) {
+            return [$sellingFare, $offerPrice];
+        }
+        $pct = match ($passengerType) {
+            'child' => (float) ($fare->child_fare_percentage ?? 70),
+            'infant' => (float) ($fare->infant_fare_percentage ?? 30),
+            default => 100,
+        };
+        if ($pct != 100) {
+            $sellingFare = round($sellingFare * $pct / 100, 6);
+            $offerPrice = round($offerPrice * $pct / 100, 6);
+        }
+
+        return [$sellingFare, $offerPrice];
+    }
+
+    private function ticketTypeValue($fare): ?string
+    {
+        if (! $fare) {
+            return null;
+        }
+
+        return $fare->ticket_type instanceof \BackedEnum ? $fare->ticket_type->value : $fare->ticket_type;
+    }
+
+    private function passengerTypeValue(Passenger $passenger): string
+    {
+        return strtolower($passenger->passenger_type instanceof \BackedEnum ? $passenger->passenger_type->value : (string) $passenger->passenger_type);
+    }
+
+    private function recalculateFareSnapshots(Passenger $passenger): void
+    {
+        $ptype = $this->passengerTypeValue($passenger);
+
+        $regularTicket = $passenger->issuedTickets()
+            ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+            ->first();
+        if ($regularTicket) {
+            $fare = $passenger->ticketFare ?? $passenger->ticketFareInbound;
+            if ($fare) {
+                [$s, $o] = $this->adjustFaresForType(
+                    (float) ($fare->selling_fare ?? 0),
+                    $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0,
+                    $ptype,
+                    $fare
+                );
+                $regularTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
+            }
+        }
+
+        $outboundTicket = $passenger->issuedTickets()->where('issue_type', 'pending_outbound')->first();
+        if ($outboundTicket) {
+            $outFare = $passenger->ticketFareOutbound;
+            if ($outFare) {
+                [$s, $o] = $this->adjustFaresForType(
+                    (float) ($outFare->selling_fare ?? 0),
+                    $this->ticketTypeValue($outFare) === 'offer' ? (float) ($outFare->offer_price ?? 0) : 0,
+                    $ptype,
+                    $outFare
+                );
+                $outboundTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
+            }
+        }
+
+        $additionalTickets = $passenger->issuedTickets()->where('issue_type', 'additional')->get();
+        foreach ($additionalTickets as $ticket) {
+            $fare = $ticket->ticketFare;
+            if ($fare) {
+                [$s, $o] = $this->adjustFaresForType(
+                    (float) ($fare->selling_fare ?? 0),
+                    $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0,
+                    $ptype,
+                    $fare
+                );
+                $ticket->update(['selling_fare' => $s, 'offer_price' => $o]);
+            }
+        }
+    }
+
+    private function handleServiceRequiredChangeFromVisaOnly(Passenger $passenger): void
+    {
+        if ($passenger->issuedTickets()->count() > 0) {
+            $this->recalculateFareSnapshots($passenger);
+
+            return;
+        }
+
+        $booking = $passenger->booking;
+        $package = $booking?->package;
+        if (! $package) {
+            return;
+        }
+
+        $isDoubleTicket = $package->is_double_ticket;
+        $passengerType = $this->passengerTypeValue($passenger);
+
+        if ($isDoubleTicket) {
+            $inboundFare = $package->ticketFareInbound;
+            $outboundFare = $package->ticketFareOutbound;
+
+            $inSelling = $inboundFare ? (float) ($inboundFare->selling_fare ?? 0) : 0;
+            $inOffer = ($inboundFare && $this->ticketTypeValue($inboundFare) === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0;
+            [$inSelling, $inOffer] = $this->adjustFaresForType($inSelling, $inOffer, $passengerType, $inboundFare);
+
+            IssuedTicket::create([
+                'booking_id' => $booking->id,
+                'passenger_id' => $passenger->id,
+                'ticket_fare_id' => null,
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+                'selling_fare' => $inSelling,
+                'offer_price' => $inOffer,
+            ]);
+
+            $outSelling = $outboundFare ? (float) ($outboundFare->selling_fare ?? 0) : 0;
+            $outOffer = ($outboundFare && $this->ticketTypeValue($outboundFare) === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0;
+            [$outSelling, $outOffer] = $this->adjustFaresForType($outSelling, $outOffer, $passengerType, $outboundFare);
+
+            IssuedTicket::create([
+                'booking_id' => $booking->id,
+                'passenger_id' => $passenger->id,
+                'ticket_fare_id' => null,
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+                'issue_type' => 'pending_outbound',
+                'selling_fare' => $outSelling,
+                'offer_price' => $outOffer,
+            ]);
+        } else {
+            $fare = $package->ticketFare;
+            $sellingFare = 0;
+            $offerPrice = 0;
+            if ($fare) {
+                $sellingFare = (float) ($fare->selling_fare ?? 0);
+                $offerPrice = $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0;
+                [$sellingFare, $offerPrice] = $this->adjustFaresForType($sellingFare, $offerPrice, $passengerType, $fare);
+            }
+            IssuedTicket::create([
+                'booking_id' => $booking->id,
+                'passenger_id' => $passenger->id,
+                'ticket_fare_id' => $passenger->ticket_fare_id,
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+                'selling_fare' => $sellingFare,
+                'offer_price' => $offerPrice,
+            ]);
+        }
     }
 }

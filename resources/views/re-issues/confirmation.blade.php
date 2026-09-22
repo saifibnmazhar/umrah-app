@@ -986,9 +986,7 @@ function confirmProcess() {
         payment_by: document.getElementById('inputPaymentBy').value || null,
         payment_option: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') ? document.getElementById('inputPaymentOption').value : undefined,
         refund_adjustment_amount: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') && document.getElementById('inputPaymentOption').value === 'refund_adjustment' ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0) : 0,
-        selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
         net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
-        offer_price: parseFloat(document.getElementById('inputOfferPrice').value) || null,
     };
 
     if (!payload.reason_id) {

@@ -7,6 +7,13 @@
         <p class="text-slate-600">{{ isset($package) ? 'Update package information' : 'Add a new package' }}</p>
     </div>
 
+    @php $isLocked = isset($package) && $package->isLocked(); @endphp
+    @if($isLocked)
+        <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 text-sm">
+            This package has existing bookings. Only the package name, service charge, and visa price option can be changed.
+        </div>
+    @endif
+
     <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <form method="POST" action="{{ isset($package) ? route('packages.update', $package) : route('packages.store') }}">
             @csrf
@@ -36,14 +43,14 @@
 
             <div class="mt-4">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="doubleTicketCheck" name="is_double_ticket" value="1" {{ old('is_double_ticket', $package->is_double_ticket ?? false) ? 'checked' : '' }} class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                    <input type="checkbox" id="doubleTicketCheck" name="is_double_ticket" value="1" {{ old('is_double_ticket', $package->is_double_ticket ?? false) ? 'checked' : '' }} @if($isLocked) disabled @endif class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
                     <span class="text-sm font-medium text-slate-700">Double Ticket</span>
                 </label>
             </div>
 
             <div id="singleTicketFields" class="mt-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                <select id="ticketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <select id="ticketSelect" name="ticket_fare_id" @if($isLocked) disabled @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @if($isLocked) bg-slate-100 cursor-not-allowed @endif">
                     <option value="">Select Ticket</option>
                     @foreach($ticketFares as $fare)
                         @php
@@ -74,7 +81,7 @@
             <div id="doubleTicketFields" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
-                    <select id="ticketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select id="ticketInboundSelect" name="ticket_fare_inbound_id" @if($isLocked) disabled @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @if($isLocked) bg-slate-100 cursor-not-allowed @endif">
                         <option value="">Select Inbound Ticket</option>
                         @foreach($inboundFares as $fare)
                             @php
@@ -94,7 +101,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Outbound *</label>
-                    <select id="ticketOutboundSelect" name="ticket_fare_outbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select id="ticketOutboundSelect" name="ticket_fare_outbound_id" @if($isLocked) disabled @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @if($isLocked) bg-slate-100 cursor-not-allowed @endif">
                         <option value="">Select Outbound Ticket</option>
                         @foreach($outboundFares as $fare)
                             @php
@@ -125,7 +132,7 @@
 
                 <div id="offerPriceContainer" class="{{ (isset($package) && $package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) ? '' : 'hidden' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                    <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="any">
+                    <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" @if($isLocked) readonly @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @if($isLocked) bg-slate-100 cursor-not-allowed @endif" min="0" step="any">
                     @error('offer_price')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -151,6 +158,12 @@
                         @endif
                     </span>
                 </p>
+                @if($isLocked)
+                    <label class="flex items-center gap-2 cursor-pointer mt-2">
+                        <input type="checkbox" name="use_current_visa" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                        <span class="text-sm font-medium text-slate-700">Update visa selling price to current latest</span>
+                    </label>
+                @endif
             </div>
 
             <div class="flex gap-3 mt-6">
