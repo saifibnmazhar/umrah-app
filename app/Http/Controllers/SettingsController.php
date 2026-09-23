@@ -244,7 +244,19 @@ class SettingsController extends Controller
     public function updatePackage(Request $request, Package $package)
     {
         if ($package->isLocked()) {
-            return redirect()->back()->with('error', 'This package cannot be edited because it has existing bookings.');
+            $validated = $request->validate([
+                'package_name' => 'required|string|max:255',
+                'service_charge' => 'nullable|numeric|min:0',
+            ]);
+
+            if ($request->boolean('use_current_visa')) {
+                $validated['visa_selling_price_id'] = VisaSellingPrice::latest('id')->value('id');
+            }
+
+            $tab = $request->input('tab', 'package-configuration');
+            $package->update($validated);
+
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package updated successfully.');
         }
 
         $isDoubleTicket = $request->boolean('is_double_ticket');

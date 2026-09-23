@@ -374,6 +374,10 @@
         document.getElementById('modalOfferPrice').readOnly = false;
         document.getElementById('modalOfferPriceContainer').classList.add('hidden');
         document.getElementById('modalDoubleTicketCheck').checked = false;
+        document.getElementById('modalDoubleTicketCheck').disabled = false;
+        document.getElementById('modalTicketSelect').disabled = false;
+        document.getElementById('modalTicketInboundSelect').disabled = false;
+        document.getElementById('modalTicketOutboundSelect').disabled = false;
         filterModalTickets();
         toggleDoubleTicket();
         document.getElementById('packageModal').classList.remove('hidden');
@@ -384,15 +388,16 @@
     function editPackage(id) {
         const pkg = packages.find(p => p.id === id);
         if (!pkg) return;
-        if (pkg.is_locked) {
-            alert('This package cannot be edited because it has existing bookings.');
-            return;
-        }
         document.getElementById('modalTitle').textContent = 'Edit Package';
         document.getElementById('packageForm').action = '/settings/package/' + id;
         document.getElementById('formMethod').value = 'PUT';
         document.getElementById('packageId').value = pkg.id;
         document.getElementById('packageName').value = pkg.package_name;
+        const locked = pkg.is_locked || false;
+        document.getElementById('modalDoubleTicketCheck').disabled = locked;
+        document.getElementById('modalTicketSelect').disabled = locked;
+        document.getElementById('modalTicketInboundSelect').disabled = locked;
+        document.getElementById('modalTicketOutboundSelect').disabled = locked;
         const isDouble = pkg.is_double_ticket || false;
         document.getElementById('modalDoubleTicketCheck').checked = isDouble;
         toggleDoubleTicket();
@@ -747,11 +752,10 @@
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
+                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                     @if($package->is_locked)
-                                        <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
                                         <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
                                     @else
-                                        <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                         <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
                                             @csrf
                                             @method('DELETE')
