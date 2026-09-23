@@ -18,6 +18,7 @@ class Booking extends Model
         'fingerprint_branch_id',
         'district_id',
         'package_id',
+        'package_name',
         'fingerprint_charge_id',
         'booking_branch_id',
         'invoice_id',

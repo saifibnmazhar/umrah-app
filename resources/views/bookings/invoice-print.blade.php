@@ -183,7 +183,7 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->gender ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package_name ?? $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
                         <td class="px-1 py-0.5 text-right border border-slate-300">@currency($passenger->package_value ?? 0, 2, $rate)</td>
                         <td class="px-1 py-0 text-center border border-slate-300">

@@ -97,7 +97,7 @@
                     <div class="space-y-3">
                         <div>
                             <span class="text-xs text-slate-400">Package</span>
-                            <p class="text-slate-800">{{ $passenger->booking?->package?->package_name ?? '-' }}</p>
+                            <p class="text-slate-800">{{ $passenger->booking?->package_name ?? $passenger->booking?->package?->package_name ?? '-' }}</p>
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Service Required</span>

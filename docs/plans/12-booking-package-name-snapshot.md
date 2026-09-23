@@ -136,9 +136,13 @@ if ($booking->wasChanged('package_id')) {
 ```
 
 - Validation: `'package_id' => 'nullable|exists:packages,id'` (~line 1939) →
-  `'required|exists:packages,id'` for callers that can set it (admins). The
-  non-admin `unset` gate runs first, so non-admins are unaffected and still
-  can never hit the package-change path.
+  `'sometimes|required|exists:packages,id'`. `sometimes` is required (not plain
+  `required`) because `$request->validate()` runs BEFORE the non-admin `unset`
+  gate — plain `required` would 422 non-admin updates that omit `package_id`
+  (e.g. `BookingFingerprintLocationAccessTest`). Admins clearing/changing the
+  package always send the key, so the required-when-present semantics hold;
+  non-admin submissions still have the key unset afterwards and can never hit
+  the package-change path.
 - One write → one `BookingUpdateLog` row containing both `package_id` and
   `package_name`.
 - No profit side-effect: `BookingObserver` only recalculates profit on
@@ -160,7 +164,15 @@ $booking = Booking::create([
 ]);
 ```
 
-Throws when `package_id` is missing (package is required).
+Throws (`findOrFail`) when `package_id` is missing (package is required).
+Viability drive-bys (all `bookings` columns are `NOT NULL` without defaults,
+so the dead service could never insert at all): pass through
+`fingerprint_charge_id`, resolve `booking_branch_id` (explicit or
+`fingerprint_branch_id` fallback), auto-generate `invoice_id` via
+`generateInvoiceId()` and `date_gap_id` via `FlightDateGap::getOrCreate()`,
+default `discount_type` to `'fixed_amount'` and `discount_amount` to `0`.
+Callers must still supply full passenger payloads (`Passenger::create` needs
+all `NOT NULL` passenger columns, incl. `ticket_status`).
 
 ### 6. Views / serializers / reports — snapshot first, live fallback
 
@@ -212,7 +224,11 @@ the create/edit package `<select>`s.
 
 Mirrors `BookingTicketFareSyncTest` conventions (RefreshDatabase, acting as
 admin; `phpunit.xml` uses MySQL `umrah_test`, so the join-update backfill runs
-for real). Cases:
+for real). Test helpers must attach role `'Super Admin'` for admin cases (not
+`'admin'` as in `BookingTicketFareSyncTest::createUser()` — `'admin'` fails
+`BookingController::isAdminRole()`, which only accepts `Super Admin`/`Co
+Admin`, and would silently route admin tests through the non-admin `unset`
+path) and a branch-scoped `Branch Staff` user for case 7. Cases:
 
 1. `store` without `package_id` → validation failure (required).
 2. `store` with `package_id` snapshots `package_name` from the selected
@@ -230,6 +246,12 @@ for real). Cases:
    snapshot.
 7. Non-admin `update()` cannot change `package_id`/`package_name` (existing
    gate, regression-guarded).
+
+Test mechanics: `$this->withoutMiddleware()` disables `SubstituteBindings`,
+so route-model binding yields an empty model — update-path tests (4, 7) must
+create the booking directly via `Booking::create` (mirroring
+`BookingFingerprintLocationAccessTest`) and PUT *with* middleware; store-path
+tests (1–3, 5) keep `withoutMiddleware()` (no binding involved).
 
 ---
 

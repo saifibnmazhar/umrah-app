@@ -498,6 +498,7 @@ class BookingController extends Controller
                         'name' => $p->booking?->customer?->name,
                         'mobile_no' => $p->booking?->customer?->mobile_no,
                     ],
+                    'package_name' => $p->booking?->package_name,
                     'package' => [
                         'package_name' => $p->booking?->package?->package_name,
                     ],
@@ -1266,7 +1267,7 @@ class BookingController extends Controller
             'district_id' => 'required|exists:districts,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_branch_id' => 'nullable|exists:branches,id',
-            'package_id' => 'nullable|exists:packages,id',
+            'package_id' => 'required|exists:packages,id',
             'fingerprint_charge_id' => 'required|exists:fingerprint_charges,id',
             'fingerprint_location' => 'nullable|in:office,home',
             'pax_qty' => 'nullable|integer|min:1',
@@ -1362,6 +1363,8 @@ class BookingController extends Controller
                 $fingerprintBranchId = $validated['fingerprint_branch_id'] ?? null;
             }
 
+            $package = Package::findOrFail($validated['package_id']);
+
             $booking = Booking::create([
                 'user_id' => auth()->id(),
                 'booking_branch_id' => $bookingBranchId,
@@ -1370,7 +1373,8 @@ class BookingController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'district_id' => $validated['district_id'] ?? null,
                 'fingerprint_branch_id' => $fingerprintBranchId,
-                'package_id' => $validated['package_id'] ?? null,
+                'package_id' => $package->id,
+                'package_name' => $package->package_name,
                 'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'pax_qty' => count($validated['passengers']),
@@ -1843,7 +1847,7 @@ class BookingController extends Controller
             if ($currentPackage && ! $currentPackage->is_active) {
                 $packages->push([
                     'id' => $currentPackage->id,
-                    'package_name' => $currentPackage->package_name,
+                    'package_name' => $booking->package_name ?? $currentPackage->package_name,
                     'ticket_fare_id' => $currentPackage->ticket_fare_id,
                     'is_double_ticket' => $currentPackage->is_double_ticket,
                     'ticket_fare_inbound_id' => $currentPackage->ticket_fare_inbound_id,
@@ -1936,7 +1940,7 @@ class BookingController extends Controller
             'fingerprint_charge_id' => 'nullable|exists:fingerprint_charges,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
-            'package_id' => 'nullable|exists:packages,id',
+            'package_id' => 'sometimes|required|exists:packages,id',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
@@ -1972,10 +1976,14 @@ class BookingController extends Controller
                 unset($validated['discount_value']);
                 unset($validated['fingerprint_location']);
             }
+            if (array_key_exists('package_id', $validated)) {
+                $package = Package::findOrFail($validated['package_id']);
+                $validated['package_name'] = $package->package_name;
+            }
             $booking->update($validated);
 
-            if ($request->has('package_id') && $booking->wasChanged('package_id')) {
-                $package = Package::with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])->find($request->input('package_id'));
+            if ($booking->wasChanged('package_id')) {
+                $package ??= Package::with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])->find($booking->package_id);
                 if ($package) {
                     if ($package->is_double_ticket) {
                         $booking->passengers()
