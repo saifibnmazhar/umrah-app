@@ -9,6 +9,7 @@ use App\Models\BaggageAllowance;
 use App\Models\FlightDateGap;
 use App\Models\GroupTicket;
 use App\Models\Package;
+use App\Models\PackageUpdateLog;
 use App\Models\Route;
 use App\Models\TicketFare;
 use App\Models\TravelClass;
@@ -194,7 +195,18 @@ class TicketFareController extends Controller
                     'offer_price' => 'nullable|numeric|min:0',
                     'effective_to' => 'required|date',
                 ]);
-                $ticketFare->update($validated);
+
+                $oldSelling = (float) ($ticketFare->selling_fare ?? 0);
+                $oldOffer = (float) ($ticketFare->offer_price ?? 0);
+                $newSelling = (float) ($validated['selling_fare'] ?? $oldSelling);
+                $newOffer = array_key_exists('offer_price', $validated) && $validated['offer_price'] !== null
+                    ? (float) $validated['offer_price']
+                    : null;
+
+                DB::transaction(function () use ($ticketFare, $validated, $oldSelling, $oldOffer, $newSelling, $newOffer) {
+                    $ticketFare->update($validated);
+                    $this->cascadeFarePriceToPackages($ticketFare, $oldSelling, $oldOffer, $newSelling, $newOffer);
+                });
 
                 return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
             }
@@ -410,6 +422,80 @@ class TicketFareController extends Controller
     {
         $ticketFare->baggageAllowances()->delete();
         $this->createBaggageAllowances($ticketFare, $request);
+    }
+
+    private function cascadeFarePriceToPackages(TicketFare $ticketFare, float $oldSelling, float $oldOffer, float $newSelling, ?float $newOffer): void
+    {
+        $sellingChanged = abs($newSelling - $oldSelling) >= 0.0000005;
+        $offerChanged = $newOffer !== null && abs($newOffer - $oldOffer) >= 0.0000005;
+
+        if (! $sellingChanged && ! $offerChanged) {
+            return;
+        }
+
+        $type = $ticketFare->ticket_type instanceof \BackedEnum ? $ticketFare->ticket_type->value : $ticketFare->ticket_type;
+
+        $packages = Package::with(['visaSellingPrice', 'ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])
+            ->where('ticket_fare_id', $ticketFare->id)
+            ->orWhere('ticket_fare_inbound_id', $ticketFare->id)
+            ->orWhere('ticket_fare_outbound_id', $ticketFare->id)
+            ->get();
+
+        foreach ($packages as $package) {
+            $visa = (float) ($package->visaSellingPrice?->selling_price ?? 0);
+            $updates = [];
+
+            if ($package->ticket_fare_id == $ticketFare->id) {
+                if ($sellingChanged) {
+                    $updates['regular_price'] = round($newSelling + $visa, 6);
+                }
+                if ($offerChanged && $type === 'offer') {
+                    $updates['offer_price'] = round($newOffer + $visa, 6);
+                }
+            } else {
+                if ($sellingChanged && $package->is_double_ticket) {
+                    $inSelling = $package->ticket_fare_inbound_id == $ticketFare->id
+                        ? $newSelling
+                        : (float) ($package->ticketFareInbound?->selling_fare ?? 0);
+                    $outSelling = $package->ticket_fare_outbound_id == $ticketFare->id
+                        ? $newSelling
+                        : (float) ($package->ticketFareOutbound?->selling_fare ?? 0);
+                    $updates['regular_price'] = round($inSelling + $outSelling + $visa, 6);
+                }
+            }
+
+            if (empty($updates)) {
+                continue;
+            }
+
+            $dirty = [];
+            foreach ($updates as $key => $value) {
+                if (abs((float) ($package->{$key} ?? 0) - $value) >= 0.0000005) {
+                    $dirty[$key] = $value;
+                }
+            }
+
+            if (empty($dirty)) {
+                continue;
+            }
+
+            $oldValues = [];
+            foreach ($dirty as $key => $value) {
+                $oldValues[$key] = $package->{$key};
+            }
+
+            $package->updateQuietly($dirty);
+
+            if (auth()->user()) {
+                PackageUpdateLog::create([
+                    'package_id' => $package->id,
+                    'user_id' => auth()->id(),
+                    'action' => 'fare_updated',
+                    'old_values' => $oldValues,
+                    'new_values' => $dirty,
+                ]);
+            }
+        }
     }
 
     public function getBaggageAllowance(Request $request)

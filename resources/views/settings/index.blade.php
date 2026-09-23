@@ -374,6 +374,19 @@
         document.getElementById('modalOfferPrice').readOnly = false;
         document.getElementById('modalOfferPriceContainer').classList.add('hidden');
         document.getElementById('modalDoubleTicketCheck').checked = false;
+        document.getElementById('modalDoubleTicketCheck').disabled = false;
+        document.getElementById('modalTicketTypeSelect').disabled = false;
+        document.getElementById('modalTicketTypeSelect').classList.remove('bg-slate-100', 'cursor-not-allowed');
+        document.getElementById('modalTicketSelect').disabled = false;
+        document.getElementById('modalTicketInboundSelect').disabled = false;
+        document.getElementById('modalTicketOutboundSelect').disabled = false;
+        document.getElementById('modalCurrentVisaRow').classList.add('hidden');
+        document.getElementById('modalUseCurrentVisaRow').classList.add('hidden');
+        document.getElementById('modalUseCurrentVisaRow').classList.remove('flex');
+        document.getElementById('modalUseCurrentVisa').checked = false;
+        modalPkgLocked = false;
+        modalPkgEditing = false;
+        modalCurrentVisaPrice = 0;
         filterModalTickets();
         toggleDoubleTicket();
         document.getElementById('packageModal').classList.remove('hidden');
@@ -384,15 +397,29 @@
     function editPackage(id) {
         const pkg = packages.find(p => p.id === id);
         if (!pkg) return;
-        if (pkg.is_locked) {
-            alert('This package cannot be edited because it has existing bookings.');
-            return;
-        }
         document.getElementById('modalTitle').textContent = 'Edit Package';
         document.getElementById('packageForm').action = '/settings/package/' + id;
         document.getElementById('formMethod').value = 'PUT';
         document.getElementById('packageId').value = pkg.id;
         document.getElementById('packageName').value = pkg.package_name;
+        const locked = pkg.is_locked || pkg.isLocked || false;
+        const currentVisa = parseFloat(pkg.visa_selling_price?.selling_price ?? pkg.visa_selling_price ?? 0) || 0;
+        modalPkgLocked = locked;
+        modalPkgEditing = true;
+        modalCurrentVisaPrice = currentVisa;
+        document.getElementById('modalCurrentVisaPrice').textContent = 'SAR ' + currentVisa.toFixed(2);
+        document.getElementById('modalCurrentVisaRow').classList.remove('hidden');
+        document.getElementById('modalUseCurrentVisaRow').classList.remove('hidden');
+        document.getElementById('modalUseCurrentVisaRow').classList.add('flex');
+        document.getElementById('modalUseCurrentVisa').checked = false;
+        document.getElementById('modalDoubleTicketCheck').disabled = locked;
+        document.getElementById('modalTicketTypeSelect').disabled = locked;
+        document.getElementById('modalTicketTypeSelect').classList.toggle('bg-slate-100', locked);
+        document.getElementById('modalTicketTypeSelect').classList.toggle('cursor-not-allowed', locked);
+        document.getElementById('modalOfferPrice').readOnly = locked || document.getElementById('modalOfferPrice').readOnly;
+        document.getElementById('modalTicketSelect').disabled = locked;
+        document.getElementById('modalTicketInboundSelect').disabled = locked;
+        document.getElementById('modalTicketOutboundSelect').disabled = locked;
         const isDouble = pkg.is_double_ticket || false;
         document.getElementById('modalDoubleTicketCheck').checked = isDouble;
         toggleDoubleTicket();
@@ -401,6 +428,14 @@
             document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
             filterModalTickets(pkg.ticket_fare_id);
             document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
+        } else {
+            const fareTypeOf = (fare) => fare ? (fare.ticket_type?.value ?? fare.ticket_type ?? '') : '';
+            const pkgTicketType = fareTypeOf(pkg.ticket_fare)
+                || fareTypeOf(pkg.ticket_fare_inbound)
+                || fareTypeOf(pkg.ticket_fare_outbound);
+            if (pkgTicketType) {
+                document.getElementById('modalTicketTypeSelect').value = pkgTicketType;
+            }
         }
         document.getElementById('modalTicketInboundSelect').value = pkg.ticket_fare_inbound_id || '';
         document.getElementById('modalTicketOutboundSelect').value = pkg.ticket_fare_outbound_id || '';
@@ -504,6 +539,7 @@
 
     function calculateModalPrices() {
         const isDouble = document.getElementById('modalDoubleTicketCheck').checked;
+        const visaBase = modalVisaBase();
         if (isDouble) {
             const inboundSelect = document.getElementById('modalTicketInboundSelect');
             const outboundSelect = document.getElementById('modalTicketOutboundSelect');
@@ -514,7 +550,7 @@
             const inboundSelling = hasInbound ? parseFloat(inboundOption.dataset.sellingFare) || 0 : 0;
             const outboundSelling = hasOutbound ? parseFloat(outboundOption.dataset.sellingFare) || 0 : 0;
             const totalFare = inboundSelling + outboundSelling;
-            const regularSar = totalFare > 0 ? totalFare + latestVisaPrice : 0;
+            const regularSar = totalFare > 0 ? totalFare + visaBase : 0;
             document.getElementById('modalRegularPrice').dataset.sarValue = regularSar > 0 ? regularSar.toFixed(6) : '0';
 
             const inboundType = hasInbound ? inboundOption.dataset.ticketType : null;
@@ -523,7 +559,7 @@
             if (inboundType === 'offer' && outboundType === 'offer' && hasInbound && hasOutbound) {
                 const inboundOffer = parseFloat(inboundOption.dataset.offerPrice) || 0;
                 const outboundOffer = parseFloat(outboundOption.dataset.offerPrice) || 0;
-                const offerSar = inboundOffer + outboundOffer + latestVisaPrice;
+                const offerSar = inboundOffer + outboundOffer + visaBase;
                 document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
                 document.getElementById('modalOfferPrice').readOnly = true;
@@ -551,14 +587,14 @@
         const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
         const ticketType = selectedOption.dataset.ticketType;
         if (ticketType === 'offer') {
-            const regularSar = sellingFare + latestVisaPrice;
-            const offerSar = offerFare + latestVisaPrice;
+            const regularSar = sellingFare + visaBase;
+            const offerSar = offerFare + visaBase;
             document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
             document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
             document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
             document.getElementById('modalOfferPrice').readOnly = true;
         } else {
-            const regularSar = sellingFare + latestVisaPrice;
+            const regularSar = sellingFare + visaBase;
             document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
             document.getElementById('modalOfferPrice').dataset.sarValue = '0';
             document.getElementById('modalOfferPriceContainer').classList.add('hidden');
@@ -747,11 +783,10 @@
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
+                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                     @if($package->is_locked)
-                                        <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
                                         <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
                                     @else
-                                        <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                         <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -904,14 +939,22 @@
 
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg grid grid-cols-2 gap-4">
                         <div class="text-sm text-slate-600">
+                            <span id="modalCurrentVisaRow" class="hidden block">
+                                <span class="font-medium">Current Visa Selling Price:</span>
+                                <span id="modalCurrentVisaPrice" class="text-slate-800 font-medium">-</span>
+                            </span>
                             <span class="font-medium">Visa Selling Price (Latest):</span>
-                            <span class="text-slate-800 font-medium block">
+                            <span class="text-slate-800 font-medium">
                                 @if($latestVisa)
                                     @currency($latestVisa->selling_price, 0)
                                 @else
                                     Not configured
                                 @endif
                             </span>
+                            <label id="modalUseCurrentVisaRow" class="hidden items-center gap-2 cursor-pointer mt-2">
+                                <input type="checkbox" id="modalUseCurrentVisa" name="use_current_visa" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                                <span class="font-medium">Update visa selling price to latest</span>
+                            </label>
                         </div>
                         <div class="text-sm text-slate-600">
                             <span class="font-medium">Gross Amount:</span>
@@ -934,9 +977,23 @@
         const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
         const packages = @json($packages->items());
         const usedFareIds = @json($usedFareIds);
+        let modalCurrentVisaPrice = 0;
+        let modalPkgLocked = false;
+        let modalPkgEditing = false;
+
+        function modalVisaBase() {
+            if (!modalPkgEditing) return latestVisaPrice;
+            const cb = document.getElementById('modalUseCurrentVisa');
+            return (cb && cb.checked) ? latestVisaPrice : modalCurrentVisaPrice;
+        }
         </script>
 
         <script>
+        document.getElementById('modalUseCurrentVisa').addEventListener('change', function () {
+            calculateModalPrices();
+            syncInputCurrency();
+            updateModalGross();
+        });
         document.getElementById('modalDoubleTicketCheck').addEventListener('change', toggleDoubleTicket);
         document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
         document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
