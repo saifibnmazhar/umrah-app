@@ -253,7 +253,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->bookingBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->package_name ?? $booking->package?->package_name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700"><div class="flex items-center justify-center gap-3">@php $indexDiscountTypeRaw = $booking->discount_type instanceof \BackedEnum ? $booking->discount_type->value : ($booking->discount_type ?? 'fixed_amount'); $indexDiscountType = $indexDiscountTypeRaw === 'percentage' ? 'percentage' : 'fixed'; @endphp<span class="inline-block w-[140px] text-right tabular-nums shrink-0" data-role="index-total-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</span>@if($canApplyDiscount)<button type="button" data-role="index-discount-btn" data-booking-id="{{ $booking->id }}" data-discount-type="{{ $indexDiscountType }}" data-discount-value="{{ $booking->discount_value ?? 0 }}" data-rate="{{ $bookingCurrencyRate }}" onclick="openIndexDiscountModal({{ $booking->id }}, '{{ $indexDiscountType }}', {{ (float) ($booking->discount_value ?? 0) }}, {{ (float) $bookingCurrencyRate }})" class="shrink-0 text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>@endif</div></td>
                             <td class="px-3 py-2 text-slate-700"><span data-role="index-paid-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</span></td>
                             <td class="px-3 py-2 text-slate-700"><span data-role="index-due-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</span></td>
@@ -627,7 +627,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     <td class="px-3 py-2 text-slate-700" x-text="(p.flight_date_from || '—') + ' → ' + (p.flight_date_to || '—')"></td>
     <td class="px-3 py-2 text-slate-700" x-text="p.actual_flight_date || 'N/A'"></td>
     <td class="px-3 py-2 text-slate-700" x-text="p.return_date || 'N/A'"></td>
-    <td class="px-3 py-2 text-slate-700" x-text="p.booking?.package?.package_name || '—'"></td>
+    <td class="px-3 py-2 text-slate-700" x-text="p.booking?.package_name || p.booking?.package?.package_name || '—'"></td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700"><span x-text="p.package_value ? $currency(p.package_value, 2, p.pass_booking_rate) : '—'"></span></td>@endif
     @if($canViewFinancialColumns)
     <td class="px-3 py-2 text-slate-700 relative align-top"
@@ -7018,8 +7018,10 @@ function bookingIndexApp() {
                     }),
                 });
                 const data = await res.json();
-                if (data.success) this.loadPassengerData();
-                else alert(data.message || 'Failed to initiate cancellation');
+                if (data.success) {
+                    this.closeCancelModal();
+                    this.loadPassengerData();
+                } else alert(data.message || 'Failed to initiate cancellation');
             } catch (e) {
                 alert('Failed to initiate cancellation');
             } finally {

@@ -27,6 +27,7 @@ class CancelledBooking extends Model
         'refund_voucher_id',
         'confirmed_by_id',
         'reverted_by_id',
+        'passenger_statuses_snapshot',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class CancelledBooking extends Model
         'service_charge_deduction' => 'decimal:6',
         'refund_amount' => 'decimal:6',
         'total_passenger_refundable' => 'decimal:6',
+        'passenger_statuses_snapshot' => 'array',
         'status' => CancelledBookingStatus::class,
     ];
 

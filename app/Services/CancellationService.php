@@ -6,6 +6,7 @@ use App\Enums\CancelledBookingStatus;
 use App\Enums\InvoiceStatus;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
+use App\Models\PassengerStatus;
 use App\Models\Payment;
 use App\Models\TransactionType;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,20 @@ class CancellationService
             $invoice->audit_reason = 'booking_cancelled';
             $invoice->update(['status' => InvoiceStatus::CANCELLED]);
 
+            $holdId = PassengerStatus::firstOrCreate(['name' => 'Hold'])->id;
+            $cancelId = PassengerStatus::where('name', 'Cancel')->value('id');
+
+            $snapshot = $booking->passengers()
+                ->pluck('passenger_status_id', 'id')
+                ->map(fn ($statusId) => $statusId)
+                ->toArray();
+            $cancelledBooking->update(['passenger_statuses_snapshot' => $snapshot]);
+
+            $booking->passengers()
+                ->where(fn ($q) => $q->whereNull('passenger_status_id')
+                    ->orWhereNotIn('passenger_status_id', [$holdId, $cancelId]))
+                ->each(fn ($passenger) => $passenger->update(['passenger_status_id' => $holdId]));
+
             return $cancelledBooking;
         });
     }
@@ -66,6 +81,13 @@ class CancellationService
         DB::transaction(function () use ($cancelledBooking) {
             $booking = $cancelledBooking->booking;
             $invoice = $cancelledBooking->invoice;
+
+            $snapshot = $cancelledBooking->passenger_statuses_snapshot ?? [];
+            foreach ($booking->passengers as $passenger) {
+                if (array_key_exists((string) $passenger->id, $snapshot)) {
+                    $passenger->update(['passenger_status_id' => $snapshot[(string) $passenger->id]]);
+                }
+            }
 
             $booking->passengers()
                 ->where('is_cancelled', false)
@@ -183,6 +205,14 @@ class CancellationService
                 ->where('is_cancelled', false)
                 ->where('refund_payable', '>', 0)
                 ->update(['refund_payable' => 0]);
+
+            $cancelId = PassengerStatus::firstOrCreate(['name' => 'Cancel'])->id;
+            $now = now();
+            $booking->passengers()->each(fn ($passenger) => $passenger->update([
+                'passenger_status_id' => $cancelId,
+                'is_cancelled' => true,
+                'cancelled_at' => $now,
+            ]));
 
             $cancelledBooking->update([
                 'deduction_payment_id' => $deductionPaymentId,
