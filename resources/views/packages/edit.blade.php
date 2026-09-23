@@ -30,13 +30,19 @@
                     @enderror
                 </div>
 
+                @php
+                    $packageTicketType = $package?->ticketFare?->ticket_type?->value
+                        ?? $package?->ticketFareInbound?->ticket_type?->value
+                        ?? $package?->ticketFareOutbound?->ticket_type?->value
+                        ?? '';
+                @endphp
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                    <select id="ticketTypeSelect" name="ticket_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                    <select id="ticketTypeSelect" name="ticket_type" @if($isLocked) disabled @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @if($isLocked) bg-slate-100 cursor-not-allowed @endif" required>
                         <option value="">Select Ticket Type</option>
-                        <option value="regular" {{ (old('ticket_type', $package?->ticketFare?->ticket_type?->value ?? '') == 'regular') ? 'selected' : '' }}>REGULAR</option>
-                        <option value="offer" {{ (old('ticket_type', $package?->ticketFare?->ticket_type?->value ?? '') == 'offer') ? 'selected' : '' }}>OFFER</option>
-                        <option value="group" {{ (old('ticket_type', $package?->ticketFare?->ticket_type?->value ?? '') == 'group') ? 'selected' : '' }}>GROUP</option>
+                        <option value="regular" {{ (old('ticket_type', $packageTicketType) == 'regular') ? 'selected' : '' }}>REGULAR</option>
+                        <option value="offer" {{ (old('ticket_type', $packageTicketType) == 'offer') ? 'selected' : '' }}>OFFER</option>
+                        <option value="group" {{ (old('ticket_type', $packageTicketType) == 'group') ? 'selected' : '' }}>GROUP</option>
                     </select>
                 </div>
             </div>
@@ -130,7 +136,7 @@
                     @enderror
                 </div>
 
-                <div id="offerPriceContainer" class="{{ (isset($package) && $package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) ? '' : 'hidden' }}">
+                <div id="offerPriceContainer" class="{{ (isset($package) && ($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER || (!$package->ticketFare && ($package->ticketFareInbound?->ticket_type === \App\Enums\TicketType::OFFER || $package->ticketFareOutbound?->ticket_type === \App\Enums\TicketType::OFFER)))) ? '' : 'hidden' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                     <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" @if($isLocked) readonly @endif class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @if($isLocked) bg-slate-100 cursor-not-allowed @endif" min="0" step="any">
                     @error('offer_price')
@@ -148,6 +154,12 @@
             </div>
 
             <div class="mt-4 p-4 bg-slate-50 rounded-lg">
+                @if(isset($package))
+                    <p class="text-sm text-slate-600">
+                        <span class="font-medium">Current Visa Selling Price:</span>
+                        <span class="text-slate-800 font-medium">SAR {{ number_format($package->visaSellingPrice?->selling_price ?? 0, 2) }}</span>
+                    </p>
+                @endif
                 <p class="text-sm text-slate-600">
                     <span class="font-medium">Visa Selling Price (Latest):</span>
                     <span class="text-slate-800 font-medium">
@@ -158,10 +170,10 @@
                         @endif
                     </span>
                 </p>
-                @if($isLocked)
+                @if(isset($package))
                     <label class="flex items-center gap-2 cursor-pointer mt-2">
-                        <input type="checkbox" name="use_current_visa" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
-                        <span class="text-sm font-medium text-slate-700">Update visa selling price to current latest</span>
+                        <input type="checkbox" id="useCurrentVisa" name="use_current_visa" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                        <span class="text-sm font-medium text-slate-700">Update visa selling price to latest</span>
                     </label>
                 @endif
             </div>
@@ -181,6 +193,16 @@ const ticketFares = @json($ticketFares);
 const inboundFares = @json($inboundFares);
 const outboundFares = @json($outboundFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
+const currentVisaPrice = {{ $package->visaSellingPrice?->selling_price ?? 0 }};
+const useCurrentVisaCheck = document.getElementById('useCurrentVisa');
+let stashedRegularPrice = null;
+let stashedOfferPrice = null;
+let stashedOfferVisible = false;
+
+function effectiveVisaPrice() {
+    if (!useCurrentVisaCheck) return latestVisaPrice;
+    return useCurrentVisaCheck.checked ? latestVisaPrice : currentVisaPrice;
+}
 
 const doubleTicketCheck = document.getElementById('doubleTicketCheck');
 const singleTicketFields = document.getElementById('singleTicketFields');
@@ -205,6 +227,10 @@ function toggleDoubleTicket() {
     });
     doubleTicketFields.querySelectorAll('select').forEach(el => el.required = isDouble);
 
+    if (isPackageLocked) {
+        return;
+    }
+
     if (isDouble) {
         ticketSelect.value = '';
         calculatePrices();
@@ -226,11 +252,15 @@ function buildDisplay(fare) {
     return disp;
 }
 
+const isPackageLocked = {{ $isLocked ? 'true' : 'false' }};
+
 function filterTickets() {
     const selectedType = ticketTypeSelect.value;
-    ticketSelect.value = '';
-    ticketInboundSelect.value = '';
-    ticketOutboundSelect.value = '';
+    if (!isPackageLocked) {
+        ticketSelect.value = '';
+        ticketInboundSelect.value = '';
+        ticketOutboundSelect.value = '';
+    }
     [ticketSelect, ticketInboundSelect, ticketOutboundSelect].forEach(sel => {
         Array.from(sel.options).forEach(option => {
             if (option.value === '') return;
@@ -242,6 +272,7 @@ function filterTickets() {
 
 function calculatePrices() {
     const isDouble = doubleTicketCheck.checked;
+    const visaBase = effectiveVisaPrice();
 
     if (isDouble) {
         const inboundOption = ticketInboundSelect.options[ticketInboundSelect.selectedIndex];
@@ -250,7 +281,7 @@ function calculatePrices() {
         const outboundFare = outboundOption && outboundOption.value ? parseFloat(outboundOption.dataset.sellingFare) || 0 : 0;
         const totalFare = inboundFare + outboundFare;
 
-        regularPrice.value = totalFare > 0 ? (totalFare + latestVisaPrice).toFixed(6) : '';
+        regularPrice.value = totalFare > 0 ? (totalFare + visaBase).toFixed(6) : '';
         offerPriceContainer.classList.add('hidden');
         offerPrice.value = '';
         return;
@@ -267,11 +298,11 @@ function calculatePrices() {
     const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
     const ticketType = selectedOption.dataset.ticketType;
 
-    regularPrice.value = (sellingFare + latestVisaPrice).toFixed(6);
+    regularPrice.value = (sellingFare + visaBase).toFixed(6);
 
     if (ticketType === 'offer') {
         offerPriceContainer.classList.remove('hidden');
-        offerPrice.value = (offerFare + latestVisaPrice).toFixed(6);
+        offerPrice.value = (offerFare + visaBase).toFixed(6);
     } else {
         offerPriceContainer.classList.add('hidden');
         offerPrice.value = '';
@@ -283,11 +314,30 @@ ticketTypeSelect.addEventListener('change', filterTickets);
 ticketSelect.addEventListener('change', calculatePrices);
 ticketInboundSelect.addEventListener('change', calculatePrices);
 ticketOutboundSelect.addEventListener('change', calculatePrices);
+if (useCurrentVisaCheck) {
+    useCurrentVisaCheck.addEventListener('change', function() {
+        if (useCurrentVisaCheck.checked) {
+            calculatePrices();
+        } else if (isPackageLocked && stashedRegularPrice !== null) {
+            regularPrice.value = stashedRegularPrice;
+            offerPrice.value = stashedOfferPrice;
+            offerPriceContainer.classList.toggle('hidden', !stashedOfferVisible);
+        } else {
+            calculatePrices();
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     toggleDoubleTicket();
-    filterTickets();
-    calculatePrices();
+    if (!isPackageLocked) {
+        filterTickets();
+        calculatePrices();
+    } else {
+        stashedRegularPrice = regularPrice.value;
+        stashedOfferPrice = offerPrice.value;
+        stashedOfferVisible = !offerPriceContainer.classList.contains('hidden');
+    }
 });
 </script>
 @endsection
