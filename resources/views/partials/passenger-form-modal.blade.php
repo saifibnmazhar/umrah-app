@@ -83,6 +83,10 @@
                             <option value="ticket_only">Ticket Only</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Extra Charge (SAR)</label>
+                        <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                    </div>
                 </div>
             </div>
 

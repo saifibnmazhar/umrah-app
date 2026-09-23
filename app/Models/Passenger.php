@@ -54,6 +54,7 @@ class Passenger extends Model
         'service_charge',
         'service_charge_effective_at',
         'booking_service_charge',
+        'extra_charge',
         'is_cancelled',
         'cancelled_at',
     ];
@@ -80,6 +81,7 @@ class Passenger extends Model
         'ticket_profit' => 'decimal:6',
         'service_charge' => 'decimal:6',
         'booking_service_charge' => 'decimal:6',
+        'extra_charge' => 'decimal:6',
         'visa_profit_effective_at' => 'datetime',
         'ticket_profit_effective_at' => 'datetime',
         'service_charge_effective_at' => 'datetime',

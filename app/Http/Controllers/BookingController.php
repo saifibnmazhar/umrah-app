@@ -1290,6 +1290,7 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'passengers.*.ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
             'passengers.*.ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            'passengers.*.extra_charge' => 'nullable|numeric|min:0',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'passenger_docs' => 'nullable|array',
@@ -1451,6 +1452,7 @@ class BookingController extends Controller
                         : null,
                     'package_value' => 0,
                     'booking_service_charge' => $booking->package?->service_charge ?? 0,
+                    'extra_charge' => $passengerData['extra_charge'] ?? 0,
                 ]);
 
                 $createdPassengers[$passengerIndex] = $passenger;
@@ -2090,6 +2092,10 @@ class BookingController extends Controller
                 $booking->fingerprint->update(['assigned_staff_id' => null]);
             }
 
+            if ($booking->wasChanged('package_id')) {
+                app(ProfitCalculationService::class)->recalculateBookingProfit($booking->fresh());
+            }
+
             $booking = $booking->fresh();
             $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated');
 
@@ -2252,6 +2258,7 @@ class BookingController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            'extra_charge' => 'nullable|numeric|min:0',
         ]);
 
         $passengerType = $this->bookingService->calculatePassengerType(
@@ -2277,6 +2284,7 @@ class BookingController extends Controller
             ? $booking->package?->ticket_fare_outbound_id
             : null;
         $validated['booking_service_charge'] = $booking->package?->service_charge ?? 0;
+        $validated['extra_charge'] = $validated['extra_charge'] ?? 0;
 
         return DB::transaction(function () use ($booking, $validated, $passengerType, $isDoubleTicket) {
             $passenger = Passenger::create($validated);

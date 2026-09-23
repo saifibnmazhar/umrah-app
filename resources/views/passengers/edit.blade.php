@@ -115,6 +115,12 @@
                             <option value="ticket_only">Ticket Only</option>
                         </select>
                     </div>
+                    @if($canEditExtraCharge ?? false)
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Extra Charge (SAR)</label>
+                        <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -347,6 +353,7 @@
                 flight_date_to: '',
                 baggage_weight: '',
                 address: '',
+                extra_charge: 0,
                 customDurationDays: ''
             },
             get isDoubleTicket() {
@@ -426,6 +433,7 @@
             }
 
             this.passengerData.address = p.address || '';
+            this.passengerData.extra_charge = p.extra_charge ?? 0;
 
             const inboundId = p.ticket_fare_inbound_id;
             const outboundId = p.ticket_fare_outbound_id;
@@ -1153,6 +1161,7 @@
                 ticket_fare_id: this.isDoubleTicket ? null : (this.passengerData.ticket_fare_id || null),
                 ticket_fare_inbound_id: this.passengerData.ticket_fare_inbound_id || null,
                 ticket_fare_outbound_id: this.passengerData.ticket_fare_outbound_id || null,
+                extra_charge: parseFloat(this.passengerData.extra_charge) || 0,
             };
 
             try {

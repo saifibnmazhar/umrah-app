@@ -659,7 +659,7 @@ class ProfitCalculationService
             return 0.0;
         }
 
-        return (float) ($passenger->booking_service_charge ?? 0);
+        return (float) ($passenger->booking_service_charge ?? 0) + (float) ($passenger->extra_charge ?? 0);
     }
 
     private function determineVisaEffectiveDate(Passenger $passenger): ?string

@@ -256,6 +256,16 @@
                                 <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
                                 <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2, $rate)</p>
                             </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Booking Service Charge (SAR)</span>
+                                <p class="text-slate-800 font-medium">@currency($passenger->booking_service_charge, 2, $rate)</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400">Extra Charge (SAR)</span>
+                                <p class="text-slate-800 font-medium">@currency($passenger->extra_charge, 2, $rate)</p>
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                             <div>

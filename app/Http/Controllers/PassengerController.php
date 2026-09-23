@@ -20,6 +20,7 @@ use App\Models\VisaSubmission;
 use App\Services\BookingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
+use App\Services\ProfitCalculationService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Carbon\Carbon;
@@ -212,6 +213,8 @@ class PassengerController extends Controller
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])
             ->isNotEmpty();
 
+        $canEditExtraCharge = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
+
         $historyRows = [];
         $visaSubmission = $passenger->visaSubmission;
 
@@ -287,7 +290,7 @@ class PassengerController extends Controller
             ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
             ?? 0;
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate', 'inboundIssuedTicket', 'outboundIssuedTicket'));
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'canEditExtraCharge', 'historyRows', 'rate', 'inboundIssuedTicket', 'outboundIssuedTicket'));
     }
 
     public function edit(Passenger $passenger)
@@ -388,7 +391,9 @@ class PassengerController extends Controller
             ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
             ?? 0;
 
-        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages', 'rate'));
+        $canEditExtraCharge = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
+
+        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages', 'rate', 'canEditExtraCharge'));
     }
 
     public function uploadDocument(Request $request, Passenger $passenger)
@@ -569,6 +574,10 @@ class PassengerController extends Controller
             $request->request->remove('flight_date_to');
         }
 
+        if (! $this->isFlightDateAdmin()) {
+            $request->request->remove('extra_charge');
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -591,7 +600,12 @@ class PassengerController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            'extra_charge' => 'nullable|numeric|min:0',
         ]);
+
+        if (array_key_exists('extra_charge', $validated)) {
+            $validated['extra_charge'] = ($validated['extra_charge'] === null || $validated['extra_charge'] === '') ? 0 : $validated['extra_charge'];
+        }
 
         try {
             $oldPassengerType = $passenger->passenger_type;
@@ -622,7 +636,19 @@ class PassengerController extends Controller
             $booking = $passenger->booking;
             if ($booking) {
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking, 'passenger_updated');
+
+                $extraOnly = $passenger->wasChanged('extra_charge')
+                    && ! $passenger->wasChanged(['passenger_type', 'service_required', 'stay_duration', 'flight_date_from', 'flight_date_to', 'ticket_fare_id', 'ticket_fare_inbound_id', 'ticket_fare_outbound_id']);
+
+                if (! $extraOnly) {
+                    $this->bookingService->syncFinancials($booking, 'passenger_updated');
+                    $booking = $booking->fresh();
+                }
+
+                if ($passenger->wasChanged('extra_charge')) {
+                    app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
+                    $booking = $booking->fresh();
+                }
 
                 $invoice = $booking->invoice;
                 if ($invoice) {

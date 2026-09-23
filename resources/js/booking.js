@@ -83,6 +83,7 @@ Alpine.data('bookingApp', () => ({
         flight_date_from: '',
         flight_date_to: '',
         address: '',
+        extra_charge: 0,
         baggage_weight: '',
         with_offer: false,
         refundable: false,
@@ -500,6 +501,7 @@ Alpine.data('bookingApp', () => ({
                 flight_date_from: '',
                 flight_date_to: '',
                 address: '',
+                extra_charge: 0,
                 baggage_weight: '',
                 with_offer: false,
                 refundable: false
@@ -530,6 +532,7 @@ Alpine.data('bookingApp', () => ({
 
         const passengerCopy = { ...this.passengerData };
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
+        passengerCopy.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
 
         if (this.editingPassengerIndex !== null) {
             this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
@@ -935,6 +938,7 @@ Alpine.data('createBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -1475,6 +1479,7 @@ Alpine.data('createBookingApp', () => ({
             flight_date_to: '',
             baggage_weight: '',
             address: '',
+            extra_charge: 0,
             with_offer: false,
             refundable: false,
             customDurationDays: ''
@@ -1707,6 +1712,7 @@ Alpine.data('createBookingApp', () => ({
         }
         const passengerCopy = { ...this.passengerData };
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
+        passengerCopy.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
 
         if (this.passengerData.flight_date_range) {
             const parsedDates = this.parseFlightDateRange(this.passengerData.flight_date_range);
@@ -2715,6 +2721,7 @@ Alpine.data('editBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -2894,6 +2901,7 @@ Alpine.data('editBookingApp', () => ({
                 flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
+                extra_charge: p.extra_charge || 0,
                 baggage_weight: '',
             }));
 
@@ -3521,7 +3529,7 @@ Alpine.data('editBookingApp', () => ({
             }
         }
 
-        this.passengers.push({ ...this.passengerData });
+        this.passengers.push({ ...this.passengerData, extra_charge: parseFloat(this.passengerData.extra_charge) || 0 });
         this.recalculateAllPassengerValues();
         this.passengerCount = this.passengers.length;
         this.passengerModalVisible = false;
@@ -4049,6 +4057,7 @@ Alpine.data('showBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -4128,6 +4137,7 @@ Alpine.data('showBookingApp', () => ({
             flight_date_to: '',
             baggage_weight: '',
             address: '',
+            extra_charge: 0,
             with_offer: false,
             refundable: false,
             customDurationDays: ''
@@ -4304,6 +4314,7 @@ Alpine.data('showBookingApp', () => ({
                 flight_date_from: flightDates?.from || null,
                 flight_date_to: flightDates?.to || null,
                 address: this.passengerData.address || null,
+                extra_charge: parseFloat(this.passengerData.extra_charge) || 0,
             })
         })
         .then(response => {
