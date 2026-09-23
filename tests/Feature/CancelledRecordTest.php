@@ -221,6 +221,7 @@ class CancelledRecordTest extends TestCase
             $table->decimal('service_charge_deduction', 14, 6)->default(0);
             $table->decimal('refund_amount', 14, 6)->default(0);
             $table->decimal('total_passenger_refundable', 14, 6)->default(0);
+            $table->json('passenger_statuses_snapshot')->nullable();
             $table->foreignId('cancellation_branch_id')->constrained('branches')->restrictOnDelete();
             $table->enum('status', ['cancellation processing', 'cancelled'])->default('cancellation processing');
             $table->foreignId('deduction_payment_id')->nullable()->constrained('payments')->nullOnDelete();
