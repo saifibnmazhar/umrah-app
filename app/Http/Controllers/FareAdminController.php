@@ -20,6 +20,10 @@ class FareAdminController extends Controller
             ->withCount([
                 'packages',
                 'passengers',
+                'packagesAsInbound',
+                'packagesAsOutbound',
+                'passengersAsInbound',
+                'passengersAsOutbound',
                 'issuedTickets as issued_tickets_count' => function ($query) {
                     $query->where('status', 'issued');
                 },

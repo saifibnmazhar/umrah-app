@@ -198,13 +198,17 @@
                     <a href="{{ route('ticket-fares.edit', $ticketFare->id) }}" class="block w-full text-center px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
                         Edit
                     </a>
-                    <form method="POST" action="{{ route('ticket-fares.destroy', $ticketFare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-sm font-medium">
-                            Delete
-                        </button>
-                    </form>
+                    @if($ticketFare->is_locked)
+                        <span class="block w-full text-center px-4 py-2 bg-red-50 text-red-400 rounded-md cursor-not-allowed text-sm font-medium" title="In use by packages or passengers">Delete</span>
+                    @else
+                        <form method="POST" action="{{ route('ticket-fares.destroy', $ticketFare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-sm font-medium">
+                                Delete
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
 

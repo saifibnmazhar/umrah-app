@@ -79,9 +79,29 @@ class TicketFare extends Model
         return $this->hasMany(Package::class, 'ticket_fare_id');
     }
 
+    public function packagesAsInbound(): HasMany
+    {
+        return $this->hasMany(Package::class, 'ticket_fare_inbound_id');
+    }
+
+    public function packagesAsOutbound(): HasMany
+    {
+        return $this->hasMany(Package::class, 'ticket_fare_outbound_id');
+    }
+
     public function passengers(): HasMany
     {
         return $this->hasMany(Passenger::class, 'ticket_fare_id');
+    }
+
+    public function passengersAsInbound(): HasMany
+    {
+        return $this->hasMany(Passenger::class, 'ticket_fare_inbound_id');
+    }
+
+    public function passengersAsOutbound(): HasMany
+    {
+        return $this->hasMany(Passenger::class, 'ticket_fare_outbound_id');
     }
 
     public function issuedTickets(): HasMany
@@ -173,17 +193,31 @@ class TicketFare extends Model
 
     public function getIsLockedAttribute(): bool
     {
-        return ($this->packages_count ?? 0) > 0 || ($this->passengers_count ?? 0) > 0;
+        $hasFullCounts = array_key_exists('packages_as_inbound_count', $this->attributes)
+            && array_key_exists('packages_as_outbound_count', $this->attributes)
+            && array_key_exists('passengers_as_inbound_count', $this->attributes)
+            && array_key_exists('passengers_as_outbound_count', $this->attributes);
+
+        if ($hasFullCounts) {
+            return ($this->packages_count ?? 0) > 0
+                || ($this->passengers_count ?? 0) > 0
+                || ($this->packages_as_inbound_count ?? 0) > 0
+                || ($this->packages_as_outbound_count ?? 0) > 0
+                || ($this->passengers_as_inbound_count ?? 0) > 0
+                || ($this->passengers_as_outbound_count ?? 0) > 0;
+        }
+
+        return $this->isLocked();
     }
 
     public function isLocked(): bool
     {
         return $this->packages()->exists()
-            || Package::where('ticket_fare_inbound_id', $this->id)->exists()
-            || Package::where('ticket_fare_outbound_id', $this->id)->exists()
+            || $this->packagesAsInbound()->exists()
+            || $this->packagesAsOutbound()->exists()
             || $this->passengers()->exists()
-            || Passenger::where('ticket_fare_inbound_id', $this->id)->exists()
-            || Passenger::where('ticket_fare_outbound_id', $this->id)->exists();
+            || $this->passengersAsInbound()->exists()
+            || $this->passengersAsOutbound()->exists();
     }
 
     protected static function booted()

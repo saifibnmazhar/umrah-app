@@ -23,7 +23,14 @@ class TicketFareController extends Controller
     public function index(Request $request)
     {
         $query = TicketFare::with(['airline', 'airlineClass', 'route', 'user', 'groupTicket', 'baggageAllowances'])
-            ->withCount(['packages', 'passengers']);
+            ->withCount([
+                'packages',
+                'passengers',
+                'packagesAsInbound',
+                'packagesAsOutbound',
+                'passengersAsInbound',
+                'passengersAsOutbound',
+            ]);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $query->where('airline_id', $request->airline_id);
