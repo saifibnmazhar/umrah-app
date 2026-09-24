@@ -23,7 +23,14 @@ class TicketFareController extends Controller
     public function index(Request $request)
     {
         $query = TicketFare::with(['airline', 'airlineClass', 'route', 'user', 'groupTicket', 'baggageAllowances'])
-            ->withCount(['packages', 'passengers']);
+            ->withCount([
+                'packages',
+                'passengers',
+                'packagesAsInbound',
+                'packagesAsOutbound',
+                'passengersAsInbound',
+                'passengersAsOutbound',
+            ]);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $query->where('airline_id', $request->airline_id);
@@ -170,10 +177,7 @@ class TicketFareController extends Controller
         $airlineClasses = AirlineClass::with('travelClass')->get();
         $travelClasses = TravelClass::orderBy('name')->get();
         $routes = Route::with(['airline', 'fromCity', 'toCity', 'returnCity'])->get();
-        $inUse = $ticketFare->packages()->exists()
-            || Package::where('ticket_fare_inbound_id', $ticketFare->id)->exists()
-            || Package::where('ticket_fare_outbound_id', $ticketFare->id)->exists()
-            || $ticketFare->passengers()->exists();
+        $inUse = $ticketFare->isLocked();
 
         return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'travelClasses', 'routes', 'inUse'));
     }
@@ -184,10 +188,7 @@ class TicketFareController extends Controller
             abort(403);
         }
 
-        $inUse = $ticketFare->packages()->exists()
-            || Package::where('ticket_fare_inbound_id', $ticketFare->id)->exists()
-            || Package::where('ticket_fare_outbound_id', $ticketFare->id)->exists()
-            || $ticketFare->passengers()->exists();
+        $inUse = $ticketFare->isLocked();
 
         try {
             if ($inUse) {
