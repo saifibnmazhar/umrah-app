@@ -2,7 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\FlightDateGap;
+use App\Models\Package;
 use App\Models\StayDurationLimit;
+use App\Models\TicketFare;
+use App\Rules\FlightDateSlot;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBookingRequest extends FormRequest
@@ -16,7 +20,7 @@ class StoreBookingRequest extends FormRequest
     {
         $limits = StayDurationLimit::getOrCreate();
 
-        return [
+        return array_merge([
             'customer_id' => 'required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
@@ -35,11 +39,61 @@ class StoreBookingRequest extends FormRequest
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:All,Visa Only,Ticket Only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:'.$limits->min_days.'|max:'.$limits->max_days,
-            'passengers.*.flight_date_from' => 'nullable|date',
-            'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
+            'passengers.*.stay_duration' => 'required|integer|min:'.$limits->min_days.'|max:'.$limits->max_days,
             'passengers.*.address' => 'nullable|string|max:500',
-        ];
+        ], self::flightDateRules((array) $this->input('passengers', []), self::packageRouteGap()));
+    }
+
+    /**
+     * Package-fallback gap, mirroring BookingController::packageRouteGap():
+     * used when a passenger carries no ticket fare id of its own.
+     */
+    private function packageRouteGap(): int
+    {
+        $packageId = $this->input('package_id');
+        if (! is_numeric($packageId)) {
+            return 0;
+        }
+
+        $package = Package::with(['ticketFare.route', 'ticketFareInbound.route'])->find((int) $packageId);
+        if (! $package) {
+            return 0;
+        }
+
+        $fare = $package->ticketFare ?? $package->ticketFareInbound;
+
+        return (int) ($fare?->route?->additional_gap ?? 0);
+    }
+
+    /**
+     * Per-index flight-date rules (explicit indexes, not wildcards) so the
+     * paired from/to values reach the slot rule. Mirrors
+     * BookingController::passengerFlightDateRules().
+     */
+    public static function flightDateRules(array $passengers, int $packageFallbackGap = 0): array
+    {
+        $defaultGap = FlightDateGap::first()?->gap ?? 30;
+        $rules = [];
+
+        foreach ($passengers as $index => $passenger) {
+            if (! is_array($passenger)) {
+                continue;
+            }
+            $fareId = $passenger['ticket_fare_id'] ?? $passenger['ticket_fare_inbound_id'] ?? null;
+            $additionalGap = $packageFallbackGap;
+            if (is_numeric($fareId)) {
+                $additionalGap = (int) (TicketFare::with('route')->find((int) $fareId)?->route?->additional_gap ?? $packageFallbackGap);
+            }
+            $from = $passenger['flight_date_from'] ?? null;
+            $rules["passengers.{$index}.flight_date_from"] = ['required', 'date'];
+            $rules["passengers.{$index}.flight_date_to"] = [
+                'required',
+                'date',
+                new FlightDateSlot(is_string($from) ? $from : null, $defaultGap, $additionalGap),
+            ];
+        }
+
+        return $rules;
     }
 
     public function messages(): array

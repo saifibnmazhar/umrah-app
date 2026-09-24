@@ -1136,6 +1136,17 @@
                 }
             }
 
+            if (!flightDateFrom || !flightDateTo) {
+                alert('Please select a valid Flight Date Range');
+                return;
+            }
+
+            const __stayLimits = window.__stayDurationLimits ?? { minDays: 1, maxDays: 85 };
+            if (!stayDurationValue || stayDurationValue < __stayLimits.minDays || stayDurationValue > __stayLimits.maxDays) {
+                alert(`Please select a valid Stay Duration (${__stayLimits.minDays}-${__stayLimits.maxDays} days)`);
+                return;
+            }
+
             const payload = {
                 first_name: this.passengerData.first_name,
                 last_name: this.passengerData.last_name,
