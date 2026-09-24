@@ -906,14 +906,14 @@ class PassengerController extends Controller
         ]);
     }
 
-    private function adjustFaresForType(float $sellingFare, float $offerPrice, string $passengerType, ?TicketFare $fare): array
+    private function adjustFaresForType(float $sellingFare, float $offerPrice, string $passengerType, ?TicketFare $fare, ?float $childPct = null, ?float $infantPct = null): array
     {
         if (! $fare) {
             return [$sellingFare, $offerPrice];
         }
         $pct = match ($passengerType) {
-            'child' => (float) ($fare->child_fare_percentage ?? 70),
-            'infant' => (float) ($fare->infant_fare_percentage ?? 30),
+            'child' => $childPct ?? (float) ($fare->child_fare_percentage ?? 70),
+            'infant' => $infantPct ?? (float) ($fare->infant_fare_percentage ?? 30),
             default => 100,
         };
         if ($pct != 100) {
@@ -938,6 +938,34 @@ class PassengerController extends Controller
         return strtolower($passenger->passenger_type instanceof \BackedEnum ? $passenger->passenger_type->value : (string) $passenger->passenger_type);
     }
 
+    /**
+     * Historic child/infant fare percentage of $fare in effect when the given
+     * ticket's snapshot world began ($at, normally the ticket's created_at).
+     * Returns null when the current passenger type does not need this
+     * percentage, so the caller falls back to the live fare value.
+     */
+    private function historicFarePercentage(TicketFare $fare, string $type, string $passengerType, $at): ?float
+    {
+        if ($passengerType !== $type) {
+            return null;
+        }
+
+        return $fare->percentageAt($type.'_fare_percentage', $at ?? now());
+    }
+
+    /**
+     * Historic selling_fare / offer_price of $fare in effect when the given
+     * ticket's snapshot world began ($at, normally the ticket's created_at).
+     * Offer price is only carried for offer-type fares; otherwise 0.
+     */
+    private function historicFareBase(TicketFare $fare, $at): array
+    {
+        return [
+            $fare->valueAt('selling_fare', $at ?? now()),
+            $this->ticketTypeValue($fare) === 'offer' ? $fare->valueAt('offer_price', $at ?? now()) : 0.0,
+        ];
+    }
+
     private function recalculateFareSnapshots(Passenger $passenger): void
     {
         $ptype = $this->passengerTypeValue($passenger);
@@ -948,11 +976,14 @@ class PassengerController extends Controller
         if ($regularTicket) {
             $fare = $passenger->ticketFare ?? $passenger->ticketFareInbound;
             if ($fare) {
+                [$s0, $o0] = $this->historicFareBase($fare, $regularTicket->created_at ?? now());
                 [$s, $o] = $this->adjustFaresForType(
-                    (float) ($fare->selling_fare ?? 0),
-                    $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0,
+                    $s0,
+                    $o0,
                     $ptype,
-                    $fare
+                    $fare,
+                    $this->historicFarePercentage($fare, 'child', $ptype, $regularTicket->created_at ?? now()),
+                    $this->historicFarePercentage($fare, 'infant', $ptype, $regularTicket->created_at ?? now()),
                 );
                 $regularTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
             }
@@ -962,11 +993,14 @@ class PassengerController extends Controller
         if ($outboundTicket) {
             $outFare = $passenger->ticketFareOutbound;
             if ($outFare) {
+                [$s0, $o0] = $this->historicFareBase($outFare, $outboundTicket->created_at ?? now());
                 [$s, $o] = $this->adjustFaresForType(
-                    (float) ($outFare->selling_fare ?? 0),
-                    $this->ticketTypeValue($outFare) === 'offer' ? (float) ($outFare->offer_price ?? 0) : 0,
+                    $s0,
+                    $o0,
                     $ptype,
-                    $outFare
+                    $outFare,
+                    $this->historicFarePercentage($outFare, 'child', $ptype, $outboundTicket->created_at ?? now()),
+                    $this->historicFarePercentage($outFare, 'infant', $ptype, $outboundTicket->created_at ?? now()),
                 );
                 $outboundTicket->update(['selling_fare' => $s, 'offer_price' => $o]);
             }
@@ -976,11 +1010,14 @@ class PassengerController extends Controller
         foreach ($additionalTickets as $ticket) {
             $fare = $ticket->ticketFare;
             if ($fare) {
+                [$s0, $o0] = $this->historicFareBase($fare, $ticket->created_at ?? now());
                 [$s, $o] = $this->adjustFaresForType(
-                    (float) ($fare->selling_fare ?? 0),
-                    $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0,
+                    $s0,
+                    $o0,
                     $ptype,
-                    $fare
+                    $fare,
+                    $this->historicFarePercentage($fare, 'child', $ptype, $ticket->created_at ?? now()),
+                    $this->historicFarePercentage($fare, 'infant', $ptype, $ticket->created_at ?? now()),
                 );
                 $ticket->update(['selling_fare' => $s, 'offer_price' => $o]);
             }
