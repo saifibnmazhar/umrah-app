@@ -135,8 +135,8 @@ return new class extends Migration
             return [$sellingFare, $offerPrice];
         }
         $pct = match ($passengerType) {
-            'child' => (float) ($fare->child_fare_percentage ?? 70),
-            'infant' => (float) ($fare->infant_fare_percentage ?? 30),
+            'child' => (float) $fare->child_fare_percentage,
+            'infant' => (float) $fare->infant_fare_percentage,
             default => 100,
         };
         if ($pct != 100) {
