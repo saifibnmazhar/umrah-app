@@ -544,6 +544,8 @@ class PassengerController extends Controller
 
     public function update(Request $request, Passenger $passenger)
     {
+        $this->ensureBranchAccess($passenger);
+
         if ($this->isGlobalNonAdmin() && $passenger->booking->user_id !== auth()->id()) {
             abort(403);
         }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\StoreBookingRequest;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Bank;
@@ -28,6 +29,7 @@ use App\Rules\FlightDateSlot;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class FlightDateSlotEnforcementTest extends TestCase
@@ -379,6 +381,210 @@ class FlightDateSlotEnforcementTest extends TestCase
 
         $this->postJson(route('bookings.store'), $this->storePayload($deps))->assertStatus(200);
         $passenger = Passenger::first();
+
+        [$from, $to] = FlightDateSlot::validPairForTesting();
+
+        $this->putJson(route('passengers.update', $passenger), $this->updatePayload($passenger, [
+            'flight_date_from' => $from,
+            'flight_date_to' => $to,
+        ]))->assertOk()->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('passengers', ['id' => $passenger->id, 'flight_date_from' => $from]);
+    }
+
+    public function test_store_rejects_non_array_passengers_with_422(): void
+    {
+        $this->withoutMiddleware([ValidateCsrfToken::class]);
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $this->actingAs($user);
+
+        $payload = $this->storePayload($deps);
+        $payload['passengers'] = 'not-an-array';
+
+        // Must be a validation 422, never a 500 TypeError from rule building.
+        $this->postJson(route('bookings.store'), $payload)->assertStatus(422);
+        $this->assertDatabaseCount('bookings', 0);
+        $this->assertDatabaseCount('passengers', 0);
+    }
+
+    private function createGappedRouteDeps(User $user, array $deps, int $additionalGap): array
+    {
+        $route = Route::create([
+            'airline_id' => $deps['fare']->airline_id,
+            'route_type' => 'round',
+            'flight_type' => 'direct',
+            'from_city_id' => $deps['route']->from_city_id,
+            'to_city_id' => $deps['route']->to_city_id,
+            'return_city_id' => $deps['route']->from_city_id,
+            'additional_gap' => $additionalGap,
+        ]);
+        $fare = TicketFare::create([
+            'airline_id' => $deps['fare']->airline_id,
+            'airline_classes_id' => $deps['fare']->airline_classes_id,
+            'route_id' => $route->id,
+            'ticket_type' => 'regular',
+            'effective_from' => now()->subDays(30),
+            'effective_to' => now()->addDays(30),
+            'net_fare' => 25000.00,
+            'selling_fare' => 28000.00,
+            'offer_price' => null,
+            'child_fare_percentage' => 75.00,
+            'infant_fare_percentage' => 10.00,
+            'with_meal' => true,
+            'user_id' => $user->id,
+            'is_active' => true,
+        ]);
+        $package = Package::create([
+            'package_name' => 'Gapped Pkg',
+            'ticket_fare_id' => $fare->id,
+            'visa_selling_price_id' => $deps['package']->visa_selling_price_id,
+            'regular_price' => 35000.00,
+            'offer_price' => 32000.00,
+            'service_charge' => 1500.00,
+            'is_active' => true,
+            'is_double_ticket' => false,
+        ]);
+
+        return compact('route', 'fare', 'package');
+    }
+
+    public function test_store_enforces_package_route_gap_without_passenger_fare(): void
+    {
+        $this->withoutMiddleware([ValidateCsrfToken::class]);
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $this->actingAs($user);
+
+        $gapped = $this->createGappedRouteDeps($user, $deps, 60);
+
+        // Pair valid only under gap 0 must fail when the package route adds 60 days.
+        [$earlyFrom, $earlyTo] = FlightDateSlot::validPairForTesting(0);
+        $payload = $this->storePayload($deps, [
+            'flight_date_from' => $earlyFrom,
+            'flight_date_to' => $earlyTo,
+            'ticket_fare_id' => null,
+        ]);
+        $payload['package_id'] = $gapped['package']->id;
+
+        $this->postJson(route('bookings.store'), $payload)->assertStatus(422);
+        $this->assertDatabaseCount('bookings', 0);
+
+        // Pair computed under the package gap passes.
+        [$from, $to] = FlightDateSlot::validPairForTesting(60);
+        $payload = $this->storePayload($deps, [
+            'flight_date_from' => $from,
+            'flight_date_to' => $to,
+            'ticket_fare_id' => null,
+        ]);
+        $payload['package_id'] = $gapped['package']->id;
+
+        $this->postJson(route('bookings.store'), $payload)->assertStatus(200);
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    public function test_store_booking_request_rules_match_controller_gap(): void
+    {
+        $this->withoutMiddleware([ValidateCsrfToken::class]);
+        $user = $this->createUser();
+        $deps = $this->createPrerequisites($user);
+        $this->actingAs($user);
+
+        $gapped = $this->createGappedRouteDeps($user, $deps, 60);
+
+        [$earlyFrom, $earlyTo] = FlightDateSlot::validPairForTesting(0);
+        [$from, $to] = FlightDateSlot::validPairForTesting(60);
+
+        $base = [
+            'package_id' => $gapped['package']->id,
+            'passengers' => [[
+                'stay_duration' => 14,
+                'ticket_fare_id' => null,
+                'flight_date_from' => $earlyFrom,
+                'flight_date_to' => $earlyTo,
+            ]],
+        ];
+
+        // rules() reads the request input, so build the FormRequest with payload.
+        $formRequest = StoreBookingRequest::create('/', 'POST', $base);
+        $earlyErrors = Validator::make($base, $formRequest->rules())->errors();
+        $this->assertTrue($earlyErrors->has('passengers.0.flight_date_to'));
+
+        // Same early pair passes when the package fallback gap is 0…
+        $this->assertFalse(Validator::make($base, StoreBookingRequest::flightDateRules($base['passengers'], 0))->errors()->has('passengers.0.flight_date_to'));
+        // …and the gapped pair passes under the package gap.
+        $gappedBase = $base;
+        $gappedBase['passengers'][0]['flight_date_from'] = $from;
+        $gappedBase['passengers'][0]['flight_date_to'] = $to;
+        $this->assertFalse(Validator::make($gappedBase, StoreBookingRequest::flightDateRules($gappedBase['passengers'], 60))->errors()->has('passengers.0.flight_date_to'));
+
+        $this->assertTrue(FlightDateSlot::isValidSlot($from, $to));
+        $this->assertTrue(FlightDateSlot::isValidSlot($earlyFrom, $earlyTo));
+    }
+
+    private function createBranchUser(string $name, string $email, string $branchName, string $branchCode, bool $fingerprintOperation = true): User
+    {
+        $branch = Branch::create([
+            'name' => $branchName,
+            'address' => 'Addr',
+            'contacts' => '0123456789',
+            'location' => 'KSA',
+            'fingerprint_operation' => $fingerprintOperation,
+            'branch_code' => $branchCode,
+        ]);
+
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'branch_id' => $branch->id,
+        ]);
+        $user->roles()->attach(Role::firstOrCreate(['name' => 'Super Admin']));
+
+        return $user;
+    }
+
+    public function test_update_blocks_unrelated_branch_user(): void
+    {
+        $this->withoutMiddleware([ValidateCsrfToken::class]);
+        $userA = $this->createUser();
+        $deps = $this->createPrerequisites($userA);
+        $this->actingAs($userA);
+
+        $this->postJson(route('bookings.store'), $this->storePayload($deps))->assertStatus(200);
+        $passenger = Passenger::first();
+        $originalName = $passenger->first_name;
+
+        $outsider = $this->createBranchUser('Outsider', 'outsider@example.com', 'Other Branch', 'SLOT99');
+        $this->actingAs($outsider);
+
+        [$from, $to] = FlightDateSlot::validPairForTesting();
+
+        $this->putJson(route('passengers.update', $passenger), $this->updatePayload($passenger, [
+            'first_name' => 'Hacked',
+            'flight_date_from' => $from,
+            'flight_date_to' => $to,
+        ]))->assertStatus(403);
+
+        $this->assertEquals($originalName, $passenger->fresh()->first_name);
+    }
+
+    public function test_update_allows_fingerprint_branch_user(): void
+    {
+        $this->withoutMiddleware([ValidateCsrfToken::class]);
+        $bookingOwner = $this->createBranchUser('Owner', 'owner@example.com', 'Owner Branch', 'SLOT10', false);
+        $fpUser = $this->createBranchUser('Fp Staff', 'fp@example.com', 'Fp Branch', 'SLOT11', true);
+        $deps = $this->createPrerequisites($bookingOwner);
+        $this->actingAs($bookingOwner);
+
+        $payload = $this->storePayload($deps);
+        $payload['fingerprint_branch_id'] = $fpUser->branch_id;
+        $this->postJson(route('bookings.store'), $payload)->assertStatus(200);
+        $passenger = Passenger::first();
+        $this->assertEquals($fpUser->branch_id, $passenger->booking->fingerprint_branch_id);
+
+        $this->actingAs($fpUser);
 
         [$from, $to] = FlightDateSlot::validPairForTesting();
 

@@ -1299,6 +1299,12 @@ class BookingController extends Controller
     {
         DiagnosticLogger::arrival($request, 'bookings.store');
 
+        // Guard: non-array input must fall through to the `required|array`
+        // rule below (422) instead of TypeErroring the dynamic rule builder.
+        $passengersInput = $request->input('passengers', []);
+        if (! is_array($passengersInput)) {
+            $passengersInput = [];
+        }
         $validator = \Validator::make($request->all(), array_merge([
             'customer_id' => 'required|exists:customers,id',
             'district_id' => 'required|exists:districts,id',
@@ -1338,7 +1344,7 @@ class BookingController extends Controller
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
-        ], $this->passengerFlightDateRules($request, $request->input('passengers', []))), [
+        ], $this->passengerFlightDateRules($request, $passengersInput)), [
             'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
             'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
             'passenger_docs.*.*.max' => 'Each file must not exceed 5 MB.',
