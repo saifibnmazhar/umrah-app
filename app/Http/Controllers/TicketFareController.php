@@ -16,6 +16,7 @@ use App\Models\TravelClass;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TicketFareController extends Controller
 {
@@ -193,7 +194,10 @@ class TicketFareController extends Controller
                 $validated = $request->validate([
                     'selling_fare' => 'required|numeric|min:0',
                     'offer_price' => 'nullable|numeric|min:0',
-                    'effective_to' => 'required|date',
+                    'effective_from' => 'required|date',
+                    'effective_to' => 'required|date|after_or_equal:effective_from',
+                    'child_fare_percentage' => 'required|numeric|min:0|max:100',
+                    'infant_fare_percentage' => 'required|numeric|min:0|max:100',
                 ]);
 
                 $oldSelling = (float) ($ticketFare->selling_fare ?? 0);
@@ -285,6 +289,8 @@ class TicketFareController extends Controller
             $this->updateBaggageAllowances($ticketFare, $request);
 
             return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $message = $e instanceof QueryException
                 ? DatabaseErrorHumanizer::humanize($e)
