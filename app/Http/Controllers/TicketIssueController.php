@@ -42,9 +42,7 @@ class TicketIssueController extends Controller
             'issued_date' => 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
-            'selling_fare' => 'nullable|numeric|min:0',
             'net_fare' => 'nullable|numeric|min:0',
-            'offer_price' => 'nullable|numeric|min:0',
             'is_refundable' => 'boolean',
             'is_exchangeable' => 'boolean',
             'baggage_inbound' => 'nullable|string|max:255',
@@ -76,6 +74,8 @@ class TicketIssueController extends Controller
             $updateData = array_merge($validated, [
                 'status' => 'issued',
                 'user_id' => auth()->id(),
+                'selling_fare' => $issuedTicket->selling_fare,
+                'offer_price' => $issuedTicket->offer_price,
             ]);
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
@@ -186,9 +186,7 @@ class TicketIssueController extends Controller
             'issued_date' => 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
-            'selling_fare' => 'nullable|numeric|min:0',
             'net_fare' => 'nullable|numeric|min:0',
-            'offer_price' => 'nullable|numeric|min:0',
             'is_refundable' => 'boolean',
             'is_exchangeable' => 'boolean',
             'baggage_inbound' => 'nullable|string|max:255',
@@ -256,9 +254,9 @@ class TicketIssueController extends Controller
                     're_issue_date' => $validated['issued_date'] ?? $latestRe->re_issue_date,
                     'inbound_date' => $validated['inbound_date'] ?? $latestRe->inbound_date,
                     'outbound_date' => $validated['outbound_date'] ?? $latestRe->outbound_date,
-                    'selling_fare' => $validated['selling_fare'] ?? $latestRe->selling_fare,
+                    'selling_fare' => $latestRe->selling_fare,
                     'net_fare' => $validated['net_fare'] ?? $latestRe->net_fare,
-                    'offer_price' => $validated['offer_price'] ?? $latestRe->offer_price,
+                    'offer_price' => $latestRe->offer_price,
                     'is_refundable' => $validated['is_refundable'] ?? $latestRe->is_refundable,
                     'is_exchangeable' => $validated['is_exchangeable'] ?? $latestRe->is_exchangeable,
                     'baggage_inbound' => $validated['baggage_inbound'] ?? $latestRe->baggage_inbound,
@@ -440,7 +438,10 @@ class TicketIssueController extends Controller
 
             $oldData = $issuedTicket->toArray();
 
-            $issuedTicket->update($validated);
+            $updateData = collect($validated)->except(['selling_fare', 'offer_price'])->toArray();
+            $updateData['selling_fare'] = $issuedTicket->selling_fare;
+            $updateData['offer_price'] = $issuedTicket->offer_price;
+            $issuedTicket->update($updateData);
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 

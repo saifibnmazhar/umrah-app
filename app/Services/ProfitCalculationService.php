@@ -11,6 +11,7 @@ use App\Enums\TicketType;
 use App\Enums\VisaStatus;
 use App\Models\Booking;
 use App\Models\Fingerprint;
+use App\Models\IssuedTicket;
 use App\Models\IssuedTicketLog;
 use App\Models\Passenger;
 use App\Models\TicketFare;
@@ -300,7 +301,7 @@ class ProfitCalculationService
         $profit = 0.0;
 
         foreach ($tickets as $ticket) {
-            $sellingFare = $this->fareSellingPrice($ticket->ticketFare, $passenger);
+            $sellingFare = $this->fareSellingPriceFromTicket($ticket);
             $netFare = (float) ($ticket->net_fare ?? 0);
             $itemProfit = $sellingFare - $netFare;
             $profit += $itemProfit;
@@ -414,7 +415,7 @@ class ProfitCalculationService
         return (float) $passenger->allIssuedTickets
             ->filter(fn ($t) => $t->issue_type === 'additional'
                 && in_array($t->status, ['issued', 're-issued', 'refunded'], true))
-            ->sum(fn ($t) => $this->fareSellingPrice($t->ticketFare, $passenger) - (float) ($t->net_fare ?? 0));
+            ->sum(fn ($t) => $this->fareSellingPriceFromTicket($t) - (float) ($t->net_fare ?? 0));
     }
 
     private function calculateReIssueProfit(Passenger $passenger): float
@@ -491,7 +492,7 @@ class ProfitCalculationService
             return 0.0;
         }
 
-        return $this->fareSellingPrice($ticket->ticketFare, $passenger) - (float) ($ticket->net_fare ?? 0);
+        return $this->fareSellingPriceFromTicket($ticket) - (float) ($ticket->net_fare ?? 0);
     }
 
     public function effectiveReIssueProfit(Passenger $passenger, string $from, string $to): float
@@ -625,7 +626,7 @@ class ProfitCalculationService
         $profit = 0.0;
 
         foreach ($tickets as $ticket) {
-            $sellingFare = $this->fareSellingPrice($ticket->ticketFare, $passenger);
+            $sellingFare = $this->fareSellingPriceFromTicket($ticket);
             $netFare = (float) ($ticket->net_fare ?? 0);
             $itemProfit = $sellingFare - $netFare;
             $profit += $itemProfit;
@@ -658,7 +659,7 @@ class ProfitCalculationService
             return 0.0;
         }
 
-        return (float) ($passenger->booking->package->service_charge ?? 0);
+        return (float) ($passenger->booking_service_charge ?? 0) + (float) ($passenger->extra_charge ?? 0);
     }
 
     private function determineVisaEffectiveDate(Passenger $passenger): ?string
@@ -733,8 +734,9 @@ class ProfitCalculationService
     private function regularTickets(Passenger $passenger)
     {
         return $passenger->allIssuedTickets->filter(
-            fn ($t) => $t->issue_type === null
-                || in_array($t->issue_type, ['regular', 'pending_outbound'], true)
+            fn ($t) => ($t->issue_type === null
+                || in_array($t->issue_type, ['regular', 'pending_outbound'], true))
+                && is_null($t->deleted_at)
         );
     }
 
@@ -745,18 +747,16 @@ class ProfitCalculationService
 
     private function getPackageTicketSellingFare(Passenger $passenger): float
     {
-        $package = $passenger->booking->package;
+        $tickets = $this->regularTickets($passenger);
 
-        if (! $package) {
-            return 0.0;
-        }
+        return $tickets->sum(fn ($t) => $this->fareSellingPriceFromTicket($t));
+    }
 
-        if ($package->is_double_ticket) {
-            return $this->fareSellingPrice($package->ticketFareInbound, $passenger)
-                + $this->fareSellingPrice($package->ticketFareOutbound, $passenger);
-        }
-
-        return $this->fareSellingPrice($package->ticketFare, $passenger);
+    private function fareSellingPriceFromTicket(IssuedTicket $ticket): float
+    {
+        return ($ticket->offer_price ?? 0) > 0
+            ? (float) $ticket->offer_price
+            : (float) $ticket->selling_fare;
     }
 
     private function fareSellingPrice(?TicketFare $fare, Passenger $passenger): float

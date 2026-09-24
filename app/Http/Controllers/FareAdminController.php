@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Route;
 use App\Models\TicketAgent;
 use App\Models\TicketFare;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class FareAdminController extends Controller
@@ -22,6 +20,10 @@ class FareAdminController extends Controller
             ->withCount([
                 'packages',
                 'passengers',
+                'packagesAsInbound',
+                'packagesAsOutbound',
+                'passengersAsInbound',
+                'passengersAsOutbound',
                 'issuedTickets as issued_tickets_count' => function ($query) {
                     $query->where('status', 'issued');
                 },
@@ -117,97 +119,6 @@ class FareAdminController extends Controller
             return redirect()->route('fare.admin')->with('success', 'Ticket agent deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket agent.');
-        }
-    }
-
-    public function storeFare(Request $request)
-    {
-        $rules = [
-            'airline_id' => 'required|exists:airlines,id',
-            'airline_classes_id' => 'required|exists:airline_classes,id',
-            'route_id' => 'required|exists:routes,id',
-            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
-            'ticket_type' => 'required|in:regular,offer,group',
-            'effective_from' => 'required|date',
-            'effective_to' => 'required|date|after_or_equal:effective_from',
-            'net_fare' => 'required|numeric|min:0',
-            'selling_fare' => 'required|numeric|min:0',
-            'child_fare_percentage' => 'required|numeric|min:0|max:100',
-            'infant_fare_percentage' => 'required|numeric|min:0|max:100',
-            'with_meal' => 'nullable|boolean',
-        ];
-
-        if ($request->ticket_type === 'offer') {
-            $rules['offer_price'] = 'required|numeric|min:0';
-        }
-
-        $validated = $request->validate($rules);
-
-        try {
-            TicketFare::create([
-                'airline_id' => $validated['airline_id'],
-                'airline_classes_id' => $validated['airline_classes_id'],
-                'route_id' => $validated['route_id'],
-                'ticket_type' => $validated['ticket_type'],
-                'effective_from' => $validated['effective_from'],
-                'effective_to' => $validated['effective_to'],
-                'net_fare' => $validated['net_fare'],
-                'selling_fare' => $validated['selling_fare'],
-                'offer_price' => $validated['offer_price'] ?? null,
-                'child_fare_percentage' => $validated['child_fare_percentage'],
-                'infant_fare_percentage' => $validated['infant_fare_percentage'],
-                'with_meal' => $request->has('with_meal') ? 1 : 0,
-                'user_id' => auth()->id() ?? 1,
-            ]);
-
-            return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare created successfully.');
-        } catch (\Exception $e) {
-            $message = $e instanceof QueryException
-                ? DatabaseErrorHumanizer::humanize($e)
-                : 'Failed to create ticket fare.';
-
-            return redirect()->back()->with('error', $message)->withInput();
-        }
-    }
-
-    public function updateFare(Request $request, TicketFare $ticketFare)
-    {
-        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
-            abort(403);
-        }
-
-        $rules = [
-            'airline_id' => 'required|exists:airlines,id',
-            'airline_classes_id' => 'required|exists:airline_classes,id',
-            'route_id' => 'required|exists:routes,id',
-            'ticket_type' => 'required|in:regular,offer,group',
-            'effective_from' => 'required|date',
-            'effective_to' => 'required|date|after_or_equal:effective_from',
-            'net_fare' => 'required|numeric|min:0',
-            'selling_fare' => 'required|numeric|min:0',
-            'child_fare_percentage' => 'required|numeric|min:0|max:100',
-            'infant_fare_percentage' => 'required|numeric|min:0|max:100',
-            'with_meal' => 'nullable|boolean',
-        ];
-
-        if ($request->ticket_type === 'offer') {
-            $rules['offer_price'] = 'required|numeric|min:0';
-        }
-
-        $validated = $request->validate($rules);
-
-        try {
-            $ticketFare->update(array_merge($validated, [
-                'with_meal' => $request->has('with_meal') ? 1 : 0,
-            ]));
-
-            return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare updated successfully.');
-        } catch (\Exception $e) {
-            $message = $e instanceof QueryException
-                ? DatabaseErrorHumanizer::humanize($e)
-                : 'Failed to update ticket fare.';
-
-            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 

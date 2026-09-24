@@ -160,12 +160,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                            <input type="number" id="inputSellingFare" min="0" step="0.000001" oninput="syncSellingFareFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) * (snapshot, readonly)</label>
+                            <input type="number" id="inputSellingFare" min="0" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                         </div>
                         <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
-                            <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" oninput="syncSellingFareFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) * (snapshot, readonly)</label>
+                            <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             <input type="number" id="inputSellingFareReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
@@ -182,12 +182,12 @@
                     </div>
                     <div id="offerPriceSection" class="hidden">
                         <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                            <input type="number" id="inputOfferPrice" min="0" step="0.000001" oninput="syncOfferPriceFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) * (snapshot, readonly)</label>
+                            <input type="number" id="inputOfferPrice" min="0" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                         </div>
                         <div x-show="$store.currency.mode === 'BDT'" x-cloak>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
-                            <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" oninput="syncOfferPriceFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) * (snapshot, readonly)</label>
+                            <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             <input type="number" id="inputOfferPriceReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
@@ -520,34 +520,27 @@ function handleTicketSelect() {
     const childPct = fare.child_fare_percentage || 70;
     const infantPct = fare.infant_fare_percentage || 30;
     let adjustedSellingFare = fare.selling_fare || 0;
-    let adjustedNetFare = fare.net_fare || 0;
     let adjustedOfferPrice = fare.offer_price || 0;
 
     if (passengerType === 'child') {
         adjustedSellingFare = Math.round((fare.selling_fare || 0) * childPct / 100);
-        adjustedNetFare = Math.round((fare.net_fare || 0) * childPct / 100);
         if (fare.ticket_type === 'offer' && fare.offer_price) {
             adjustedOfferPrice = Math.round((fare.offer_price || 0) * childPct / 100);
         }
     } else if (passengerType === 'infant') {
         adjustedSellingFare = Math.round((fare.selling_fare || 0) * infantPct / 100);
-        adjustedNetFare = Math.round((fare.net_fare || 0) * infantPct / 100);
         if (fare.ticket_type === 'offer' && fare.offer_price) {
             adjustedOfferPrice = Math.round((fare.offer_price || 0) * infantPct / 100);
         }
     }
 
     document.getElementById('inputSellingFare').value = adjustedSellingFare;
-    document.getElementById('inputNetFare').value = adjustedNetFare;
     document.getElementById('inputSellingFareReadonly').value = adjustedSellingFare;
-    document.getElementById('inputNetFareReadonly').value = adjustedNetFare;
 
     const r1 = window.__currencyRate || 0;
     if (r1 > 0) {
         const sellingBdt = document.getElementById('inputSellingFareBdt');
-        const netBdt = document.getElementById('inputNetFareBdt');
         if (sellingBdt) sellingBdt.value = Math.round(adjustedSellingFare * r1);
-        if (netBdt) netBdt.value = Math.round(adjustedNetFare * r1);
     }
 
     if (fare.ticket_type === 'offer' && fare.offer_price) {

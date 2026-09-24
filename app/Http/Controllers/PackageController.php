@@ -57,6 +57,8 @@ class PackageController extends Controller
             'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id,
             'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id,
             'is_locked' => $p->is_locked,
+            'visa_selling_price_id' => $p->visa_selling_price_id,
+            'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
         ]);
 
         $ticketFares = $this->loadTicketFares();
@@ -208,10 +210,6 @@ class PackageController extends Controller
 
     public function edit(Package $package)
     {
-        if ($package->isLocked()) {
-            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
-        }
-
         $ticketFares = $this->loadTicketFares();
         $inboundFares = $this->loadTicketFares(RouteType::ONE_WAY_INBOUND);
         $outboundFares = $this->loadTicketFares(RouteType::ONE_WAY_OUTBOUND);
@@ -222,8 +220,46 @@ class PackageController extends Controller
 
     public function update(Request $request, Package $package)
     {
-        if ($package->isLocked()) {
-            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
+        $isLocked = $package->isLocked();
+
+        if ($isLocked) {
+            $validated = $request->validate([
+                'package_name' => 'required|string|max:255',
+                'service_charge' => 'nullable|numeric|min:0',
+            ]);
+
+            $visaUpdated = false;
+            if ($request->boolean('use_current_visa')) {
+                $latestVisaId = VisaSellingPrice::latest('id')->value('id');
+                if ($latestVisaId && $latestVisaId != $package->visa_selling_price_id) {
+                    $validated['visa_selling_price_id'] = $latestVisaId;
+                    $newVisa = (float) (VisaSellingPrice::where('id', $latestVisaId)->value('selling_price') ?? 0);
+                    $package->loadMissing(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound']);
+                    if ($package->is_double_ticket) {
+                        $validated['regular_price'] = round(
+                            (float) ($package->ticketFareInbound?->selling_fare ?? 0)
+                            + (float) ($package->ticketFareOutbound?->selling_fare ?? 0)
+                            + $newVisa,
+                            6
+                        );
+                    } else {
+                        $fare = $package->ticketFare;
+                        $validated['regular_price'] = round((float) ($fare?->selling_fare ?? 0) + $newVisa, 6);
+                        $fareType = $fare?->ticket_type instanceof \BackedEnum ? $fare->ticket_type->value : $fare?->ticket_type;
+                        if ($fareType === 'offer') {
+                            $validated['offer_price'] = round((float) ($fare?->offer_price ?? 0) + $newVisa, 6);
+                        }
+                    }
+                    $visaUpdated = true;
+                }
+            }
+
+            $package->update($validated);
+
+            return redirect()->route('packages.index')->with(
+                'success',
+                $visaUpdated ? 'Package and visa price updated successfully.' : 'Package updated successfully.'
+            );
         }
 
         $isDoubleTicket = $request->boolean('is_double_ticket');
@@ -255,8 +291,9 @@ class PackageController extends Controller
 
         $validated = $request->validate($rules);
 
-        $latestVisa = VisaSellingPrice::latest()->first();
-        $validated['visa_selling_price_id'] = $latestVisa?->id;
+        if ($request->boolean('use_current_visa')) {
+            $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
+        }
 
         $validated['is_double_ticket'] = $isDoubleTicket;
 

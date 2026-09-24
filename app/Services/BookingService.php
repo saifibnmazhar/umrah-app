@@ -7,7 +7,9 @@ use App\Enums\TicketType;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\FingerprintCharge;
+use App\Models\FlightDateGap;
 use App\Models\Invoice;
+use App\Models\Package;
 use App\Models\Passenger;
 use Carbon\Carbon;
 
@@ -263,16 +265,25 @@ class BookingService
 
     public function processBookingWithPassengers(array $data): Booking
     {
+        $package = Package::findOrFail($data['package_id']);
+        $branchId = $data['booking_branch_id'] ?? $data['fingerprint_branch_id'] ?? null;
+
         $booking = Booking::create([
             'user_id' => $data['user_id'] ?? auth()->id(),
             'customer_id' => $data['customer_id'],
             'district_id' => $data['district_id'] ?? null,
             'fingerprint_branch_id' => $data['fingerprint_branch_id'] ?? null,
-            'package_id' => $data['package_id'] ?? null,
+            'package_id' => $package->id,
+            'package_name' => $package->package_name,
+            'fingerprint_charge_id' => $data['fingerprint_charge_id'] ?? null,
+            'booking_branch_id' => $branchId,
+            'invoice_id' => $data['invoice_id'] ?? $this->generateInvoiceId($branchId),
+            'date_gap_id' => $data['date_gap_id'] ?? FlightDateGap::getOrCreate()->id,
             'fingerprint_location' => $data['fingerprint_location'] ?? 'Office',
             'pax_qty' => count($data['passengers']),
-            'discount_type' => $data['discount_type'] ?? null,
+            'discount_type' => $data['discount_type'] ?? 'fixed_amount',
             'discount_value' => $data['discount_value'] ?? 0,
+            'discount_amount' => 0,
             'remarks' => $data['remarks'] ?? null,
         ]);
 
