@@ -26,6 +26,7 @@ use App\Models\TransactionType;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
+use App\Rules\FlightDateSlot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -198,8 +199,8 @@ class BookingFormSubmissionWorkflowTest extends TestCase
                     'mobile_no' => '0501234567',
                     'service_required' => 'all',
                     'stay_duration' => 14,
-                    'flight_date_from' => '2025-02-10',
-                    'flight_date_to' => '2025-02-20',
+                    'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                    'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                     'address' => 'Test Address',
                     'ticket_fare_id' => $deps['ticketFare']->id,
                 ],
@@ -354,8 +355,8 @@ class BookingFormSubmissionWorkflowTest extends TestCase
             'mobile_no' => '0507654321',
             'service_required' => 'visa_only',
             'stay_duration' => 10,
-            'flight_date_from' => '2025-03-15',
-            'flight_date_to' => '2025-03-25',
+            'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+            'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
             'address' => 'Another Address',
         ];
         $payload['passenger_docs'] = [
@@ -430,8 +431,8 @@ class BookingFormSubmissionWorkflowTest extends TestCase
             'mobile_no' => '0507654321',
             'service_required' => 'all',
             'stay_duration' => 10,
-            'flight_date_from' => '2025-03-15',
-            'flight_date_to' => '2025-03-25',
+            'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+            'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
             'address' => 'Test Address',
         ];
 

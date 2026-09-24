@@ -37,6 +37,7 @@ use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Models\Voucher;
 use App\Queries\BookingPassengerQuery;
+use App\Rules\FlightDateSlot;
 use App\Services\BookingService;
 use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
@@ -104,6 +105,70 @@ class BookingController extends Controller
             && auth()->user()->branch_id !== $booking->fingerprint_branch_id) {
             abort(403);
         }
+    }
+
+    /**
+     * Resolve [defaultGap, additionalGap] for flight-date validation.
+     * additionalGap comes from the given ticket fare's route, falling back
+     * to the booking package fare's route gap when no fare id is supplied.
+     */
+    private static function resolveFlightGaps(?int $ticketFareId, int $packageFallbackGap = 0): array
+    {
+        $defaultGap = FlightDateGap::first()?->gap ?? 30;
+
+        $additionalGap = $packageFallbackGap;
+        if ($ticketFareId) {
+            $additionalGap = TicketFare::with('route')->find($ticketFareId)?->route?->additional_gap ?? $packageFallbackGap;
+        }
+
+        return [$defaultGap, (int) $additionalGap];
+    }
+
+    private static function packageRouteGap(?Package $package): int
+    {
+        if (! $package) {
+            return 0;
+        }
+
+        $fare = $package->ticketFare ?? $package->ticketFareInbound;
+
+        return (int) ($fare?->route?->additional_gap ?? 0);
+    }
+
+    /**
+     * Per-passenger flight-date rules for booking creation. Uses explicit
+     * indexes (passengers.0..., not wildcards) so the paired from/to values
+     * are available to the slot rule and URL-tampered values are validated
+     * server-side regardless of client UI.
+     */
+    private function passengerFlightDateRules(Request $request, array $passengers): array
+    {
+        $packageGap = 0;
+        $packageId = $request->input('package_id');
+        if (is_numeric($packageId)) {
+            $packageGap = self::packageRouteGap(Package::with(['ticketFare.route', 'ticketFareInbound.route'])->find((int) $packageId));
+        }
+
+        $rules = [];
+        foreach ($passengers as $index => $passenger) {
+            if (! is_array($passenger)) {
+                continue;
+            }
+            $fareId = $passenger['ticket_fare_id'] ?? $passenger['ticket_fare_inbound_id'] ?? null;
+            [$defaultGap, $additionalGap] = self::resolveFlightGaps(
+                is_numeric($fareId) ? (int) $fareId : null,
+                $packageGap
+            );
+            $from = $passenger['flight_date_from'] ?? null;
+            $rules["passengers.{$index}.flight_date_from"] = ['required', 'date'];
+            $rules["passengers.{$index}.flight_date_to"] = [
+                'required',
+                'date',
+                new FlightDateSlot(is_string($from) ? $from : null, $defaultGap, $additionalGap),
+            ];
+        }
+
+        return $rules;
     }
 
     private function ensureEditWindow(Booking $booking): void
@@ -1234,7 +1299,7 @@ class BookingController extends Controller
     {
         DiagnosticLogger::arrival($request, 'bookings.store');
 
-        $validator = \Validator::make($request->all(), [
+        $validator = \Validator::make($request->all(), array_merge([
             'customer_id' => 'required|exists:customers,id',
             'district_id' => 'required|exists:districts,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
@@ -1254,9 +1319,7 @@ class BookingController extends Controller
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
-            'passengers.*.flight_date_from' => 'nullable|date',
-            'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
+            'passengers.*.stay_duration' => 'required|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
             'passengers.*.address' => 'nullable|string|max:500',
             'passengers.*.gender' => 'nullable|in:male,female',
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
@@ -1275,7 +1338,7 @@ class BookingController extends Controller
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
-        ], [
+        ], $this->passengerFlightDateRules($request, $request->input('passengers', []))), [
             'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
             'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
             'passenger_docs.*.*.max' => 'Each file must not exceed 5 MB.',
@@ -1403,9 +1466,9 @@ class BookingController extends Controller
                     'passport_expiry' => $passengerData['passport_expiry'] ?? now()->addYears(5)->toDateString(),
                     'mobile_no' => $passengerData['mobile_no'] ?? '',
                     'service_required' => $passengerData['service_required'] ?? 'all',
-                    'stay_duration' => $passengerData['stay_duration'] ?? 14,
-                    'flight_date_from' => $passengerData['flight_date_from'] ?? now()->toDateString(),
-                    'flight_date_to' => $passengerData['flight_date_to'] ?? now()->addDays(14)->toDateString(),
+                    'stay_duration' => $passengerData['stay_duration'],
+                    'flight_date_from' => $passengerData['flight_date_from'],
+                    'flight_date_to' => $passengerData['flight_date_to'],
                     'address' => $passengerData['address'] ?? '',
                     'ticket_fare_id' => $isDoubleTicket
                         ? null
@@ -2068,6 +2131,14 @@ class BookingController extends Controller
             abort(403);
         }
 
+        $packageGap = self::packageRouteGap($booking->package);
+        $fareId = $request->input('ticket_fare_id') ?? $request->input('ticket_fare_inbound_id');
+        [$defaultGap, $additionalGap] = self::resolveFlightGaps(
+            is_numeric($fareId) ? (int) $fareId : null,
+            $packageGap
+        );
+        $flightFrom = $request->input('flight_date_from');
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -2076,9 +2147,9 @@ class BookingController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
-            'flight_date_from' => 'nullable|date',
-            'flight_date_to' => 'nullable|date',
+            'stay_duration' => 'required|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
+            'flight_date_from' => ['required', 'date'],
+            'flight_date_to' => ['required', 'date', new FlightDateSlot(is_string($flightFrom) ? $flightFrom : null, $defaultGap, $additionalGap)],
             'address' => 'nullable|string|max:500',
             'gender' => 'nullable|in:male,female',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
@@ -2096,7 +2167,6 @@ class BookingController extends Controller
         $validated['booking_id'] = $booking->id;
         $validated['passenger_type'] = $passengerType;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
-        $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
         $validated['ticket_fare_id'] = $isDoubleTicket
             ? null
             : (($validated['service_required'] ?? '') === 'visa_only'

@@ -25,6 +25,7 @@ use App\Models\TransactionType;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
+use App\Rules\FlightDateSlot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -154,8 +155,8 @@ class BookingInactiveFareSourcesTest extends TestCase
                 'mobile_no' => '0501234567',
                 'service_required' => 'all',
                 'stay_duration' => 14,
-                'flight_date_from' => '2025-02-10',
-                'flight_date_to' => '2025-02-20',
+                'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 'address' => 'Addr',
             ]],
             'payment' => [
@@ -225,8 +226,8 @@ class BookingInactiveFareSourcesTest extends TestCase
                 'mobile_no' => '0501234567',
                 'service_required' => 'all',
                 'stay_duration' => 14,
-                'flight_date_from' => '2025-02-10',
-                'flight_date_to' => '2025-02-20',
+                'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 'address' => 'Addr',
             ]],
             'payment' => [
@@ -291,8 +292,8 @@ class BookingInactiveFareSourcesTest extends TestCase
                 'mobile_no' => '0501234567',
                 'service_required' => 'all',
                 'stay_duration' => 14,
-                'flight_date_from' => '2025-02-10',
-                'flight_date_to' => '2025-02-20',
+                'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 'address' => 'Addr',
             ]],
             'payment' => [
@@ -359,8 +360,8 @@ class BookingInactiveFareSourcesTest extends TestCase
                 'mobile_no' => '0501234567',
                 'service_required' => 'all',
                 'stay_duration' => 14,
-                'flight_date_from' => '2025-02-10',
-                'flight_date_to' => '2025-02-20',
+                'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 'address' => 'Addr',
             ]],
             'payment' => [
@@ -440,8 +441,8 @@ class BookingInactiveFareSourcesTest extends TestCase
                 'mobile_no' => '0501234567',
                 'service_required' => 'all',
                 'stay_duration' => 14,
-                'flight_date_from' => '2025-02-10',
-                'flight_date_to' => '2025-02-20',
+                'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 'address' => 'Addr',
             ]],
             'payment' => [

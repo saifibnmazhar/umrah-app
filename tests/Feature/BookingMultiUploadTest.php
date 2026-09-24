@@ -19,6 +19,7 @@ use App\Models\TransactionType;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
+use App\Rules\FlightDateSlot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -147,6 +148,9 @@ class BookingMultiUploadTest extends TestCase
                     'passport_no' => 'PASS12345',
                     'date_of_birth' => '1990-01-01',
                     'address' => 'Test Address',
+                    'stay_duration' => 14,
+                    'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+                    'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
                 ],
             ],
             'payment' => [

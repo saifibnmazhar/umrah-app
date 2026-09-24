@@ -72,8 +72,8 @@ Alpine.data('bookingApp', () => ({
         mobile_no: '',
         passport_expiry: '',
         service_required: 'all',
-        stay_duration: '14',
-        stay_duration_int: 14,
+        stay_duration: '',
+        stay_duration_int: 0,
         stay_duration_display: '',
         route: '',
         airline: '',
@@ -489,8 +489,8 @@ Alpine.data('bookingApp', () => ({
                 mobile_no: '',
                 passport_expiry: '',
                 service_required: 'all',
-                stay_duration: '14',
-                stay_duration_int: 14,
+                stay_duration: '',
+                stay_duration_int: 0,
                 stay_duration_display: '',
                 route: '',
                 airline: '',
@@ -528,14 +528,22 @@ Alpine.data('bookingApp', () => ({
             return false;
         }
 
+        const schedule = this.validatePassengerSchedule();
+        if (!schedule) {
+            return false;
+        }
+
         const passengerCopy = { ...this.passengerData };
-        passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
+        passengerCopy.stay_duration = schedule.stayDuration;
+        passengerCopy.stay_duration_int = schedule.stayDuration;
+        passengerCopy.flight_date_from = schedule.from;
+        passengerCopy.flight_date_to = schedule.to;
 
         if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            this.passengers[this.editingPassengerIndex] = { ...passengerCopy };
             this.recalculateCurrentPassenger(this.editingPassengerIndex);
         } else {
-            this.passengers.push({ ...this.passengerData });
+            this.passengers.push({ ...passengerCopy });
             this.recalculateAllPassengerValues();
         }
         this.passengerCount = this.passengers.length;
@@ -1705,16 +1713,15 @@ Alpine.data('createBookingApp', () => ({
             alert('Please fill in all required fields');
             return;
         }
-        const passengerCopy = { ...this.passengerData };
-        passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
-
-        if (this.passengerData.flight_date_range) {
-            const parsedDates = this.parseFlightDateRange(this.passengerData.flight_date_range);
-            if (parsedDates) {
-                passengerCopy.flight_date_from = parsedDates.from;
-                passengerCopy.flight_date_to = parsedDates.to;
-            }
+        const schedule = this.validatePassengerSchedule();
+        if (!schedule) {
+            return;
         }
+        const passengerCopy = { ...this.passengerData };
+        passengerCopy.stay_duration = schedule.stayDuration;
+        passengerCopy.stay_duration_int = schedule.stayDuration;
+        passengerCopy.flight_date_from = schedule.from;
+        passengerCopy.flight_date_to = schedule.to;
 
         const isEditing = this.editingPassengerIndex !== null;
         const passengerIndex = isEditing ? this.editingPassengerIndex : this.passengers.length;
@@ -3513,13 +3520,14 @@ Alpine.data('editBookingApp', () => ({
             return false;
         }
 
-        if (this.passengerData.flight_date_range) {
-            const parsedDates = this.parseFlightDateRange(this.passengerData.flight_date_range);
-            if (parsedDates) {
-                this.passengerData.flight_date_from = parsedDates.from;
-                this.passengerData.flight_date_to = parsedDates.to;
-            }
+        const schedule = this.validatePassengerSchedule();
+        if (!schedule) {
+            return false;
         }
+        this.passengerData.stay_duration = schedule.stayDuration;
+        this.passengerData.stay_duration_int = schedule.stayDuration;
+        this.passengerData.flight_date_from = schedule.from;
+        this.passengerData.flight_date_to = schedule.to;
 
         this.passengers.push({ ...this.passengerData });
         this.recalculateAllPassengerValues();
@@ -4279,9 +4287,10 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
-        const flightDates = this.passengerData.flight_date_range
-            ? this.parseFlightDateRange(this.passengerData.flight_date_range)
-            : null;
+        const schedule = this.validatePassengerSchedule();
+        if (!schedule) {
+            return;
+        }
 
         fetch('/bookings/' + bookingId + '/passengers', {
             method: 'POST',
@@ -4298,11 +4307,11 @@ Alpine.data('showBookingApp', () => ({
                 mobile_no: this.passengerData.mobile_no || null,
                 passport_expiry: this.passengerData.passport_expiry || null,
                 service_required: this.passengerData.service_required || null,
-                stay_duration: this.parseStayDurationDays(this.passengerData.stay_duration),
+                stay_duration: schedule.stayDuration,
                 gender: this.passengerData.gender || null,
                 ticket_fare_id: this.passengerData.ticket_fare_id || null,
-                flight_date_from: flightDates?.from || null,
-                flight_date_to: flightDates?.to || null,
+                flight_date_from: schedule.from,
+                flight_date_to: schedule.to,
                 address: this.passengerData.address || null,
             })
         })

@@ -8,6 +8,7 @@ use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
+use App\Models\FlightDateGap;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\PassengerStatus;
@@ -16,6 +17,7 @@ use App\Models\TicketFare;
 use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
+use App\Rules\FlightDateSlot;
 use App\Services\BookingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
@@ -63,24 +65,7 @@ class PassengerController extends Controller
 
     private function isValidFlightDateGroup(?string $from, ?string $to): bool
     {
-        if (! $from || ! $to) {
-            return false;
-        }
-
-        $fromDate = \DateTime::createFromFormat('Y-m-d', $from);
-        $toDate = \DateTime::createFromFormat('Y-m-d', $to);
-
-        if (! $fromDate || ! $toDate || $fromDate->format('Y-m') !== $toDate->format('Y-m')) {
-            return false;
-        }
-
-        $fromDay = (int) $fromDate->format('j');
-        $toDay = (int) $toDate->format('j');
-        $lastDay = (int) $fromDate->format('t');
-
-        return ($fromDay === 1 && $toDay === 10)
-            || ($fromDay === 11 && $toDay === 20)
-            || ($fromDay === 21 && $toDay === $lastDay);
+        return FlightDateSlot::isValidSlot($from, $to);
     }
 
     public function show(Passenger $passenger)
@@ -568,6 +553,18 @@ class PassengerController extends Controller
             $request->request->remove('flight_date_to');
         }
 
+        $isFlightDateAdmin = $this->isFlightDateAdmin();
+        // Validate merged (incoming ?? stored) values so a `to`-only payload
+        // cannot bypass the slot check. Non-admins have dates stripped above
+        // and keep plain date rules since they cannot modify flight dates.
+        $mergedFrom = $request->input('flight_date_from', $passenger->flight_date_from?->format('Y-m-d'));
+        $fareId = $request->input('ticket_fare_id', $passenger->ticket_fare_id)
+            ?? $request->input('ticket_fare_inbound_id', $passenger->ticket_fare_inbound_id);
+        $defaultGap = FlightDateGap::first()?->gap ?? 30;
+        $additionalGap = $fareId
+            ? (int) (TicketFare::with('route')->find($fareId)?->route?->additional_gap ?? 0)
+            : 0;
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -576,14 +573,11 @@ class PassengerController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
-            'flight_date_from' => ['nullable', 'date', function ($attribute, $value, $fail) use ($request) {
-                if ($value && $request->input('flight_date_to')
-                    && ! $this->isValidFlightDateGroup($value, $request->input('flight_date_to'))) {
-                    $fail('Invalid flight date range. Use 1-10, 11-20, or 21-last day of the same month.');
-                }
-            }],
-            'flight_date_to' => 'nullable|date',
+            'stay_duration' => 'required|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
+            'flight_date_from' => $isFlightDateAdmin ? ['required', 'date'] : ['nullable', 'date'],
+            'flight_date_to' => $isFlightDateAdmin
+                ? ['required', 'date', new FlightDateSlot(is_string($mergedFrom) ? $mergedFrom : null, $defaultGap, $additionalGap)]
+                : ['nullable', 'date'],
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
             'gender' => 'nullable|in:male,female',
