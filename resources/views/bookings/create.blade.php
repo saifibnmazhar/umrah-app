@@ -205,7 +205,7 @@
                                         </span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
                                         <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
-                                        <div><span class="text-slate-500">Extra Charge:</span> <span class="text-slate-700 ml-1" x-text="passenger.extra_charge || 0"></span></div>
+                                        <div><span class="text-slate-500">Extra Charge:</span> <span class="text-slate-700 ml-1" x-text="$currency(passenger.extra_charge || 0)"></span></div>
                                     </div>
                                     <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
                                     <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">

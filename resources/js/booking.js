@@ -87,6 +87,7 @@ Alpine.data('bookingApp', () => ({
         flight_date_to: '',
         address: '',
         extra_charge: 0,
+        extra_charge_bdt: '',
         baggage_weight: '',
         with_offer: false,
         refundable: false,
@@ -876,6 +877,7 @@ Alpine.data('createBookingApp', () => ({
         baggage_weight: '',
         address: '',
         extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -959,6 +961,9 @@ Alpine.data('createBookingApp', () => ({
                     this.bookingData.discountValueBdt = '';
                 }
             }
+            if (this.passengerModalVisible) {
+                this.syncExtraChargeBdt();
+            }
         });
 
         this.$nextTick(() => {
@@ -968,6 +973,14 @@ Alpine.data('createBookingApp', () => ({
             this.recalculateAllPassengerValues();
         });
 
+    },
+
+    syncExtraChargeBdt() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        this.passengerData.extra_charge_bdt = (mode === 'BDT' && rate > 0)
+            ? Math.round((parseFloat(this.passengerData.extra_charge) || 0) * rate * 100) / 100
+            : '';
     },
 
     showForm() {
@@ -1444,6 +1457,7 @@ Alpine.data('createBookingApp', () => ({
             baggage_weight: '',
             address: '',
             extra_charge: 0,
+            extra_charge_bdt: '',
             with_offer: false,
             refundable: false,
             customDurationDays: ''
@@ -1569,6 +1583,7 @@ Alpine.data('createBookingApp', () => ({
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
         this.passengerData.ticket_fare_inbound_id = this.passengerData.ticket_fare_inbound_id ? String(this.passengerData.ticket_fare_inbound_id) : '';
         this.passengerData.ticket_fare_outbound_id = this.passengerData.ticket_fare_outbound_id ? String(this.passengerData.ticket_fare_outbound_id) : '';
+        this.syncExtraChargeBdt();
 
         if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1) {
             this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
@@ -2690,6 +2705,7 @@ Alpine.data('editBookingApp', () => ({
         baggage_weight: '',
         address: '',
         extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -4056,6 +4072,7 @@ Alpine.data('showBookingApp', () => ({
         baggage_weight: '',
         address: '',
         extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -4077,6 +4094,20 @@ Alpine.data('showBookingApp', () => ({
         this.filteredTickets = this.allTickets;
         this.lastAddedPassenger = data.lastPassenger || null;
         this.firstAddedPassenger = data.firstPassenger || null;
+
+        window.addEventListener('currency-toggled', () => {
+            if (this.passengerModalVisible) {
+                this.syncExtraChargeBdt();
+            }
+        });
+    },
+
+    syncExtraChargeBdt() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        this.passengerData.extra_charge_bdt = (mode === 'BDT' && rate > 0)
+            ? Math.round((parseFloat(this.passengerData.extra_charge) || 0) * rate * 100) / 100
+            : '';
     },
 
     openPassengerModal() {
@@ -4136,6 +4167,7 @@ Alpine.data('showBookingApp', () => ({
             baggage_weight: '',
             address: '',
             extra_charge: 0,
+            extra_charge_bdt: '',
             with_offer: false,
             refundable: false,
             customDurationDays: ''
