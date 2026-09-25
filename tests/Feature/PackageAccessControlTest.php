@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Airline;
 use App\Models\AirlineClass;
+use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CityCode;
 use App\Models\Customer;
@@ -119,7 +120,7 @@ class PackageAccessControlTest extends TestCase
             'iqama_type' => 'none', 'mobile_no' => '0500000000', 'address' => 'Addr',
         ]);
 
-        \App\Models\Booking::create([
+        Booking::create([
             'user_id' => $this->admin->id,
             'customer_id' => $customer->id,
             'district_id' => $district->id,

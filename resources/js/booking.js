@@ -9,6 +9,9 @@ Alpine.data('bookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     fingerprintCharge: 0,
@@ -110,6 +113,7 @@ Alpine.data('bookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -138,29 +142,55 @@ Alpine.data('bookingApp', () => ({
         this.formVisible = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     openCustomerModal() {
@@ -729,6 +759,9 @@ Alpine.data('createBookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     passengerFiles: {},
@@ -949,6 +982,7 @@ Alpine.data('createBookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -1003,29 +1037,55 @@ Alpine.data('createBookingApp', () => ({
         this.paymentSaved = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     calculatePassengerType() {
@@ -2035,6 +2095,7 @@ Alpine.data('createBookingApp', () => ({
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
         this.customerModalVisible = true;
+        this.customerSearchToken++;
         this.customerSuggestions = [];
     },
 
@@ -2076,6 +2137,7 @@ Alpine.data('createBookingApp', () => ({
             if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
+                this.customerSearchToken++;
                 this.customerSuggestions = [];
                 this.closeCustomerModal();
                 this.newCustomer = {
@@ -2547,6 +2609,9 @@ Alpine.data('editBookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     fingerprintCharge: 0,
@@ -2865,6 +2930,7 @@ Alpine.data('editBookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -2915,29 +2981,55 @@ Alpine.data('editBookingApp', () => ({
         this.paymentSaved = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     calculatePassengerType() {
@@ -3818,6 +3910,7 @@ Alpine.data('editBookingApp', () => ({
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
         this.customerModalVisible = true;
+        this.customerSearchToken++;
         this.customerSuggestions = [];
     },
 
@@ -3859,6 +3952,7 @@ Alpine.data('editBookingApp', () => ({
             if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
+                this.customerSearchToken++;
                 this.customerSuggestions = [];
                 this.closeCustomerModal();
                 this.newCustomer = {
