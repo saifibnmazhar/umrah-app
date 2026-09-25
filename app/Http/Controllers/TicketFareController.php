@@ -608,7 +608,6 @@ class TicketFareController extends Controller
                 'airline_id' => $validated['airline_id'],
                 'airline_classes_id' => $validated['airline_classes_id'],
                 'route_id' => $validated['route_id'],
-                'route_type' => $validated['route_type'],
                 'ticket_type' => $validated['ticket_type'],
                 'effective_from' => $validated['effective_from'] ?? now(),
                 'effective_to' => $validated['effective_to'] ?? now()->addYear(),

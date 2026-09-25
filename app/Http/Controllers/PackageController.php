@@ -8,7 +8,6 @@ use App\Models\Package;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class PackageController extends Controller
 {
@@ -147,14 +146,7 @@ class PackageController extends Controller
             $rules['ticket_fare_outbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
         } else {
-            $rules['ticket_fare_id'] = [
-                'required',
-                'integer',
-                'exists:ticket_fares,id',
-                Rule::unique('packages')->where(function ($query) {
-                    return $query->where('ticket_fare_id', request('ticket_fare_id'));
-                }),
-            ];
+            $rules['ticket_fare_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_inbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_outbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
         }
@@ -277,14 +269,7 @@ class PackageController extends Controller
             $rules['ticket_fare_outbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
         } else {
-            $rules['ticket_fare_id'] = [
-                'required',
-                'integer',
-                'exists:ticket_fares,id',
-                Rule::unique('packages')->where(function ($query) {
-                    return $query->where('ticket_fare_id', request('ticket_fare_id'));
-                })->ignore($package->id),
-            ];
+            $rules['ticket_fare_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_inbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
             $rules['ticket_fare_outbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
         }

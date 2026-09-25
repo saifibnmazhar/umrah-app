@@ -7,7 +7,7 @@ Allow editing of packages and ticket fares already in use by existing bookings. 
 ## Constraints
 
 1. **Package edit**: `package_name` and `service_charge` are editable on locked packages. No fare reference changes, no `is_double_ticket` toggle. Option to update `visa_selling_price_id` to current when editing.
-2. **Ticket fare edit**: When in use by packages, only `selling_fare`, `offer_price`, `effective_to` are editable. `child_fare_percentage`, `infant_fare_percentage` remain locked (affect future snapshots).
+2. **Ticket fare edit**: When in use by packages, `selling_fare`, `offer_price`, `effective_from`, `effective_to`, `child_fare_percentage` and `infant_fare_percentage` are editable (rate-card corrections; issued tickets keep their frozen snapshots, future passengers pick up the new values). Airline, class, route, type, meal and group fields stay locked.
 3. **Historic profit**: Uses snapshotted `selling_fare`/`offer_price` from `issued_tickets` (not live TicketFare values).
 4. **`ticket_fares.net_fare`**: Always 0 — hidden from create/edit forms. Net fare entered by agents at issuance time.
 5. **`issued_tickets.selling_fare`/`offer_price`**: Historical snapshot taken at passenger creation, adjusted for passenger_type.

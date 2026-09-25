@@ -26,9 +26,11 @@ preserved on `issued_tickets` for profit calculations.
   an optional bump of `visa_selling_price_id` to the latest via the
   `use_current_visa` checkbox. Fare references and the `is_double_ticket`
   toggle stay locked. Deletes are still blocked.
-- **In-use fares**: `selling_fare`, `offer_price`, `effective_to` are editable
-  (rate-card corrections). Everything else (airline, class, route, type,
-  `effective_from`, child/infant %, meal, group fields) is locked.
+- **In-use fares**: `selling_fare`, `offer_price`, `effective_from`,
+  `effective_to`, `child_fare_percentage` and `infant_fare_percentage` are
+  editable (rate-card corrections; future snapshots pick the new values,
+  issued tickets keep their frozen copies). Everything else (airline, class,
+  route, type, meal, group fields) is locked.
   `net_fare` is always `0` on the fare; the real airline cost is entered
   per-ticket at issuance time.
 - **Snapshots**: at passenger creation (and on booking package change,
@@ -51,7 +53,7 @@ preserved on `issued_tickets` for profit calculations.
 | Area | Before | After |
 |------|--------|-------|
 | Locked package edit | Blocked (redirect) | Name + charge (+ optional visa bump) |
-| In-use fare edit | `effective_to` only | Selling + offer + `effective_to` |
+| In-use fare edit | `effective_to` only | Selling, offer, effective dates, child/infant % |
 | Profit source | Live `ticket_fares` / `packages` | Frozen `issued_tickets` snapshot + `booking_service_charge` |
 | Historic profit on fare edit | Mutated | Immutable |
 | Service-charge edit on locked package | Blocked | Allowed, historic profit unchanged |
@@ -78,8 +80,9 @@ preserved on `issued_tickets` for profit calculations.
 ### B. In-use fare edit
 
 5. Open a fare used by a package → `Edit` shows `selling_fare` /
-   `offer_price` / `effective_to` editable, rest readonly, no net-fare
-   widget, submit button reads *Update Fare Price*.
+   `offer_price`, `effective_from` / `effective_to` and child / infant
+   percentages editable, rest readonly, no net-fare widget, submit button
+   reads *Update Fare Price*.
 6. Change `selling_fare` → save → existing issued tickets keep the old
    `selling_fare` (check the passenger ticket row); newly created passengers
    get the new snapshot.

@@ -47,6 +47,40 @@ if ($user->hasRole('Super Admin')) { ... }
 $user->roles()->whereIn('name', ['Super Admin', 'Co Admin'])->exists();
 ```
 
+### Package & Ticket Fare Access Rules
+
+Route-level enforcement (`routes/web.php`), mirrored by controller checks:
+
+| Route | Allowed roles |
+|-------|---------------|
+| `packages.*` resource + toggle | Super Admin, Co Admin |
+| `ticket-fares` index / show / create / store | Super Admin, Co Admin, Ticket Admin, Ticket Staff |
+| `ticket-fares` edit / update / destroy | Super Admin, Ticket Admin |
+| `ticket-fares.toggle-active` | Super Admin, Co Admin, Ticket Admin |
+| `fare.admin` (GET), fare create / update, agent CRUD | Super Admin, Co Admin, Ticket Admin, Ticket Staff |
+| `fare.admin.fare.destroy` | Super Admin, Ticket Admin |
+| `POST /api/ticket-fares/quick-create` | Super Admin, Co Admin, Ticket Admin, Ticket Staff |
+
+Domain notes:
+
+- **Multiple packages may share one ticket fare** — duplicates are
+  intentional. Enforced by omitting `Rule::unique` in `PackageController`
+  and by dropping the `packages_ticket_fare_id_unique` index
+  (migration `2026_09_25_000001_drop_unique_ticket_fare_id_from_packages_table`).
+- **Locked package edit**: only `package_name` + `service_charge` (+ optional
+  visa-price bump); forged fare fields are ignored server-side.
+- **In-use fare edit** (Super Admin / Ticket Admin): `selling_fare`,
+  `offer_price`, `effective_from`, `effective_to`, `child_fare_percentage`,
+  `infant_fare_percentage`; other fields locked. See
+  `docs/11-fare-snapshot-before-after-and-manual-tests.md`.
+- **Fare deletion** is blocked while referenced by any package or passenger
+  (single/inbound/outbound — `TicketFare::isLocked()`). `issued_tickets`
+  stores value snapshots with no FK, so profit history survives deletion of
+  a fare that is no longer linked to packages or passengers.
+- The index UI hides edit/delete links from roles that lack route access and
+  renders Delete disabled for in-use fares (visible only to Super Admin /
+  Ticket Admin).
+
 ## Key Models
 
 ### Core Entities

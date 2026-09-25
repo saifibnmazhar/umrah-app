@@ -15,7 +15,6 @@ class TicketFare extends Model
         'airline_id',
         'airline_classes_id',
         'route_id',
-        'route_type',
         'ticket_type',
         'effective_from',
         'effective_to',
@@ -193,21 +192,28 @@ class TicketFare extends Model
 
     public function getIsLockedAttribute(): bool
     {
-        $hasFullCounts = array_key_exists('packages_as_inbound_count', $this->attributes)
-            && array_key_exists('packages_as_outbound_count', $this->attributes)
-            && array_key_exists('passengers_as_inbound_count', $this->attributes)
-            && array_key_exists('passengers_as_outbound_count', $this->attributes);
+        $countKeys = [
+            'packages_count',
+            'passengers_count',
+            'packages_as_inbound_count',
+            'packages_as_outbound_count',
+            'passengers_as_inbound_count',
+            'passengers_as_outbound_count',
+        ];
 
-        if ($hasFullCounts) {
-            return ($this->packages_count ?? 0) > 0
-                || ($this->passengers_count ?? 0) > 0
-                || ($this->packages_as_inbound_count ?? 0) > 0
-                || ($this->packages_as_outbound_count ?? 0) > 0
-                || ($this->passengers_as_inbound_count ?? 0) > 0
-                || ($this->passengers_as_outbound_count ?? 0) > 0;
+        foreach ($countKeys as $key) {
+            if (! array_key_exists($key, $this->attributes)) {
+                return $this->isLocked();
+            }
         }
 
-        return $this->isLocked();
+        foreach ($countKeys as $key) {
+            if ($this->attributes[$key] > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isLocked(): bool

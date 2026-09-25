@@ -192,6 +192,7 @@
         </div>
 
         <div class="md:col-span-1">
+            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Ticket Admin'))
             <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="text-sm font-medium text-slate-500 mb-4">Actions</h3>
                 <div class="space-y-2">
@@ -211,6 +212,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
                 <h3 class="text-sm font-medium text-slate-500 mb-4">Metadata</h3>

@@ -380,13 +380,15 @@
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">{{ $fare->created_at->format('d/m/Y') }}</td>
                                     <td class="px-4 py-3 text-center">
-                                        <form method="POST" action="{{ route('ticket-fares.toggle-active', $fare->id) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $fare->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
-                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $fare->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                            </button>
-                                        </form>
+                                        @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Ticket Admin'))
+                                            <form method="POST" action="{{ route('ticket-fares.toggle-active', $fare->id) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $fare->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $fare->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                                </button>
+                                            </form>
+                                        @endif
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $fare->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
                                             {{ $fare->is_active ? 'Active' : 'Inactive' }}
                                         </span>
