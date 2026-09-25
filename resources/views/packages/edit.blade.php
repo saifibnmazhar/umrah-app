@@ -157,14 +157,14 @@
                 @if(isset($package))
                     <p class="text-sm text-slate-600">
                         <span class="font-medium">Current Visa Selling Price:</span>
-                        <span class="text-slate-800 font-medium">SAR {{ number_format($package->visaSellingPrice?->selling_price ?? 0, 2) }}</span>
+                        <span class="text-slate-800 font-medium"><span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" x-cloak>SAR </span>@currency($package->visaSellingPrice?->selling_price ?? 0, 2)</span>
                     </p>
                 @endif
                 <p class="text-sm text-slate-600">
                     <span class="font-medium">Visa Selling Price (Latest):</span>
                     <span class="text-slate-800 font-medium">
                         @if($latestVisa)
-                            @currency($latestVisa->selling_price, 0)
+                            <span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" x-cloak>SAR </span>@currency($latestVisa->selling_price, 0)
                         @else
                             Not configured
                         @endif

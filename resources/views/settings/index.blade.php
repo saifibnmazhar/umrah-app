@@ -407,7 +407,7 @@
         modalPkgLocked = locked;
         modalPkgEditing = true;
         modalCurrentVisaPrice = currentVisa;
-        document.getElementById('modalCurrentVisaPrice').textContent = 'SAR ' + currentVisa.toFixed(2);
+        renderModalCurrentVisaPrice();
         document.getElementById('modalCurrentVisaRow').classList.remove('hidden');
         document.getElementById('modalUseCurrentVisaRow').classList.remove('hidden');
         document.getElementById('modalUseCurrentVisaRow').classList.add('flex');
@@ -535,6 +535,17 @@
         } else {
             grossDisplay.textContent = 'SAR ' + Math.round(sar).toLocaleString();
         }
+    }
+
+    function renderModalCurrentVisaPrice() {
+        const el = document.getElementById('modalCurrentVisaPrice');
+        if (!el) return;
+        const currency = window.Alpine?.store('currency');
+        const mode = currency?.mode === 'BDT' ? 'BDT' : 'SAR';
+        const rate = currency?.rate || 0;
+        const sar = Number(modalCurrentVisaPrice) || 0;
+        const value = mode === 'BDT' && rate > 0 ? sar * rate : sar;
+        el.textContent = mode + ' ' + value.toFixed(2);
     }
 
     function calculateModalPrices() {
@@ -946,7 +957,7 @@
                             <span class="font-medium">Visa Selling Price (Latest):</span>
                             <span class="text-slate-800 font-medium">
                                 @if($latestVisa)
-                                    @currency($latestVisa->selling_price, 0)
+                                    <span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" x-cloak>SAR </span>@currency($latestVisa->selling_price, 0)
                                 @else
                                     Not configured
                                 @endif
@@ -1007,6 +1018,10 @@
             updateModalTicketLabels();
             syncInputCurrency();
             updateModalGross();
+            const visaRow = document.getElementById('modalCurrentVisaRow');
+            if (visaRow && !visaRow.classList.contains('hidden')) {
+                renderModalCurrentVisaPrice();
+            }
         });
         document.addEventListener('DOMContentLoaded', () => {
             updateModalTicketLabels();

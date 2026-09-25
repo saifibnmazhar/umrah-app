@@ -227,7 +227,7 @@
                     <span class="font-medium">Visa Selling Price (Latest):</span>
                     <span class="text-slate-800 font-medium">
                         @if($latestVisa)
-                            @currency($latestVisa->selling_price, 0)
+                            <span x-show="$store.currency.mode === 'BDT'" x-cloak>BDT </span><span x-show="$store.currency.mode === 'SAR' || !$store.currency.mode" x-cloak>SAR </span>@currency($latestVisa->selling_price, 0)
                         @else
                             Not configured
                         @endif
@@ -263,6 +263,24 @@ function modalVisaBase() {
     const cb = document.getElementById('modalUseCurrentVisa');
     return (cb && cb.checked) ? latestVisaPrice : modalCurrentVisaPrice;
 }
+
+function renderModalCurrentVisaPrice() {
+    const el = document.getElementById('modalCurrentVisaPrice');
+    if (!el) return;
+    const currency = window.Alpine?.store('currency');
+    const mode = currency?.mode === 'BDT' ? 'BDT' : 'SAR';
+    const rate = currency?.rate || 0;
+    const sar = Number(modalCurrentVisaPrice) || 0;
+    const value = mode === 'BDT' && rate > 0 ? sar * rate : sar;
+    el.textContent = mode + ' ' + value.toFixed(2);
+}
+
+window.addEventListener('currency-toggled', () => {
+    const row = document.getElementById('modalCurrentVisaRow');
+    if (row && row.style.display !== 'none') {
+        renderModalCurrentVisaPrice();
+    }
+});
 </script>
 
 <script>
@@ -453,7 +471,7 @@ function editPackage(id) {
     document.getElementById('modalCurrentVisaRow').style.display = 'block';
     document.getElementById('modalUseCurrentVisaRow').style.display = 'flex';
     document.getElementById('modalUseCurrentVisa').checked = false;
-    document.getElementById('modalCurrentVisaPrice').textContent = 'SAR ' + Number(pkg.visa_selling_price || 0).toFixed(2);
+    renderModalCurrentVisaPrice();
     document.getElementById('modalDoubleTicketCheck').disabled = locked;
     document.getElementById('modalTicketTypeSelect').disabled = locked;
     document.getElementById('modalTicketTypeSelect').classList.toggle('bg-slate-100', locked);
