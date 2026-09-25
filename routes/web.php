@@ -114,10 +114,21 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Ticket Admin');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    // Standalone Visa Selling Prices page disabled; store/update/destroy power the Visa Admin "Visa Selling Prices" tab.
+    Route::resource('visa-selling-prices', VisaSellingPriceController::class)
+        ->except(['index', 'create', 'show', 'edit'])
+        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    // GET URLs of the disabled page redirect to the Visa Admin tab that replaced it (without
+    // these, Laravel returns 405 Method Not Allowed because store/update/destroy share these URIs).
+    Route::get('/visa-selling-prices', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
+    Route::get('/visa-selling-prices/{visa_selling_price}', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
+    Route::get('/visa-selling-prices/{visa_selling_price}/edit', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');
     Route::patch('/packages/{package}/toggle-active', [PackageController::class, 'toggleActive'])->name('packages.toggle-active')->middleware('role:Super Admin,Co Admin');
-    Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
+    Route::get('/packages/{package}/toggle-active', fn () => abort(404));
+    // Packages page disabled (index/create/show/edit/store/update/destroy) — packages are managed
+    // via Settings > Package Configuration, which uses settings.package.* and packages.toggle-active.
+    // Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('role:Super Admin,Co Admin');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('role:Super Admin');
     Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('role:Super Admin');

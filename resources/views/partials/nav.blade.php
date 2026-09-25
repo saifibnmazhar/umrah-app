@@ -72,7 +72,9 @@
                         @if($canAccessTicket)<a href="{{ route('ticket-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agents</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('flight-date-gaps.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Flight Date Gap</a>@endif
                         @if($canAccessVisa)<a href="{{ route('visa-agent-costs.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Costs</a>@endif
+                        {{-- Temporarily disabled: visa-selling-prices page disabled (managed on Visa Admin page)
                         @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>@endif
+                        --}}
                         @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Transaction Types</a>@endif
                         @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('routes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Routes</a>@endif
@@ -82,7 +84,9 @@
                         <a href="{{ route('vouchers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Vouchers</a>
                         --}}
                         @if($canAccessTicket)<a href="{{ route('ticket-fares.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Fares</a>@endif
+                        {{-- Temporarily disabled: packages page disabled (managed in Settings > Package Configuration)
                         @if($canAccessAdmin)<a href="{{ route('packages.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Packages</a>@endif
+                        --}}
                         @if($canAccessAdmin)<a href="{{ route('users.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Users</a>@endif
                     </div>
                 </div>
@@ -174,7 +178,9 @@
                 @if($canAccessTicket)<a href="{{ route('ticket-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agents</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('flight-date-gaps.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Flight Date Gap</a>@endif
                 @if($canAccessVisa)<a href="{{ route('visa-agent-costs.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Costs</a>@endif
+                {{-- Temporarily disabled: visa-selling-prices page disabled (managed on Visa Admin page)
                 @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>@endif
+                --}}
                 @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Transaction Types</a>@endif
                 @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('routes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Routes</a>@endif
@@ -184,7 +190,9 @@
                 <a href="{{ route('vouchers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Vouchers</a>
                 --}}
                 @if($canAccessTicket)<a href="{{ route('ticket-fares.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Fares</a>@endif
+                {{-- Temporarily disabled: packages page disabled (managed in Settings > Package Configuration)
                 @if($canAccessAdmin)<a href="{{ route('packages.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Packages</a>@endif
+                --}}
                 @if($canAccessAdmin)<a href="{{ route('users.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Users</a>@endif
             </div>
             @endif

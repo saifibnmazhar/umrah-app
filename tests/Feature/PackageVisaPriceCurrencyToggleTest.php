@@ -93,40 +93,11 @@ class PackageVisaPriceCurrencyToggleTest extends TestCase
         );
     }
 
-    public function test_package_create_page_latest_visa_row_has_currency_prefix(): void
+    public function test_disabled_package_pages_return_404(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('packages.create'));
-
-        $response->assertOk();
-        $this->assertLatestVisaRowIsPrefixed($response->getContent());
-    }
-
-    public function test_package_edit_page_current_visa_row_converts_on_toggle(): void
-    {
-        $response = $this->actingAs($this->admin)->get(route('packages.edit', $this->package));
-
-        $response->assertOk();
-        $html = $response->getContent();
-
-        $this->assertMatchesRegularExpression(
-            '/Current Visa Selling Price:.*?data-sar="2000/s',
-            $html
-        );
-        $this->assertStringNotContainsString('>SAR 2,000.00<', $html);
-        $this->assertLatestVisaRowIsPrefixed($html);
-    }
-
-    public function test_packages_index_js_stamps_current_visa_with_currency_store(): void
-    {
-        $response = $this->actingAs($this->admin)->get(route('packages.index'));
-
-        $response->assertOk();
-        $html = $response->getContent();
-
-        $this->assertStringContainsString('renderModalCurrentVisaPrice', $html);
-        $this->assertStringContainsString("'currency-toggled'", $html);
-        $this->assertStringNotContainsString("'SAR ' + Number(pkg.visa_selling_price", $html);
-        $this->assertLatestVisaRowIsPrefixed($html);
+        foreach (['/packages', '/packages/create', '/packages/'.$this->package->id.'/edit'] as $uri) {
+            $this->actingAs($this->admin)->get($uri)->assertNotFound();
+        }
     }
 
     public function test_settings_package_modal_current_visa_uses_currency_store(): void

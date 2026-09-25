@@ -36,7 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'ticket-request-branch' => EnsureTicketRequestAccess::class,
         ]);
 
-        $middleware->appendToGroup('auth', CheckActive::class);
+        // CheckActive must be appended to the 'web' group: appending it to 'auth' would create a
+        // middleware *group* named auth (shadowing the auth *alias* in MiddlewareNameResolver),
+        // silently dropping Illuminate\Auth\Middleware\Authenticate from every auth route.
+        $middleware->appendToGroup('web', CheckActive::class);
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('ticket-fares:expire')->daily();

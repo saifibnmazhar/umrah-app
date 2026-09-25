@@ -140,130 +140,41 @@ class PackageAccessControlTest extends TestCase
         ]);
     }
 
-    public function test_non_admin_role_gets_403_on_package_routes(): void
+    public function test_disabled_package_routes_return_404(): void
     {
         $package = $this->makePackage($this->fare);
         $staff = $this->makeUser('Ticket Staff', Branch::first());
 
-        $this->actingAs($staff)->get(route('packages.index'))->assertForbidden();
-        $this->actingAs($staff)->get(route('packages.create'))->assertForbidden();
-        $this->actingAs($staff)->get(route('packages.edit', $package))->assertForbidden();
-        $this->actingAs($staff)->put(route('packages.update', $package), ['package_name' => 'X'])->assertForbidden();
-        $this->actingAs($staff)->delete(route('packages.destroy', $package))->assertForbidden();
-        $this->actingAs($staff)->get(route('packages.show', $package))->assertForbidden();
+        foreach (['/packages', '/packages/create', '/packages/'.$package->id, '/packages/'.$package->id.'/edit'] as $uri) {
+            $this->actingAs($this->admin)->get($uri)->assertNotFound();
+            $this->actingAs($staff)->get($uri)->assertNotFound();
+        }
+
+        $this->actingAs($this->admin)->post('/packages', ['package_name' => 'X'])->assertNotFound();
+        $this->actingAs($this->admin)->put('/packages/'.$package->id, ['package_name' => 'X'])->assertNotFound();
+        $this->actingAs($this->admin)->delete('/packages/'.$package->id)->assertNotFound();
+        $this->actingAs($staff)->delete('/packages/'.$package->id)->assertNotFound();
     }
 
-    public function test_unused_package_accepts_full_field_update(): void
+    public function test_get_on_toggle_active_returns_404(): void
     {
         $package = $this->makePackage($this->fare);
 
-        $response = $this->actingAs($this->admin)->put(route('packages.update', $package), [
-            'package_name' => 'Renamed Pkg',
-            'is_double_ticket' => 0,
-            'regular_price' => 55555.00,
-            'offer_price' => 11111.00,
-            'service_charge' => 777.00,
-            'ticket_fare_id' => $this->otherFare->id,
-        ]);
-
-        $response->assertRedirect(route('packages.index'));
-        $this->assertDatabaseHas('packages', [
-            'id' => $package->id,
-            'package_name' => 'Renamed Pkg',
-            'ticket_fare_id' => $this->otherFare->id,
-            'regular_price' => 55555.00,
-            'offer_price' => 11111.00,
-            'service_charge' => 777.00,
-        ]);
+        $this->actingAs($this->admin)->get('/packages/'.$package->id.'/toggle-active')->assertNotFound();
     }
 
-    public function test_multiple_packages_may_share_one_ticket_fare(): void
-    {
-        $payload = fn () => [
-            'package_name' => 'Shared Fare Pkg '.uniqid(),
-            'is_double_ticket' => 0,
-            'regular_price' => 30000.00,
-            'offer_price' => null,
-            'service_charge' => 1000.00,
-            'ticket_fare_id' => $this->fare->id,
-        ];
-
-        $this->actingAs($this->admin)
-            ->post(route('packages.store'), $payload())
-            ->assertRedirect(route('packages.index'))
-            ->assertSessionHasNoErrors();
-
-        $this->actingAs($this->admin)
-            ->post(route('packages.store'), $payload())
-            ->assertRedirect(route('packages.index'))
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame(2, Package::where('ticket_fare_id', $this->fare->id)->count());
-
-        $packageOnOtherFare = $this->makePackage($this->otherFare);
-        $this->actingAs($this->admin)
-            ->put(route('packages.update', $packageOnOtherFare), [
-                'package_name' => $packageOnOtherFare->package_name,
-                'is_double_ticket' => 0,
-                'regular_price' => 30000.00,
-                'offer_price' => null,
-                'service_charge' => 1000.00,
-                'ticket_fare_id' => $this->fare->id,
-            ])
-            ->assertRedirect(route('packages.index'))
-            ->assertSessionHasNoErrors();
-
-        $this->assertDatabaseHas('packages', ['id' => $packageOnOtherFare->id, 'ticket_fare_id' => $this->fare->id]);
-    }
-
-    public function test_in_use_package_update_ignores_fare_fields(): void
+    public function test_package_toggle_active_still_available_for_settings_tab(): void
     {
         $package = $this->makePackage($this->fare);
-        $this->makeBookingForPackage($package);
-        $this->assertTrue($package->isLocked());
+        $staff = $this->makeUser('Ticket Staff', Branch::first());
 
-        $response = $this->actingAs($this->admin)->put(route('packages.update', $package), [
-            'package_name' => 'Locked Renamed',
-            'service_charge' => 2000.00,
-            'regular_price' => 999999.00,
-            'offer_price' => 123456.00,
-            'ticket_fare_id' => $this->otherFare->id,
-            'is_double_ticket' => 1,
-        ]);
-
-        $response->assertRedirect(route('packages.index'));
-
-        $package->refresh();
-        $this->assertSame('Locked Renamed', $package->package_name);
-        $this->assertEquals(2000.00, (float) $package->service_charge);
-        $this->assertSame($this->fare->id, $package->ticket_fare_id);
-        $this->assertFalse((bool) $package->is_double_ticket);
-        $this->assertEquals(30000.00, (float) $package->regular_price);
-        $this->assertNull($package->offer_price);
-    }
-
-    public function test_in_use_package_destroy_blocked(): void
-    {
-        $package = $this->makePackage($this->fare);
-        $this->makeBookingForPackage($package);
+        $this->actingAs($staff)->patch(route('packages.toggle-active', $package))->assertForbidden();
 
         $this->actingAs($this->admin)
-            ->delete(route('packages.destroy', $package))
-            ->assertRedirect(route('packages.index'))
-            ->assertSessionHas('error');
+            ->patch(route('packages.toggle-active', $package))
+            ->assertRedirect();
 
-        $this->assertDatabaseHas('packages', ['id' => $package->id]);
-    }
-
-    public function test_unused_package_destroy_allowed(): void
-    {
-        $package = $this->makePackage($this->fare);
-
-        $this->actingAs($this->admin)
-            ->delete(route('packages.destroy', $package))
-            ->assertRedirect(route('packages.index'));
-
-        $this->assertDatabaseMissing('packages', ['id' => $package->id]);
+        $this->assertFalse((bool) $package->refresh()->is_active);
     }
 
     public function test_is_locked_accessor_falls_back_to_query_without_count(): void

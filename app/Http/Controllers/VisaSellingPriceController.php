@@ -49,7 +49,7 @@ class VisaSellingPriceController extends Controller
     public function edit(VisaSellingPrice $visaSellingPrice)
     {
         if ($visaSellingPrice->isLocked()) {
-            return redirect()->route('visa-selling-prices.index')->with('error', 'This visa price cannot be edited because it is in use by packages or visa submissions.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('error', 'This visa price cannot be edited because it is in use by packages or visa submissions.');
         }
 
         return view('visa-selling-prices.edit', compact('visaSellingPrice'));
