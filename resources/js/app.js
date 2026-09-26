@@ -4,7 +4,7 @@ import './booking.js'
 window.Alpine = Alpine
 
 Alpine.store('currency', {
-    mode: localStorage.getItem('currency_mode') || 'SAR',
+    mode: ['SAR', 'BDT'].includes(localStorage.getItem('currency_mode')) ? localStorage.getItem('currency_mode') : 'SAR',
     rate: window.__currencyRate || 0,
 
     init() {
@@ -15,6 +15,7 @@ Alpine.store('currency', {
         this.mode = this.mode === 'SAR' ? 'BDT' : 'SAR'
         localStorage.setItem('currency_mode', this.mode)
         this.convertAll()
+        this.updatePrefixes()
         window.dispatchEvent(new CustomEvent('currency-toggled'))
     },
 
@@ -41,6 +42,12 @@ Alpine.store('currency', {
                 el.textContent = this.format(sar, dec, rate, bdt)
             }
         })
+    },
+
+    updatePrefixes() {
+        document.querySelectorAll('[data-currency-prefix]').forEach(el => {
+            el.textContent = this.mode + ' '
+        })
     }
 })
 
@@ -56,9 +63,21 @@ window.showToast = function(message, type = 'info') {
     Alpine.store('toast', { message, type })
 }
 
+window.addEventListener('storage', (e) => {
+    if (e.key !== 'currency_mode') return
+    const mode = ['SAR', 'BDT'].includes(e.newValue) ? e.newValue : 'SAR'
+    const store = Alpine.store('currency')
+    if (!store || store.mode === mode) return
+    store.mode = mode
+    store.convertAll()
+    store.updatePrefixes()
+    window.dispatchEvent(new CustomEvent('currency-toggled'))
+})
+
 document.addEventListener('DOMContentLoaded', () => {
     Alpine.store('currency').init()
     Alpine.store('currency').convertAll()
+    Alpine.store('currency').updatePrefixes()
 
     const path = window.location.pathname
 
