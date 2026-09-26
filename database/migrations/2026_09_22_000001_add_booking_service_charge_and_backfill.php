@@ -12,9 +12,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('passengers', function (Blueprint $table) {
-            $table->decimal('booking_service_charge', 14, 6)->default(0)->after('service_charge');
-        });
+        if (! Schema::hasColumn('passengers', 'booking_service_charge')) {
+            Schema::table('passengers', function (Blueprint $table) {
+                $table->decimal('booking_service_charge', 14, 6)->default(0)->after('service_charge');
+            });
+        }
 
         $this->backfill();
     }

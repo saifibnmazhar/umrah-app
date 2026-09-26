@@ -78,9 +78,69 @@ docker image prune -f --filter "until=24h" || true
 echo "▶️  Starting containers..."
 compose up -d
 
-# Wait for app to be healthy
-echo "⏳ Waiting for containers to start..."
-sleep 15
+# Wait for the entrypoint to finish before running artisan commands.
+# Healthy ⇔ supervisord/nginx up ⇔ entrypoint done: config/route/view
+# cache built and its own migrations run. Running `php artisan migrate`
+# earlier races the entrypoint's `route:cache` (which deletes
+# bootstrap/cache/routes-v7.php, rebuilds, then rewrites it) and causes
+# the routes-v7.php ENOENT failure.
+echo "⏳ Waiting for application to become healthy..."
+
+APP_WAIT_TIMEOUT="${APP_WAIT_TIMEOUT:-300}"
+APP_WAIT_INTERVAL="${APP_WAIT_INTERVAL:-5}"
+
+ELAPSED=0
+
+while true; do
+
+  APP_CONTAINER="$(compose ps -q app)"
+
+  if [[ -z "$APP_CONTAINER" ]]; then
+    echo "❌ Application container was not created."
+    compose ps
+    exit 1
+  fi
+
+  APP_STATUS="$(
+    docker inspect \
+      --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+      "$APP_CONTAINER" \
+      2>/dev/null || true
+  )"
+
+  if [[ "$APP_STATUS" == "healthy" ]]; then
+    echo "✅ Application is healthy."
+    break
+  fi
+
+  if [[ "$APP_STATUS" == "no-healthcheck" ]]; then
+    echo "⚠️ WARNING: Application has no healthcheck."
+    break
+  fi
+
+  # Fail fast on an entrypoint crash-loop (e.g. a failing migration)
+  # instead of waiting out the full timeout with endless "starting".
+  RESTARTS="$(docker inspect --format '{{.RestartCount}}' "$APP_CONTAINER" 2>/dev/null || echo 0)"
+
+  if (( RESTARTS >= 3 )); then
+    echo ""
+    echo "❌ Application container has restarted ${RESTARTS}x — entrypoint is crash-looping (usually a migration error)."
+    echo ""
+    compose logs --tail=60 app || true
+    exit 1
+  fi
+
+  if ((ELAPSED >= APP_WAIT_TIMEOUT)); then
+    echo ""
+    echo "❌ Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
+    echo ""
+    compose ps
+    exit 1
+  fi
+
+  sleep "$APP_WAIT_INTERVAL"
+  ELAPSED=$((ELAPSED + APP_WAIT_INTERVAL))
+done
 
 # Run migrations
 echo "📦 Running migrations..."

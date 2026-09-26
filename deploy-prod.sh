@@ -242,6 +242,83 @@ echo "========================================"
 compose up -d app
 
 # ------------------------------------------------------------
+# Wait for application health
+#
+# The entrypoint runs chown, config/route/view cache and its own
+# migrations BEFORE supervisord/nginx start. The healthcheck only
+# turns "healthy" after that, so waiting here guarantees the
+# artisan commands below never race the entrypoint's `route:cache`
+# (which deletes bootstrap/cache/routes-v7.php, rebuilds, then
+# rewrites it — the cause of the routes-v7.php ENOENT failure).
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Waiting for application"
+echo "========================================"
+
+APP_WAIT_TIMEOUT="${APP_WAIT_TIMEOUT:-300}"
+APP_WAIT_INTERVAL="${APP_WAIT_INTERVAL:-5}"
+
+ELAPSED=0
+
+while true; do
+
+  APP_CONTAINER="$(compose ps -q app)"
+
+  if [[ -z "$APP_CONTAINER" ]]; then
+    echo "ERROR: Application container was not created."
+    compose ps
+    exit 1
+  fi
+
+  APP_STATUS="$(
+    docker inspect \
+      --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+      "$APP_CONTAINER" \
+      2>/dev/null || true
+  )"
+
+  if [[ "$APP_STATUS" == "healthy" ]]; then
+    echo "Application is healthy."
+    break
+  fi
+
+  if [[ "$APP_STATUS" == "no-healthcheck" ]]; then
+    echo "WARNING: Application has no healthcheck."
+    break
+  fi
+
+  # Fail fast on an entrypoint crash-loop (e.g. a failing migration)
+  # instead of waiting out the full timeout with endless "starting".
+  RESTARTS="$(docker inspect --format '{{.RestartCount}}' "$APP_CONTAINER" 2>/dev/null || echo 0)"
+
+  if (( RESTARTS >= 3 )); then
+    echo ""
+    echo "ERROR: application container has restarted ${RESTARTS}x — entrypoint is crash-looping (usually a migration error)."
+    echo ""
+    compose logs --tail=60 app || true
+    exit 1
+  fi
+
+  echo "Application status: ${APP_STATUS:-starting}"
+
+  if ((ELAPSED >= APP_WAIT_TIMEOUT)); then
+    echo ""
+    echo "ERROR: Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
+    echo ""
+
+    compose ps
+
+    exit 1
+  fi
+
+  sleep "$APP_WAIT_INTERVAL"
+
+  ELAPSED=$((ELAPSED + APP_WAIT_INTERVAL))
+done
+
+# ------------------------------------------------------------
 # Fix Laravel permissions
 # ------------------------------------------------------------
 
@@ -287,64 +364,6 @@ else
   echo "Set MIGRATE=true in .env.production to enable."
 
 fi
-
-# ------------------------------------------------------------
-# Wait for application health
-# ------------------------------------------------------------
-
-echo ""
-echo "========================================"
-echo " Checking application health"
-echo "========================================"
-
-APP_WAIT_TIMEOUT="${APP_WAIT_TIMEOUT:-120}"
-APP_WAIT_INTERVAL="${APP_WAIT_INTERVAL:-5}"
-
-ELAPSED=0
-
-while true; do
-
-  APP_CONTAINER="$(compose ps -q app)"
-
-  if [[ -z "$APP_CONTAINER" ]]; then
-    echo "ERROR: Application container was not created."
-    compose ps
-    exit 1
-  fi
-
-  APP_STATUS="$(
-    docker inspect \
-      --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
-      "$APP_CONTAINER" \
-      2>/dev/null || true
-  )"
-
-  if [[ "$APP_STATUS" == "healthy" ]]; then
-    echo "Application is healthy."
-    break
-  fi
-
-  if [[ "$APP_STATUS" == "no-healthcheck" ]]; then
-    echo "WARNING: Application has no healthcheck."
-    break
-  fi
-
-  echo "Application status: ${APP_STATUS:-starting}"
-
-  if ((ELAPSED >= APP_WAIT_TIMEOUT)); then
-    echo ""
-    echo "ERROR: Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
-    echo ""
-
-    compose ps
-
-    exit 1
-  fi
-
-  sleep "$APP_WAIT_INTERVAL"
-
-  ELAPSED=$((ELAPSED + APP_WAIT_INTERVAL))
-done
 
 # ------------------------------------------------------------
 # Final status
