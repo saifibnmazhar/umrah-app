@@ -185,7 +185,7 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package_name ?? $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1 py-0.5 text-right border border-slate-300">@currency($passenger->package_value ?? 0, 2, $rate)</td>
+                        <td class="px-1 py-0.5 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($passenger->package_value ?? 0, 2, $rate)</td>
                         <td class="px-1 py-0 text-center border border-slate-300">
                             @if($_hasSrc)
                             @if(in_array($_srcRt, ['round', 'multi_city']))
@@ -750,7 +750,7 @@ if ($_hasSrc) {
                 <tbody>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($subTotal, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($subTotal, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Pax:</td>
@@ -758,15 +758,15 @@ if ($_hasSrc) {
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($fingerprintCharge, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($fingerprintCharge, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($discount, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($discount, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total:</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">@currency($grandTotal, 2, $rate)</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600"><span data-currency-prefix>SAR </span>@currency($grandTotal, 2, $rate)</td>
                     </tr>
                 </tbody>
             </table>
@@ -782,23 +782,23 @@ if ($_hasSrc) {
                 <tbody>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount:</td>
-                        <td class="px-2 py-1 text-right font-bold border border-slate-300">@currency($booking->invoice->total_amount ?? 0, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300"><span data-currency-prefix>SAR </span>@currency($booking->invoice->total_amount ?? 0, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($totalPaid - $currentPaid, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($totalPaid - $currentPaid, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($currentPaid, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($currentPaid, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">@currency($totalPaid, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right border border-slate-300"><span data-currency-prefix>SAR </span>@currency($totalPaid, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">@currency($dueAmount, 2, $rate)</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400"><span data-currency-prefix>SAR </span>@currency($dueAmount, 2, $rate)</td>
                     </tr>
                 </tbody>
             </table>
