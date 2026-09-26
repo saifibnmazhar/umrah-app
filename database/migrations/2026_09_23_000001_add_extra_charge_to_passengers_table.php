@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('passengers', function (Blueprint $table) {
-            $table->decimal('extra_charge', 14, 6)->default(0)->after('booking_service_charge');
-        });
+        if (! Schema::hasColumn('passengers', 'extra_charge')) {
+            Schema::table('passengers', function (Blueprint $table) {
+                $table->decimal('extra_charge', 14, 6)->default(0)->after('booking_service_charge');
+            });
+        }
     }
 
     public function down(): void

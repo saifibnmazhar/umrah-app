@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('bookings', function (Blueprint $table) {
-            $table->string('package_name')->nullable()->after('package_id');
-        });
+        if (! Schema::hasColumn('bookings', 'package_name')) {
+            Schema::table('bookings', function (Blueprint $table) {
+                $table->string('package_name')->nullable()->after('package_id');
+            });
+        }
 
         DB::transaction(function () {
             DB::table('bookings')
