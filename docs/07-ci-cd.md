@@ -108,14 +108,13 @@ This script:
 1. Validates `.env.production` exists and the compose file parses
 2. Pulls the latest image from ghcr.io
 3. Stops only the `app` container (`compose stop`, not `compose down`)
-4. Starts MySQL 8.0 and Redis 7, waits for both to report healthy
-5. Starts the app container and waits for its healthcheck (fails fast if the
-   entrypoint crash-loops, usually a failing migration)
+4. Starts MySQL 8.0 and waits for it to report healthy, then starts Redis
+5. Starts the app container
 6. Fixes storage permissions
-7. Clears the config, route and view caches
-8. Runs the in-image CSRF probe `/usr/local/bin/csrf-probe.sh` (warn-only,
-   never fails the deploy)
-9. Runs migrations
+7. Runs migrations when `MIGRATE=true`
+8. Waits for the app container's healthcheck (fails fast if the entrypoint
+   crash-loops, usually a failing migration)
+9. Clears the config, route and view caches
 10. Runs `sessions:flush --force` to log everyone out (skipped with a warning
     on images that predate the command)
 
@@ -174,23 +173,17 @@ IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 5. Starts the app container and waits for its healthcheck (fails fast on an
    entrypoint crash-loop)
 6. Clears the config, route and view caches
-7. Runs the **inline** CSRF probe defined in the script itself (warn-only,
-   never fails the deploy)
-8. Fixes storage permissions
-9. Runs migrations when `MIGRATE=true` (seeders are never run)
-10. Runs `sessions:flush --force` to log everyone out (skipped with a warning
-    on images that predate the command)
+7. Fixes storage permissions
+8. Runs migrations when `MIGRATE=true` (seeders are never run)
+9. Runs `sessions:flush --force` to log everyone out (skipped with a warning
+   on images that predate the command)
 
 The script does **not** update `IMAGE_TAG`, prune images, or curl a URL —
 health comes from `docker compose` healthchecks only. To deploy a pinned
 image, pass the tag in: `IMAGE_TAG=staging-<sha> ./deploy-staging.sh`.
 
 Staging and production intentionally share this behaviour: same caches
-cleared, same CSRF tripwire, same forced logout, same Redis persistence. The
-one difference is *which* probe the deploy script calls — staging calls its
-own inline copy, production calls the shared `/usr/local/bin/csrf-probe.sh`.
-Every container runs the in-image copy from `supervisord` at boot regardless,
-so both environments get boot coverage.
+cleared, same forced logout, same Redis persistence.
 
 ### Staging Configuration Files
 
@@ -213,7 +206,6 @@ so both environments get boot coverage.
 | APP_DEBUG | `false` | `true` |
 | Auto-deploy | None — CI pushes, you deploy | None — CI pushes, you deploy |
 | Seeders | Never run by the deploy script | Never run by the deploy script |
-| CSRF probe at deploy time | In-image `/usr/local/bin/csrf-probe.sh` | Inline copy in the script |
 | `MIGRATE` | `true` (run in the entrypoint **and** the script) | `false` unless enabled |
 
 ---

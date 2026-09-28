@@ -73,108 +73,7 @@ class DeployCacheGuardTest extends TestCase
     }
 
     /**
-     * A CSRF-protected POST is verified after the clears so a broken deploy is
-     * reported during the deploy instead of by users hitting ticket/visa forms.
-     *
-     * The probe lives in the image (one implementation shared by the deploy
-     * scripts, a manual `docker exec`, and supervisord), so the request
-     * assertions belong to docker/scripts/csrf-probe.sh.
-     */
-    public function test_deploy_script_probes_csrf_after_clearing_caches(): void
-    {
-        $content = file_get_contents(base_path('deploy-prod.sh'));
-        $probe = file_get_contents(base_path('docker/scripts/csrf-probe.sh'));
-
-        $this->assertStringContainsString(
-            'csrf_probe',
-            $content,
-            'deploy-prod.sh must probe CSRF handling after clearing caches'
-        );
-
-        $this->assertStringContainsString(
-            '/usr/local/bin/csrf-probe.sh',
-            $content,
-            'deploy-prod.sh must call the in-image probe instead of keeping its own copy of the logic'
-        );
-
-        $this->assertStringContainsString(
-            'X-CSRF-TOKEN',
-            $probe,
-            'the CSRF probe must send the token header'
-        );
-
-        $this->assertStringContainsString(
-            '419',
-            $probe,
-            'the CSRF probe must recognise 419 as a CSRF failure'
-        );
-
-        $clear = strpos($content, 'php artisan view:clear --no-interaction');
-        // Last occurrence: the function definition comes first, the call site later.
-        $call = strrpos($content, 'csrf_probe');
-
-        $this->assertNotFalse($clear, 'deploy-prod.sh must clear the view cache');
-        $this->assertNotFalse($call, 'deploy-prod.sh must invoke the CSRF probe');
-        $this->assertLessThan($call, $clear, 'the CSRF probe must run after the caches are cleared');
-    }
-
-    /**
-     * The probe must never take a container or a deployment down: it runs from
-     * supervisord at every boot and from a deploy script that already
-     * succeeded. It has to be shipped in the image and wired into supervisord,
-     * otherwise Watchtower restarts get no coverage at all.
-     */
-    public function test_in_image_probe_is_shipped_and_started_at_boot(): void
-    {
-        $probe = file_get_contents(base_path('docker/scripts/csrf-probe.sh'));
-        $dockerfile = file_get_contents(base_path('Dockerfile'));
-        $supervisord = file_get_contents(base_path('docker/supervisord.conf'));
-
-        $this->assertStringContainsString(
-            'COPY docker/scripts/csrf-probe.sh /usr/local/bin/csrf-probe.sh',
-            $dockerfile,
-            'the Dockerfile must ship the CSRF probe'
-        );
-
-        $this->assertStringContainsString(
-            'chmod +x /usr/local/bin/csrf-probe.sh',
-            $dockerfile,
-            'the shipped CSRF probe must be executable'
-        );
-
-        $this->assertStringContainsString(
-            '[program:csrf-probe]',
-            $supervisord,
-            'supervisord must start the CSRF probe on every container start'
-        );
-
-        $this->assertMatchesRegularExpression(
-            '/\[program:csrf-probe\][^[]*autorestart=false/',
-            $supervisord,
-            'the probe is a one-shot program: it must not be restarted after it exits'
-        );
-
-        $this->assertMatchesRegularExpression(
-            '/\[program:csrf-probe\][^[]*startsecs=0/',
-            $supervisord,
-            'the probe must count as started immediately, without a run window'
-        );
-
-        $this->assertStringNotContainsString(
-            'exit 1',
-            $probe,
-            'the probe must always exit 0 so it can never fail a boot or a deploy'
-        );
-
-        $this->assertStringContainsString(
-            'exit 0',
-            $probe,
-            'the probe must exit explicitly with success'
-        );
-    }
-
-    /**
-     * The staging deploy must carry the same tripwire and the same forced
+     * The staging deploy must clear the same caches and run the same forced
      * logout as production, and must not tear the stack down on every deploy.
      */
     public function test_staging_deploy_script_carries_the_guards(): void
@@ -188,21 +87,6 @@ class DeployCacheGuardTest extends TestCase
                 "deploy-staging.sh must run `php artisan {$command}` after a deploy"
             );
         }
-
-        // Staging keeps its own inline probe (deliberate, server-side decision);
-        // production calls the shared in-image script. Both must actually send
-        // the token and recognise a 419.
-        $this->assertStringContainsString(
-            'X-CSRF-TOKEN',
-            $content,
-            'deploy-staging.sh must probe CSRF handling with the token header'
-        );
-
-        $this->assertStringContainsString(
-            '419',
-            $content,
-            'deploy-staging.sh must recognise 419 as a CSRF failure'
-        );
 
         $this->assertStringContainsString(
             'sessions:flush --force',

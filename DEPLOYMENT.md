@@ -256,7 +256,7 @@ docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
 ### Reset Laravel cache
 
 `deploy-prod.sh` already does this automatically after every deploy: it clears the
-config, route and view caches, then runs a CSRF probe. Nothing needs to be run by hand.
+config, route and view caches. Nothing needs to be run by hand.
 
 `docker/entrypoint.sh` clears the same three caches on **every container start**,
 which is what covers restarts that never run a deploy script (a server reboot,
@@ -291,37 +291,6 @@ confirmation unless `--force` is passed.
 > `SESSION_DRIVER=redis` and no `SESSION_CONNECTION`, sessions live in the redis
 > **default** database (`REDIS_DB`), not in `REDIS_CACHE_DB`, so
 > `php artisan cache:clear` does **not** log anyone out.
-
-### CSRF probe
-
-The probe performs a real CSRF-protected POST from inside the container and prints
-the result:
-
-- non-419 status → `CSRF probe passed (HTTP ...)`
-- `419` → a `WARNING` with the manual fix commands; the deploy still finishes
-- probe could not run → a `WARNING` saying CSRF handling is unverified
-
-The probe never aborts anything, because the application is already live at that
-point.
-
-The logic lives in the image as `/usr/local/bin/csrf-probe.sh`
-(`docker/scripts/csrf-probe.sh`) so there is exactly one implementation. It runs:
-
-- from `deploy-prod.sh` after the caches are cleared (calls the script by path)
-- from `deploy-staging.sh` via its own inline copy of the same logic
-- from `supervisord` at **every container start**, which covers restarts that
-  never run a deploy script — a server reboot, `docker restart`,
-  `docker compose restart` (output: `docker logs <app container>`)
-
-Run it yourself:
-
-```bash
-docker compose -f docker-compose.prod.yml exec app /usr/local/bin/csrf-probe.sh
-```
-
-It always exits 0. Set `CSRF_PROBE=false` in the environment to skip it (useful
-in local dev), or `CSRF_PROBE_WAIT=<seconds>` to change the readiness wait
-(default 120s).
 
 ### Redis persistence (sessions survive restarts)
 
@@ -381,11 +350,8 @@ server, so the image reaches staging only when you run the script there:
 IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 ```
 
-Staging runs the same guard rails as production: cache clears, a CSRF probe,
-and a final `sessions:flush --force`. The deploy script uses its own **inline**
-copy of the probe, while the shared in-image `/usr/local/bin/csrf-probe.sh`
-still runs from `supervisord` on every container start — so both environments
-get the same boot coverage. No GitHub secrets are required for the staging
+Staging runs the same guard rails as production: cache clears and a final
+`sessions:flush --force`. No GitHub secrets are required for the staging
 workflow.
 
 **Note:** `/var/www/staging-umrah.binmishaltravels.com/web` is maintained by hand

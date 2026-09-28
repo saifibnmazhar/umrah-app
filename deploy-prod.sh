@@ -63,29 +63,6 @@ compose() {
     "$@"
 }
 
-# Verify that CSRF verification actually works in the running container.
-#
-# The probe itself lives in the image (/usr/local/bin/csrf-probe.sh) so this
-# script, a manual `docker exec`, and supervisord's every-boot run all share a
-# single implementation. It prints its own verdict (passed, a 419 warning with
-# fix hints, or unverified) and always exits 0.
-#
-# The `test -f` guard handles an image that predates the script — including a
-# rollback to an older IMAGE_TAG: then we warn and continue rather than failing
-# the deploy at the last step. The second guard handles exec itself failing
-# (container gone), which must not abort the run either.
-csrf_probe() {
-  if compose exec -T app test -f /usr/local/bin/csrf-probe.sh; then
-    compose exec -T app /usr/local/bin/csrf-probe.sh http://localhost \
-      docker-compose.prod.yml ||
-      echo "WARNING: the CSRF probe could not be executed in the container."
-  else
-    echo "WARNING: /usr/local/bin/csrf-probe.sh is missing from the running"
-    echo "container (image predates the probe, or exec failed)."
-    echo "CSRF handling is unverified."
-  fi
-}
-
 # ------------------------------------------------------------
 # Deployment information
 # ------------------------------------------------------------
@@ -396,23 +373,6 @@ compose exec -T app \
 
 compose exec -T app \
   php artisan view:clear --no-interaction
-
-# ------------------------------------------------------------
-# CSRF tripwire
-#
-# Performs a real CSRF-protected POST from inside the container and reports the
-# result. This never aborts the deploy (the application is already live by this
-# point); a 419 is surfaced as a loud warning with the manual fix instead.
-# ------------------------------------------------------------
-
-echo ""
-echo "========================================"
-echo " Verifying CSRF handling"
-echo "========================================"
-
-# The probe prints its own verdict: passed, a 419 warning with the manual
-# fix, or "unverified". It never fails, so this call cannot abort the deploy.
-csrf_probe
 
 # ------------------------------------------------------------
 # Log everyone out

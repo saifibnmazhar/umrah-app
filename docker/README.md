@@ -43,13 +43,7 @@ the compose file default.
   routes after a deploy are what caused `419 CSRF token mismatch`)
 - runs migrations unless `MIGRATE=false`
 
-`docker/supervisord.conf` then starts `php-fpm`, `nginx`, and a one-shot
-`csrf-probe` program: `docker/scripts/csrf-probe.sh` performs a real
-CSRF-protected POST and prints `CSRF probe passed (HTTP ...)` or a `WARNING` to
-`docker logs`. It waits for `/up` first, never restarts, and always exits 0 — so
-it can never take a container or a deploy down. `deploy-prod.sh` calls the same
-script from `/usr/local/bin/csrf-probe.sh` after clearing the caches;
-`deploy-staging.sh` carries its own inline copy of the same probe.
+`docker/supervisord.conf` then starts `php-fpm` and `nginx`.
 
 ## Dev Environment
 
