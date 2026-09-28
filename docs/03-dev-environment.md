@@ -184,11 +184,13 @@ php artisan route:cache        # Do NOT run in production
 php artisan view:cache         # Do NOT run in production
 ```
 
-> **Why not:** cached config, routes and views caused `419 CSRF token mismatch`
-> on ticket issuance and the visa workflow after deployments. `docker/entrypoint.sh`
-> therefore does **not** build them on container boot, and `deploy-prod.sh` clears
-> all three at the end of every deploy. Leave caching to local development only —
-> the performance difference is marginal at this app's scale.
+> **Why not:** hygiene, not a bug fix. `docker/entrypoint.sh` does **not** build them
+> on container boot, and `deploy-prod.sh` clears all three at the end of every deploy,
+> so a deploy can never leave stale cached state behind. The `419 CSRF token mismatch`
+> incidents that used to follow deployments were idle sessions ageing out after
+> `SESSION_LIFETIME` — see `docs/plans/15-automated-deploy-cache-clear-and-forced-logout.md`
+> ("Round 2"). Leave caching to local development only — the performance difference is
+> marginal at this app's scale.
 
 ### Clearing after changes
 

@@ -271,9 +271,10 @@ docker compose -f docker-compose.prod.yml exec app php artisan view:clear
 ```
 
 > **Do not run `config:cache`, `route:cache` or `optimize` in production.**
-> Serving cached config/routes/views after a deploy is what caused `419 CSRF token
-> mismatch` on ticket issuance and the visa workflow. Caches are deliberately not
-> built at container boot either — see `docker/entrypoint.sh`.
+> They are deliberately not built at container boot either — see
+> `docker/entrypoint.sh`. (This is hygiene, not the fix: the `419`s people used to
+> see after a deploy were idle sessions ageing out after 120 minutes — see
+> [419 CSRF token mismatch](#419-csrf-token-mismatch).)
 
 ### Log all users out
 
@@ -292,17 +293,54 @@ confirmation unless `--force` is passed.
 > **default** database (`REDIS_DB`), not in `REDIS_CACHE_DB`, so
 > `php artisan cache:clear` does **not** log anyone out.
 
+### 419 CSRF token mismatch
+
+**What the user sees now:** no more raw error page. A browser form post is bounced
+back with the message *"Your session has expired. Please log in again and retry."*
+— guests land on `/login` with the message shown as the field error, signed-in users
+return to the page they came from with their typed input preserved. XHR/JSON callers
+still receive a real `419`, which their error paths key off.
+
+**Every occurrence is logged:**
+
+```bash
+docker compose -f docker-compose.prod.yml exec app sh -c \
+  'grep "CSRF token mismatch" storage/logs/laravel-*.log | tail -50'
+```
+
+Triage from the logged context:
+
+| Log field | Diagnosis |
+| --- | --- |
+| `session_cookie=false` | The cookie itself is gone — the session idled past `SESSION_LIFETIME`. |
+| `session_cookie=true`, `user_id=null` | Cookie survived but the session was destroyed → infrastructure (Redis restart/flush). |
+| `session_cookie=true`, `user_id` set | Session is fine; the form carried a stale token (another tab logged out, or a back/forward-cache restore). Only the redirect helps. |
+
+`config_cache` and `route_cache` are logged too, so a stale-cache regression shows up
+in the same line. `lifetime` shows the configured `SESSION_LIFETIME`.
+
+**Why the keep-alive exists:** open tabs now ping `GET /_session/ping` every 10
+minutes (and on focus / tab-visible / bfcache restore). Each request rewrites the
+session's Redis TTL and the cookie expiry, and the response re-syncs
+`<meta name="csrf-token">` plus every `input[name=_token]`, so a visible tab stays
+logged in indefinitely instead of expiring after `SESSION_LIFETIME` idle minutes.
+
 ### Redis persistence (sessions survive restarts)
 
 `SESSION_DRIVER=redis`, so every logged-in user's session is a Redis key. The
-`redis` service therefore runs with **append-only persistence on a named
-volume**:
+`redis` service in `docker-compose.prod.yml` declares **append-only persistence on a
+named volume**:
 
 ```yaml
 command: ... --appendonly yes --appendfsync everysec
 volumes:
   - redis_data:/data
 ```
+
+> **Check the server, not just the file.** As of the last inspection the running
+> production stack still reported `appendonly:no` and had no `redis_data` mount — the
+> compose file was updated but the server had not been re-created. Verify with the
+> commands below before assuming sessions survive a Redis restart.
 
 Without it, restarting Redis — or the host — wiped every session: users were
 returned to the login page, and an in-flight POST (ticket issuance, visa

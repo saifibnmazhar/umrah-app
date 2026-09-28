@@ -15,9 +15,10 @@ chown -R www-data:www-data storage bootstrap/cache
 
 # Config, route and view caches are intentionally NOT built here.
 #
-# Caching them on every container boot left deployments serving stale cached
-# config/routes/views, which broke POST requests with 419 CSRF mismatches.
-# The app runs correctly (only marginally slower) without them.
+# Keeping them out of boot is hygiene, not the fix for post-deploy 419s: those
+# were idle sessions ageing out after SESSION_LIFETIME (see
+# docs/plans/15-automated-deploy-cache-clear-and-forced-logout.md, "Round 2").
+# The app runs correctly (only marginally slower) without these caches.
 #
 # Instead, clear any stale copy that was baked into an image or left behind by
 # a manual run. This is what protects restarts that never run a deploy script

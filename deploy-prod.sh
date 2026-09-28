@@ -352,8 +352,9 @@ done
 # Clear Laravel caches
 #
 # Config, route and view caches are never built by the entrypoint, and a
-# deployment must never leave any of them behind: serving cached config/routes/
-# views is what produced post-deploy 419 CSRF mismatches.
+# deployment must never leave any of them behind. This is hygiene: the post-deploy
+# 419 CSRF mismatches were idle sessions ageing out after SESSION_LIFETIME, not
+# stale caches (see docs/plans/15-*.md, "Round 2").
 #
 # No `|| true` here on purpose — the script runs with `set -Eeuo pipefail`, so a
 # failed clear aborts the deploy loudly instead of leaving the broken state in

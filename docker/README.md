@@ -39,8 +39,9 @@ the compose file default.
 `docker/entrypoint.sh` runs before anything else and:
 
 - creates/owns the persistent storage paths
-- **clears** the config, route and view caches (it never *builds* them — cached
-  routes after a deploy are what caused `419 CSRF token mismatch`)
+- **clears** the config, route and view caches (it never *builds* them; this is
+  hygiene — the `419 CSRF token mismatch` incidents were idle sessions ageing out
+  after `SESSION_LIFETIME`, see `docs/plans/15-*.md` "Round 2")
 - runs migrations unless `MIGRATE=false`
 
 `docker/supervisord.conf` then starts `php-fpm` and `nginx`.

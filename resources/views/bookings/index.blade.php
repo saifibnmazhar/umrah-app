@@ -7200,7 +7200,7 @@ function updatePassengerStatus(passengerId, statusId, selectEl) {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
         },
         body: JSON.stringify({ passenger_status_id: statusId || null })
     })
@@ -7229,7 +7229,7 @@ function updateFingerprintLocation(bookingId, location, select) {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
         },
         body: JSON.stringify({ fingerprint_location: location })
     })
