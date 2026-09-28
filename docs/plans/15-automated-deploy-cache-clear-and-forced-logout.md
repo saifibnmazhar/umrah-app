@@ -264,7 +264,7 @@ protected $description = 'Invalidate all active sessions, forcing every user to 
 
 ### 4. `deploy-prod.sh` — post-health block
 
-Insert a new section **after** the application health-wait loop:
+Insert a new section after the migration block (the `fi`), just before `# Final status`:
 
 ```sh
 # Clear config/route/view caches so a deploy never leaves the app in the state
@@ -281,8 +281,8 @@ Then add a **final** section just before "Final status":
 compose exec -T app php artisan sessions:flush --force --no-interaction
 ```
 
-Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis` → `up app` → chown →
-migrate → wait health → **clear caches** → **`sessions:flush`** → status.
+Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis` → `up app` → wait health →
+chown → migrate → **clear caches** → **`sessions:flush`** → status.
 
 ### 5. Tests
 

@@ -110,10 +110,10 @@ This script:
 3. Stops only the `app` container (`compose stop`, not `compose down`)
 4. Starts MySQL 8.0 and waits for it to report healthy, then starts Redis
 5. Starts the app container
-6. Fixes storage permissions
-7. Runs migrations when `MIGRATE=true`
-8. Waits for the app container's healthcheck (fails fast if the entrypoint
+6. Waits for the app container's healthcheck (fails fast if the entrypoint
    crash-loops, usually a failing migration)
+7. Fixes storage permissions
+8. Runs migrations when `MIGRATE=true`
 9. Clears the config, route and view caches
 10. Runs `sessions:flush --force` to log everyone out (skipped with a warning
     on images that predate the command)

@@ -378,8 +378,8 @@ Jobs (run in parallel where possible):
 
 - Pushes to `main` trigger CI -> ghcr.io. **Nothing happens after that
   automatically: no Watchtower runs anywhere** on either server.
-- Manual deploy: `./deploy-prod.sh` (pull, stop `app`, start db/redis, fix
-  permissions, migrate, wait for health, clear caches, `sessions:flush`)
+- Manual deploy: `./deploy-prod.sh` (pull, stop `app`, start db/redis, wait for
+  health, fix permissions, migrate, clear caches, `sessions:flush`)
 - Staging: `./deploy-staging.sh` on the staging server — `staging.yml` has no
   SSH step, so CI never deploys it.
 - The `com.centurylinklabs.watchtower=true` label on the prod app container is
