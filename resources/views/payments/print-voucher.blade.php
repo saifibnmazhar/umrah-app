@@ -143,6 +143,10 @@
                 <span class="label">Payment Method:</span>
                 <span class="value">{{ ucfirst($payment->payment_method->value) }}</span>
             </div>
+            <div class="info-row">
+                <span class="label">Referral Branch:</span>
+                <span class="value">{{ $payment->branch?->name ?? $payment->payment_referral ?? '-' }}</span>
+            </div>
         </div>
 
         <div class="table-wrap">
