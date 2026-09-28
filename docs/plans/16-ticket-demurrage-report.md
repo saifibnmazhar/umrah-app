@@ -240,3 +240,143 @@ docker compose -f docker-compose.prod.yml config --quiet
 Commit message (Conventional Commits): `feat: add ticket demurrage report with employee/company tabs and admin reductions`
 
 No push/deploy without explicit user permission (AGENTS.md §6).
+
+---
+
+## 14. Plan Review — Inconsistencies & Loopholes (codebase-verified)
+
+Findings from analyzing this plan against the actual migrations, models, controllers,
+views, routes, and tests. Grouped as: factual errors, logic loopholes, underspecifications,
+and reconciliation caveats. **Resolve group B before implementation.**
+
+### A. Factual / reference errors (fix in this plan)
+
+1. **No `booking_id` column exists** on `re_issued_tickets` or `refunded_tickets`
+   (confirmed: not in `2026_07_27_000002/000003` creates nor any later migration).
+   §8 drill-down/company tables and the print blade promise a "booking" column —
+   booking must be resolved via `issued_ticket_id → issued_tickets → passengers → booking_id`.
+   → **Fix:** specify this join explicitly and eager-load it (`issuedTicket.passenger`)
+   to avoid N+1 across grouped rows.
+2. **`due.blade.php:11–56` filter-bar reference is wrong** — those lines are CSS
+   (`.filter-btn`, `.date-input`, `.table-header`, …). Actual filter bar HTML is at
+   `due.blade.php:184–195`. Also, due's 2 tabs live **inside a modal**
+   (`due.blade.php:273–378`), not at page level — "cleanest 2-tab report" is a
+   misleading structural template. → **Fix:** update line refs; keep the tab CSS
+   (`:98–113`) and JS pattern (`:470–527`) which are correct, but build tabs
+   page-level (don't copy the modal nesting).
+3. **§1 overstates**: "`refund_compensation` … consumed by cost reports
+   (`ProfitCalculationService`, `CostTrackingService`)" — **false**: both services
+   have 0 matches for `refund_compensation`; they only consume `total_cost` /
+   `payment_by` (`ProfitCalculationService:424–432`, `CostTrackingService:65–66`).
+   → **Fix:** reword: the column exists but is consumed by *neither* service; this
+   report is its first consumer.
+4. **Migration filename is a placeholder** (`2026_XX_create_demurrage_adjustments_table.php`)
+   → use a real timestamp at creation time.
+
+### B. Logic loopholes (must be addressed in business rules)
+
+5. **`payment_by` is editable** in `TicketIssueController::edit()`
+   (validated `:208`, persisted `:318`). Rule 6 only guards `total_cost` vs active
+   reductions — nothing guards flipping `payment_by` from `employee` → `company`
+   (or `customer`/`airline`) while active reductions exist:
+   - → `company`: record appears in company tab at **full amount** *and* its
+     reductions are also counted → **double count**.
+   - → `customer`/`airline`: record leaves the employee tab but its **active
+     reductions remain as phantom company rows** with no employee source.
+   - Cap (Rule 4) becomes stale either way.
+   → **Fix (new Rule 8):** `edit()` must reject a `payment_by` change away from
+   `employee` (422) when `SUM(active reductions) > 0` — force revert first.
+   → **Add test:** `test_reissue_edit_rejects_payment_by_change_with_active_adjustment`.
+6. **Soft deletes break report consistency**: both tables use `SoftDeletes`, and
+   observers already anticipate deletion (`ReIssuedTicketObserver:32,37`,
+   `RefundedTicketObserver:22,27`). The `restrictOnDelete` FK only blocks *hard*
+   deletes — it does nothing for soft deletes. If a record with active reductions
+   is soft-deleted, it disappears from the employee tab (default scope) while its
+   active reductions **keep counting in the company tab** → phantom company total.
+   → **Fix (new Rule 9):** on `deleted` event of a re-issue/refund with active
+   adjustments, auto-revert them (`reverted_at = now()`, `reverted_by = null` or a
+   system marker) — or alternatively exclude adjustments whose parent is trashed
+   from the company tab. Prefer the observer auto-revert (audit trail preserved).
+   → **Add test:** `test_soft_deleting_record_reverts_its_active_adjustments`.
+7. **Cap race condition**: `adjust()` does sum-then-insert with no transaction /
+   row lock — two concurrent requests can exceed the cap; `throttle:30,1` does not
+   guarantee correctness. → **Fix:** wrap `adjust()` in `DB::transaction()` with
+   `lockForUpdate()` on the parent record (or on existing active adjustments)
+   before summing.
+8. **`payment_by` is nullable** (enum made nullable by
+   `2026_08_20_000001`). NULL-payment records appear in **neither** tab, silently —
+   report totals will not cover all re-issue/refund records.
+   → **Decide:** explicitly exclude (document it) or surface a "unassigned" bucket.
+9. **`refund_compensation` can be ≤ 0**: it is `net_fare − iata_refund`
+   (`RefundController.php:103`, no clamp visible) → employee tab could show
+   negative "cost" rows. Cap (Rule 4) already blocks reductions on them, but the
+   summary math will look odd. → **Decide:** exclude rows with amount ≤ 0 from the
+   report (and document), or display them flagged.
+
+### C. Underspecified / ambiguous (clarify before coding)
+
+10. **§6 API shape is contradictory**: returns `{ employee, company, summary }`
+    *and* says "tab via `?tab=employee|company`". → **Fix:** return only the active
+    tab's payload + `summary` (+ `pagination`), or always return all — pick one.
+11. **Pagination semantics unclear**: grouped-by-employee rows + `?expand={user_id}`
+    drill-down + search + full-set summary — paginate *groups* or *records*?
+    → **Fix:** mirror the PendingOutbound pattern explicitly: full-set `summary`
+    + 25/page pagination on the grouped rows; drill-down returns that employee's
+    records (own pagination or capped list).
+12. **Which date filters company-tab reduction rows?** Source record's
+    `re_issue_date`/`refund_date`, or the adjustment's `created_at`?
+    → **Fix:** use the **source record's date** (keeps employee/company tabs
+    consistent under the same filter) and state it.
+13. **Rule 7 wording contradicts Rule 2**: "company total = company records +
+    Σ reductions" must read Σ **active** reductions (revert must drop it from the
+    total — test 9 already expects this).
+14. **`revert()` has no reason field** (adjust has one) and no throttle; test list
+    misses: cap across **multiple** adjustments (sum of two), and
+    `Ticket Admin → revert → 403`. → **Add** both tests; consider a nullable
+    `revert_reason`.
+
+### D. Reconciliation caveat (decision already made — document it)
+
+15. **Report totals will not reconcile with Profit/Loss**: `ProfitCalculationService`
+    counts only company-paid re-issue `total_cost` (`:431–432`, `:509–511`) — never
+    `refund_compensation`, never employee-borne records. The company tab includes
+    refund `refund_compensation` **plus** moved reductions, so its total has **no
+    counterpart in cost reports**. This matches the confirmed decision
+    ("financial impact outside the report: none"), but users will compare numbers.
+    → **Fix:** add a footnote on the report page and print:
+    *"Demurrage totals are report-only and are not included in Profit/Loss."*
+
+### Verified-correct (no change needed)
+
+- Roles match `RoleSeeder` (12 roles incl. `Super Admin`, `Co Admin`,
+  `Ticket Admin`, `Ticket Staff`, `Branch Staff`); `role:` alias registered at
+  `bootstrap/app.php:35` → `CheckRole` (403 on mismatch).
+- Route location (~L364, next to pending-outbound `:363–364`) and nav refs
+  (`nav.blade.php:7–10`, `:40–43`, `:150–153`) match the plan.
+- `user_id` = creator at all 4 creation sites (`ReIssueController:123`,
+  `RefundController:97`, `TicketRequestController:229/450`).
+- No hard-delete path exists for re-issue/refund tickets today (0 matches repo-wide).
+- `.tab-btn` CSS ref (`due.blade.php:98–113`) and JS pattern (`:470–527`) are accurate.
+- `total_cost` persisted only at edit (`TicketIssueController:321`) and creation
+  (`ReIssueController:154`, `TicketRequestController:278`) → Rule 6 guard placement
+  is correct; refunds have **no** edit path, so no equivalent guard needed there.
+- `refund_compensation` formula in §3 (`net_fare − iata_refunded_amount`) matches
+  `RefundController.php:103`.
+
+### Plan amendments checklist
+
+- [ ] A1: booking resolution join + eager-load spec (§8, print)
+- [ ] A2: fix `due.blade.php` line refs; page-level tabs
+- [ ] A3: reword §1 `refund_compensation` claim
+- [ ] A4: real migration filename
+- [ ] B5: **Rule 8** — guard `payment_by` change with active reductions (+ test)
+- [ ] B6: **Rule 9** — auto-revert adjustments on soft delete (+ test)
+- [ ] B7: transaction + lock in `adjust()`
+- [ ] B8: decide handling of NULL `payment_by`
+- [ ] B9: decide handling of amount ≤ 0
+- [ ] C10: settle `data()` payload shape
+- [ ] C11: settle pagination semantics
+- [ ] C12: reduction-row date filter = source record date
+- [ ] C13: Rule 7 → Σ **active** reductions
+- [ ] C14: revert reason + throttle; 2 extra tests
+- [ ] D15: report-only footnote (page + print)
