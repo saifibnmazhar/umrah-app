@@ -1470,6 +1470,15 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
                                                     <button type="button" @click="(passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? showToast('Refund is not available for passengers with ' + passengersTicketData[ticketInfoPassengerIndex]?.status + ' status.') : openRefundModal(ticketInfoPassengerIndex, idx)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="(ticket.has_pending_request || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-50'" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg transition">Refund</button>
                                                 </template>
+                                                <template x-if="ticket.status === 'issued'">
+                                                    <button type="button"
+                                                        @click="handleTicketVoid(ticket)"
+                                                        :disabled="ticket.has_pending_request"
+                                                        @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)"
+                                                        @mouseleave="hideRequestPendingTooltip()"
+                                                        :class="ticket.has_pending_request ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-50'"
+                                                        class="px-3 py-1 text-xs font-medium text-amber-600 border border-amber-200 rounded-lg transition">Void</button>
+                                                </template>
                                                 <template x-if="ticket.status === 'refunded'">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">Refunded</span>
                                                 </template>
@@ -5780,6 +5789,46 @@ function bookingIndexApp() {
             .finally(() => {
                 this.isSubmitting = false;
             });
+        },
+
+        async handleTicketVoid(ticket) {
+            if (this.isSubmitting) return;
+
+            const pax = this.passengersTicketData[this.ticketInfoPassengerIndex];
+            if (pax?.status === 'Hold' || pax?.status === 'Cancel') {
+                this.showToast('Void is not available for passengers with ' + pax.status + ' status.', 'error');
+                return;
+            }
+
+            if (!confirm('Void this ticket? It will be restored to its state before it was issued.')) return;
+
+            this.isSubmitting = true;
+            try {
+                const r = await fetch(`/bookings/${pax.booking_id}/passengers/${pax.id}/ticket-void`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({ issued_ticket_id: ticket.id })
+                });
+                const res = await r.json();
+                if (res.success) {
+                    this.showToast('Ticket voided successfully.', 'warning');
+                    await this.loadPassengerData();
+                    if (!this.viewableTickets(this.ticketInfoPassengerIndex).length) {
+                        this.isTicketInfoModalOpen = false;
+                    }
+                } else {
+                    this.showToast(res.message || 'Failed to void ticket.', 'error');
+                }
+            } catch (err) {
+                console.error('Void error:', err);
+                this.showToast('Failed to void ticket.', 'error');
+            } finally {
+                this.isSubmitting = false;
+            }
         },
 
         handleReIssueSarInput(field) {

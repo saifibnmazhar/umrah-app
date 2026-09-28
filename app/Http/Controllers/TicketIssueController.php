@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentMethod;
 use App\Enums\ServiceRequired;
+use App\Enums\TicketType;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
+use App\Models\IssuedTicketLog;
 use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\TicketFare;
+use App\Models\TicketRequest;
 use App\Models\TransactionType;
 use App\Models\Voucher;
 use App\Services\InvoiceService;
+use App\Services\ProfitCalculationService;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -502,6 +506,160 @@ class TicketIssueController extends Controller
             \Log::error('Ticket edit failed: '.$e->getMessage());
 
             return response()->json(['message' => 'Failed to update ticket.'], 500);
+        }
+    }
+
+    public function voidTicket(Request $request, Booking $booking, Passenger $passenger)
+    {
+        if ($passenger->booking_id !== $booking->id) {
+            abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
+        }
+
+        $validated = $request->validate([
+            'issued_ticket_id' => 'required|exists:issued_tickets,id',
+        ]);
+
+        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
+            ->where('passenger_id', $passenger->id)
+            ->first();
+
+        if (! $issuedTicket) {
+            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
+        }
+
+        if ($issuedTicket->status !== 'issued') {
+            return response()->json(['message' => 'Only issued tickets can be voided.'], 400);
+        }
+
+        if ($issuedTicket->pendingRequests()->exists()) {
+            return response()->json(['message' => 'This ticket has a pending request. Process or reject it first.'], 400);
+        }
+
+        $isAdditional = $issuedTicket->issue_type === 'additional';
+
+        // Additional tickets never get an `issued` log; regular-like tickets must have one.
+        $issueLog = null;
+        if (! $isAdditional) {
+            $issueLog = IssuedTicketLog::where('issued_ticket_id', $issuedTicket->id)
+                ->where('action', 'issued')
+                ->latest('id')
+                ->first();
+
+            if (! $issueLog) {
+                return response()->json(['message' => 'No issue log found for this ticket; it cannot be voided.'], 400);
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $beforeVoid = $issuedTicket->toArray();
+
+            if ($isAdditional) {
+                $amount = $issuedTicket->ticketFare?->ticket_type === TicketType::OFFER
+                    ? (float) ($issuedTicket->offer_price ?: $issuedTicket->selling_fare ?? 0)
+                    : (float) ($issuedTicket->selling_fare ?? 0);
+
+                $invoice = $booking->invoice;
+                if ($invoice && $amount > 0) {
+                    app(InvoiceService::class)->updateTotals(
+                        $invoice,
+                        max(0, (float) $invoice->total_amount - $amount),
+                        'additional_ticket_voided'
+                    );
+                }
+
+                TicketRequest::where('result_issued_ticket_id', $issuedTicket->id)
+                    ->latest('id')
+                    ->first()
+                    ?->update([
+                        'status' => 'pending',
+                        'processed_at' => null,
+                        'result_issued_ticket_id' => null,
+                    ]);
+
+                $issuedTicket->delete();
+
+                $stillIssued = $passenger->allIssuedTickets
+                    ->where('id', '!=', $issuedTicket->id)
+                    ->whereIn('status', ['issued', 're-issued'])
+                    ->isNotEmpty();
+
+                if (! $stillIssued) {
+                    $passenger->update(['ticket_status' => 'pending']);
+                }
+
+                $passenger->syncComputedStatus();
+
+                $issuedTicket->logAction('void', $beforeVoid, $issuedTicket->toArray());
+            } else {
+                $restore = collect($issueLog->old_data)
+                    ->except(['id', 'created_at', 'updated_at', 'deleted_at'])
+                    ->all();
+
+                $isRegularLike = is_null($issuedTicket->issue_type) || $issuedTicket->issue_type === 'regular';
+
+                if ($isRegularLike) {
+                    IssuedTicket::where('passenger_id', $passenger->id)
+                        ->where('issue_type', 'pending_outbound')
+                        ->where('status', 'pending')
+                        ->forceDelete();
+
+                    $restore['outbound_pending'] = IssuedTicket::where('passenger_id', $passenger->id)
+                        ->where('issue_type', 'pending_outbound')
+                        ->exists();
+                }
+
+                $issuedTicket->update($restore);
+                $fareChanged = $issuedTicket->wasChanged(['net_fare', 'issue_type']);
+
+                $stillIssued = $passenger->allIssuedTickets
+                    ->where('id', '!=', $issuedTicket->id)
+                    ->whereIn('status', ['issued', 're-issued'])
+                    ->isNotEmpty();
+
+                if (! $stillIssued) {
+                    $passenger->update(['ticket_status' => 'pending']);
+                }
+
+                $issuedTicket->logAction('void', $beforeVoid, $issuedTicket->toArray());
+
+                if (! $fareChanged) {
+                    app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
+                }
+            }
+
+            DB::commit();
+
+            $issuedTicket->load([
+                'ticketAgent',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket voided successfully.',
+                'issued_ticket' => $issuedTicket,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Ticket void failed: '.$e->getMessage());
+
+            return response()->json(['message' => 'Failed to void ticket.'], 500);
         }
     }
 
