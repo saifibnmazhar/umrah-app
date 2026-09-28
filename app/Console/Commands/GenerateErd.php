@@ -114,7 +114,7 @@ class GenerateErd extends Command
     public function handle(): int
     {
         $output = $this->option('output');
-        if (! str_starts_with($output, '/')) {
+        if (! self::isAbsolutePath($output)) {
             $output = base_path($output);
         }
 
@@ -161,6 +161,30 @@ class GenerateErd extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether the given path is already absolute and must not be re-rooted at
+     * base_path().
+     *
+     * The previous check was `str_starts_with($path, '/')`, which is only valid
+     * on POSIX: on Windows every absolute path (C:\Users\...) was treated as
+     * relative, so base_path() produced an impossible path such as
+     * "C:\projects\umrah-app\C:\Users\...\Temp\erd-test-1" and mkdir() failed.
+     */
+    public static function isAbsolutePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        // POSIX root, or a UNC path (\\server\share)
+        if ($path[0] === '/' || $path[0] === '\\') {
+            return true;
+        }
+
+        // Windows drive-qualified: C:\temp or C:/temp
+        return (bool) preg_match('#^[A-Za-z]:[\\\\/]#', $path);
     }
 
     private function collectSchema(): void

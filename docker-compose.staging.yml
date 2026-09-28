@@ -1,10 +1,11 @@
-name: ${COMPOSE_PROJECT_NAME:-umrah-app}
+name: ${COMPOSE_PROJECT_NAME:-umrah-app-staging}
 # Staging environment — deploys to staging.umrah.binmishaltravels.com
 # Uses staging-<sha> image tags and a separate staging database (umrah_staging).
 
 services:
+
   app:
-    image: ${APP_IMAGE}:${IMAGE_TAG:-staging}
+    image: ${APP_IMAGE:-ghcr.io/saifibnmazhar/umrah-app}:${IMAGE_TAG:-staging}
 
     env_file:
       - .env.staging
@@ -18,15 +19,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-        required: false
       redis:
         condition: service_healthy
-        required: false
 
-    # Auto-deploy via Watchtower (same as production)
-    labels:
-      - com.centurylinklabs.watchtower=true
-
+    # NOTE: No Watchtower label — nothing runs Watchtower on the staging
+    # server. Staging is deployed manually with ./deploy-staging.sh after
+    # CI pushes the image to ghcr.io.
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
       interval: 10s
@@ -40,7 +38,6 @@ services:
       - backend
 
   db:
-    profiles: ["${DB_TYPE:-mysql}"]
     image: ${DB_IMAGE:-mysql:8.0}
 
     env_file:
@@ -65,56 +62,28 @@ services:
     networks:
       - backend
 
-  db-postgres:
-    profiles: ["postgresql"]
-    image: ${DB_IMAGE:-postgres:16-alpine}
-
-    env_file:
-      - .env.staging
-
-    environment:
-      - POSTGRES_DB=${DB_DATABASE:-umrah_staging}
-      - POSTGRES_USER=${DB_USERNAME:-stageuser}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-${MYSQL_PASSWORD:-}}
-
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -h 127.0.0.1 -p 5432 -U ${DB_USERNAME:-stageuser}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-    restart: unless-stopped
-
-    networks:
-      - backend
-
   redis:
     image: ${REDIS_IMAGE:-redis:7-alpine}
 
     env_file:
       - .env.staging
 
+    volumes:
+      - redis_data:/data
+
+    # Sessions live in Redis (SESSION_DRIVER=redis), so an ephemeral Redis
+    # means every restart logs every user out — and an in-flight POST then
+    # fails with 419. Append-only mode plus this volume makes those keys
+    # survive a restart, a redeploy and a host reboot.
     command:
       [
         "sh",
         "-c",
-        'exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
+        'exec redis-server --requirepass "${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec',
       ]
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG',
-        ]
+      test: ["CMD-SHELL", 'redis-cli --pass "${REDIS_PASSWORD}" ping | grep PONG']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -128,7 +97,7 @@ services:
 volumes:
   app_storage:
   db_data:
-  postgres_data:
+  redis_data:
 
 networks:
   backend:

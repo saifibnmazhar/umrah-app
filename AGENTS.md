@@ -26,7 +26,7 @@ vouchers, reports, branches, banks, airlines, routes, and currency rates.
 | Testing            | PHPUnit 11                                  |
 | Code Style         | Laravel Pint (PSR-12 + Laravel preset)      |
 | Containerization   | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
-| CI/CD              | GitHub Actions → ghcr.io + Watchtower       |
+| CI/CD              | GitHub Actions → ghcr.io + deploy scripts   |
 | Deployment         | ISPConfig server, `deploy-prod.sh`          |
 
 ### Architecture
@@ -376,9 +376,14 @@ Jobs (run in parallel where possible):
 
 ### Continuous Deployment
 
-- **Watchtower** is labeled on the prod app container (`com.centurylinklabs.watchtower=true`)
-- Pushes to `main` trigger CI → ghcr.io — Watchtower auto-pulls and restarts within ~5 minutes
-- Manual deploy: `./deploy-prod.sh` (pulls image, migrates, restarts safely)
+- Pushes to `main` trigger CI -> ghcr.io. **Nothing happens after that
+  automatically: no Watchtower runs anywhere** on either server.
+- Manual deploy: `./deploy-prod.sh` (pull, stop `app`, wait for db/redis/app
+  health, fix permissions, migrate, clear caches, CSRF probe, `sessions:flush`)
+- Staging: `./deploy-staging.sh` on the staging server — `staging.yml` has no
+  SSH step, so CI never deploys it.
+- The `com.centurylinklabs.watchtower=true` label on the prod app container is
+  inert; it is kept only because the server's compose file carries it.
 
 ### Production Compose
 

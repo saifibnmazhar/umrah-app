@@ -168,30 +168,37 @@ php artisan optimize:clear
 php artisan config:clear       # Clear config cache
 php artisan route:clear        # Clear route cache
 php artisan view:clear         # Clear compiled views
-php artisan cache:clear        # Clear application cache
+php artisan cache:clear        # Clear application cache (NOT sessions — see note)
 ```
 
-### Cache for production (optimization)
+> `cache:clear` does **not** log users out. With `SESSION_DRIVER=redis` and no
+> `SESSION_CONNECTION`, sessions live in the redis *default* database
+> (`REDIS_DB`), while the application cache lives in `REDIS_CACHE_DB`. To log
+> everyone out use `php artisan sessions:flush`.
+
+### Caching in production (do not do this)
 
 ```bash
-php artisan config:cache       # Cache config (2x faster)
-php artisan route:cache        # Cache routes
-php artisan view:cache         # Cache compiled views
+php artisan config:cache       # Do NOT run in production
+php artisan route:cache        # Do NOT run in production
+php artisan view:cache         # Do NOT run in production
 ```
 
-> **Note:** The Docker entrypoint (`docker/entrypoint.sh`) automatically caches
-> config, routes, and views on container startup. You do not need to run these
-> manually in Docker.
+> **Why not:** cached config, routes and views caused `419 CSRF token mismatch`
+> on ticket issuance and the visa workflow after deployments. `docker/entrypoint.sh`
+> therefore does **not** build them on container boot, and `deploy-prod.sh` clears
+> all three at the end of every deploy. Leave caching to local development only —
+> the performance difference is marginal at this app's scale.
 
 ### Clearing after changes
 
-Always clear caches after:
+Clear caches after:
 - Changing `config/*.php` files
 - Changing route definitions
-- Changing Blade views (in production)
+- Changing Blade views
 
 ```bash
-php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan config:clear && php artisan route:clear && php artisan view:clear
 ```
 
 ---

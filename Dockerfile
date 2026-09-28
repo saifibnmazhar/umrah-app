@@ -59,6 +59,8 @@ COPY --from=assets /build/public/build /var/www/html/public/build
 # Copy Docker configuration
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
+COPY docker/scripts/csrf-probe.sh /usr/local/bin/csrf-probe.sh
+RUN chmod +x /usr/local/bin/csrf-probe.sh
 COPY docker/nginx/conf.d/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/php/conf.d/zz-app.ini /usr/local/etc/php/conf.d/zz-app.ini

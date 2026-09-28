@@ -2,16 +2,22 @@
 
 ## Selecting a Database Type
 
-Set `DB_TYPE` in your `.env.production` / `.env.staging` file:
+**Development only.** The dev `docker-compose.yml` picks the engine with a
+Compose profile:
 
 ```dotenv
 DB_TYPE=mysql        # Use MySQL (default)
 DB_TYPE=postgresql   # Use PostgreSQL
 ```
 
+`docker-compose.prod.yml` and `docker-compose.staging.yml` have **no
+profiles and no PostgreSQL service** — production and staging are MySQL-only.
+Setting `DB_TYPE` in `.env.production` / `.env.staging` does nothing; keep it
+there only so a developer copying a server env file is not confused.
+
 ## Project Name
 
-`COMPOSE_PROJECT_NAME` controls the Docker project name (used as a prefix for all container and volume names). If not set, it defaults to `umrah-app`.
+`COMPOSE_PROJECT_NAME` controls the Docker project name (used as a prefix for all container and volume names). If not set, it defaults to `umrah-app` (`umrah-app-staging` in `docker-compose.staging.yml`).
 
 For deployments at `/var/www/<domain>/web/`, set it to match the domain:
 
@@ -20,7 +26,30 @@ For deployments at `/var/www/<domain>/web/`, set it to match the domain:
 COMPOSE_PROJECT_NAME=umrah-binmishaltravels-com
 ```
 
-The `deploy-prod.sh` and `deploy-staging.sh` scripts auto-derive this from the working directory path if not explicitly set.
+The `docker-compose.prod.yml` default is `umrah-binmishaltravels-com`. **Never
+change it on an existing site** — the volume names are prefixed with the
+project name, so a rename starts the app empty with a fresh database.
+
+The deploy scripts do not derive this themselves: it comes from
+`COMPOSE_PROJECT_NAME` in `.env.production` / `.env.staging`, falling back to
+the compose file default.
+
+## Boot-time guard rails
+
+`docker/entrypoint.sh` runs before anything else and:
+
+- creates/owns the persistent storage paths
+- **clears** the config, route and view caches (it never *builds* them — cached
+  routes after a deploy are what caused `419 CSRF token mismatch`)
+- runs migrations unless `MIGRATE=false`
+
+`docker/supervisord.conf` then starts `php-fpm`, `nginx`, and a one-shot
+`csrf-probe` program: `docker/scripts/csrf-probe.sh` performs a real
+CSRF-protected POST and prints `CSRF probe passed (HTTP ...)` or a `WARNING` to
+`docker logs`. It waits for `/up` first, never restarts, and always exits 0 — so
+it can never take a container or a deploy down. `deploy-prod.sh` calls the same
+script from `/usr/local/bin/csrf-probe.sh` after clearing the caches;
+`deploy-staging.sh` carries its own inline copy of the same probe.
 
 ## Dev Environment
 
@@ -35,14 +64,13 @@ docker compose --profile postgresql up -d
 ## Production / Staging
 
 ```bash
-# Via deploy scripts (auto-handles profiles + project name)
-./deploy-prod.sh       # reads DB_TYPE from .env.production
-./deploy-staging.sh    # reads DB_TYPE from .env.staging
+# Via deploy scripts (sets --env-file, project name, ordering, guards)
+./deploy-prod.sh       # docker-compose.prod.yml + .env.production
+./deploy-staging.sh    # docker-compose.staging.yml + .env.staging
 
-# Or manually
+# Or manually — note: no --profile, MySQL only
 docker compose -f docker-compose.prod.yml \
   --env-file .env.production \
-  --profile mysql \  # or postgresql
   up -d
 ```
 
@@ -50,9 +78,9 @@ docker compose -f docker-compose.prod.yml \
 
 | Variable              | Description              | Default                  |
 |-----------------------|--------------------------|--------------------------|
-| COMPOSE_PROJECT_NAME  | Docker project name      | `umrah-app`              |
-| DB_TYPE               | Database engine          | `mysql`                  |
-| DB_IMAGE              | DB image:tag             | `mysql:8.0` / `postgres:16-alpine` |
+| COMPOSE_PROJECT_NAME  | Docker project name      | `umrah-app` (prod: `umrah-binmishaltravels-com`) |
+| DB_TYPE               | Dev DB engine (ignored by prod/staging compose) | `mysql`                  |
+| DB_IMAGE              | DB image:tag             | `mysql:8.0` (dev may use `postgres:16-alpine`) |
 | APP_IMAGE             | App image (prod/staging) | (must be set)            |
 | IMAGE_TAG             | App image tag            | `latest` / `staging`     |
 | APP_PORT              | App host port            | `8080` / `8000` / `8001` |
@@ -74,22 +102,20 @@ The dev DB is published on `127.0.0.1:${DB_EXPOSE_PORT}` — connect with any GU
 - **Database:** `umrah_app_dev`
 
 ### Production / Staging
-The DB is **NOT published** (no host port mapping). Access via SSH tunnel:
+The DB is **NOT published** (no host port mapping). Access via an SSH tunnel
+(MySQL only — prod and staging have no PostgreSQL service):
 
 ```bash
-# SSH tunnel to MySQL (port 3306 inside container)
 ssh -L 3306:db:3306 youruser@prod-server -N
-
-# SSH tunnel to PostgreSQL (port 5432 inside container, if using DB_TYPE=postgresql)
-ssh -L 5432:db-postgres:5432 youruser@prod-server -N
 ```
 
-Then connect locally to `127.0.0.1:3306` (MySQL) or `127.0.0.1:5432` (PostgreSQL) with the root credentials from your `.env.production`.
+Then connect locally to `127.0.0.1:3306` with the credentials from your
+`.env.production`.
 
 ### Multiple Containers / Multiple Projects
 If multiple Docker projects run on the same server, ensure each has a unique `COMPOSE_PROJECT_NAME` and unique `APP_PORT` / `DB_EXPOSE_PORT` values to avoid conflicts.
 
 ## Notes
 - No static container names — Docker generates names from `COMPOSE_PROJECT_NAME` (e.g., `umrah-app-db-1`).
-- When switching `DB_TYPE`, also update `DB_CONNECTION` in your Laravel `.env`.
-- MySQL and PostgreSQL use different default ports (3306 vs 5432). Set `DB_EXPOSE_PORT` accordingly.
+- Profiles (`mysql` / `postgresql`) exist only in the dev `docker-compose.yml`.
+  The prod and staging compose files select MySQL directly.

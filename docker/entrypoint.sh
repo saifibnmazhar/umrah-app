@@ -13,9 +13,21 @@ mkdir -p \
     storage/app/private
 chown -R www-data:www-data storage bootstrap/cache
 
-php artisan config:cache --no-interaction || true
-php artisan route:cache --no-interaction || true
-php artisan view:cache --no-interaction || true
+# Config, route and view caches are intentionally NOT built here.
+#
+# Caching them on every container boot left deployments serving stale cached
+# config/routes/views, which broke POST requests with 419 CSRF mismatches.
+# The app runs correctly (only marginally slower) without them.
+#
+# Instead, clear any stale copy that was baked into an image or left behind by
+# a manual run. This is what protects restarts that never run a deploy script
+# (a server reboot, `docker restart`, `docker compose restart`). No `|| true`:
+# with `set -e` a failed clear fails the boot loudly rather than serving stale
+# state.
+echo "Clearing Laravel caches..."
+php artisan config:clear --no-interaction
+php artisan route:clear --no-interaction
+php artisan view:clear --no-interaction
 
 # Run migrations unless MIGRATE=false.
 # Do NOT swallow errors: a failed migration must fail loudly in the logs
