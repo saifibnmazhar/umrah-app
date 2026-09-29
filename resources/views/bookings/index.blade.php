@@ -1637,7 +1637,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <form novalidate @submit.prevent="handleTicketFareSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                    <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select x-model="ticketFareForm.ticket_type" :disabled="isEditingReIssued && !!ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                         <option value="">Select</option>
                         <option value="regular">Regular</option>
                         <option value="offer">Offer</option>
@@ -1650,7 +1650,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" :disabled="ticketFareForm.isOutboundMode" :class="ticketFareForm.isOutboundMode ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" :disabled="ticketFareForm.isOutboundMode || (isEditingReIssued && !!ticketFareForm.route_type)" :class="(ticketFareForm.isOutboundMode || isEditingReIssued) ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -1660,7 +1660,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="ticketFareForm.flight_type" @change="handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.flight_type" :disabled="isEditingReIssued && !!ticketFareForm.flight_type" @change="handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
@@ -1668,7 +1668,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_option" :disabled="isEditingReIssued && !!ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
@@ -2133,7 +2133,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <form novalidate @submit.prevent="handleReIssueSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                    <select x-model="reIssueForm.ticket_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select x-model="reIssueForm.ticket_type" :disabled="!!reIssueForm.ticket_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                         <option value="">Select</option>
                         <option value="regular">Regular</option>
                         <option value="offer">Offer</option>
@@ -2146,7 +2146,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.route_type" :disabled="!!reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -2156,7 +2156,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="reIssueForm.flight_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.flight_type" :disabled="!!reIssueForm.flight_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
@@ -2164,10 +2164,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
+                            <select x-model="reIssueForm.ticket_option" :disabled="!!reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
                                     @input="reIssueForm.errors.ticket_option = ''"
                                     :class="reIssueForm.errors.ticket_option ? 'border-red-500' : ''"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredReIssueTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
@@ -5035,6 +5035,16 @@ function bookingIndexApp() {
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
 
+            if (poit.status === 're-issued') {
+                this.ticketFareForm.selling_fare = poit.selling_fare || 0;
+                this.ticketFareForm.offer_price = poit.offer_price || 0;
+                const outboundRate = window.__currencyRate || 0;
+                if (outboundRate > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * outboundRate);
+                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * outboundRate);
+                }
+            }
+
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
             this.ticketFareForm.pnr = poit.pnr || '';
             this.ticketFareForm.ticket_number = poit.ticket_number || '';
@@ -5086,9 +5096,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.date = this.formatToDDMMMYY(src.re_issue_date || src.issued_date) || today;
                 this.ticketFareForm.inbound_date = this.formatToDDMMMYY(src.inbound_date) || '';
                 this.ticketFareForm.outbound_date = this.formatToDDMMMYY(src.outbound_date) || '';
-                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = src.net_fare || 0;
-                this.ticketFareForm.offer_price = src.offer_price || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
                 this.ticketFareForm.non_refundable = !src.is_refundable;
                 this.ticketFareForm.non_exchangeable = !src.is_exchangeable;
                 this.ticketFareForm.baggage_inbound = src.baggage_inbound || '';
@@ -5176,9 +5186,9 @@ function bookingIndexApp() {
             }
 
             if (isAlreadyIssued && src) {
-                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = src.net_fare || 0;
-                this.ticketFareForm.offer_price = src.offer_price || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
                 const r = window.__currencyRate || 0;
                 if (r > 0) {
                     this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r);
@@ -5449,13 +5459,13 @@ function bookingIndexApp() {
             this.reIssueForm.booking_id = row.booking_id;
             this.reIssueForm.rowIndex = rowIndex;
 
-            this.reIssueForm.selling_fare = fareSrc.selling_fare || 0;
+            this.reIssueForm.selling_fare = ticket.selling_fare || 0;
             this.reIssueForm.net_fare = fareSrc.net_fare || 0;
-            this.reIssueForm.offer_price = fareSrc.offer_price || 0;
+            this.reIssueForm.offer_price = ticket.offer_price || 0;
             this.reIssueOriginalFares = {
-                selling_fare: fareSrc.selling_fare || 0,
+                selling_fare: ticket.selling_fare || 0,
                 net_fare: fareSrc.net_fare || 0,
-                offer_price: fareSrc.offer_price || 0,
+                offer_price: ticket.offer_price || 0,
             };
 
             this.reIssueForm.ticket_type = '';
@@ -5511,13 +5521,13 @@ function bookingIndexApp() {
             this.reIssueForm.refunded_net_fare_bdt = '';
 
             if (re) {
-                this.reIssueForm.selling_fare = re.selling_fare || 0;
+                this.reIssueForm.selling_fare = ticket.selling_fare || 0;
                 this.reIssueForm.net_fare = re.net_fare || 0;
-                this.reIssueForm.offer_price = re.offer_price || 0;
+                this.reIssueForm.offer_price = ticket.offer_price || 0;
                 this.reIssueOriginalFares = {
-                    selling_fare: re.selling_fare || 0,
+                    selling_fare: ticket.selling_fare || 0,
                     net_fare: re.net_fare || 0,
-                    offer_price: re.offer_price || 0,
+                    offer_price: ticket.offer_price || 0,
                 };
                 this.reIssueForm.ticket_type = re.ticket_type || '';
                 this.reIssueForm.route_type = re.route_type ? (
@@ -5590,12 +5600,12 @@ function bookingIndexApp() {
 
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                this.reIssueForm.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueForm.selling_fare_bdt = Math.round((ticket.selling_fare || 0) * rate);
                 this.reIssueForm.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
-                this.reIssueForm.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
-                this.reIssueOriginalFares.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueForm.offer_price_bdt = Math.round((ticket.offer_price || 0) * rate);
+                this.reIssueOriginalFares.selling_fare_bdt = Math.round((ticket.selling_fare || 0) * rate);
                 this.reIssueOriginalFares.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
-                this.reIssueOriginalFares.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
+                this.reIssueOriginalFares.offer_price_bdt = Math.round((ticket.offer_price || 0) * rate);
             }
 
             this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
