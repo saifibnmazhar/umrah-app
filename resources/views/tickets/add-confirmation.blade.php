@@ -644,6 +644,7 @@ function confirmProcess() {
         outbound_date: document.getElementById('inputDownDate').value || null,
         issued_date: document.getElementById('inputTravelDate').value || null,
         ticket_agent_id: document.getElementById('inputAgent').value || null,
+        net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
     };
 
     if (!payload.ticket_fare_id) {
