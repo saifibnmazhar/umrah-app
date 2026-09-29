@@ -11,6 +11,7 @@ use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
+use App\Models\TicketFare;
 use App\Models\VisaSubmission;
 use App\Observers\BookingObserver;
 use App\Observers\FingerprintDetailObserver;
@@ -21,6 +22,7 @@ use App\Observers\PackageObserver;
 use App\Observers\PassengerObserver;
 use App\Observers\RefundedTicketObserver;
 use App\Observers\ReIssuedTicketObserver;
+use App\Observers\TicketFareObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
@@ -58,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         RefundedTicket::observe(RefundedTicketObserver::class);
         Fingerprint::observe(FingerprintObserver::class);
         Package::observe(PackageObserver::class);
+        TicketFare::observe(TicketFareObserver::class);
 
         Blade::directive('currency', function ($expression) {
             $parts = explode(',', $expression);

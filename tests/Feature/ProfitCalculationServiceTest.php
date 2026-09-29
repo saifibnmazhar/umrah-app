@@ -57,10 +57,13 @@ class ProfitCalculationServiceTest extends TestCase
     }
 
     /**
-     * Reference numbers used across assertions:
+     * Reference numbers used across assertions (fixtures mirror production):
+     * - passengers get booking_service_charge snapshot from package (BookingController)
+     * - issued tickets copy fare selling_fare/offer_price at creation (BookingController)
+     *
      * visa_profit      = 2000 - 1000 - 100 - 50            = 850
-     * ticket_profit    = 30000 - 27000                     = 3000
-     * service_charge   = 500
+     * ticket_profit    = 30000 - 27000                     = 3000  (from IssuedTicket.selling_fare)
+     * service_charge   = booking_service_charge (+extra)   = 500
      * passenger total  = 4350
      * fingerprint      = 300 - 100                         = 200
      */
@@ -207,6 +210,7 @@ class ProfitCalculationServiceTest extends TestCase
             'ticket_status' => 'pending',
             'address' => 'Addr',
             'package_value' => 25000.00,
+            'booking_service_charge' => $deps['package']->service_charge ?? 0,
         ], $overrides));
 
         if (($overrides['service_required'] ?? 'all') !== 'ticket_only') {
@@ -240,7 +244,7 @@ class ProfitCalculationServiceTest extends TestCase
             'booking_id' => $passenger->booking_id,
             'user_id' => $user->id,
             'ticket_fare_id' => $deps['fare']->id,
-            'selling_fare' => 28000.00,
+            'selling_fare' => 30000.00,
             'net_fare' => 27000.00,
             'issue_type' => 'regular',
             'status' => 'issued',
@@ -336,9 +340,14 @@ class ProfitCalculationServiceTest extends TestCase
         $child = $this->addPassenger($user, $deps, $booking, ['passenger_type' => 'child']);
         $infant = $this->addPassenger($user, $deps, $booking, ['passenger_type' => 'infant']);
 
-        // child: 30000 * 50% - 27000 = -12000 ; infant: 30000 * 20% - 27000 = -21000
-        $this->assertEqualsWithDelta(-12000.0, $this->service->getPassengerProfitBreakdown($child)['ticket_profit'], 0.001);
-        $this->assertEqualsWithDelta(-21000.0, $this->service->getPassengerProfitBreakdown($infant)['ticket_profit'], 0.001);
+        // Production copies type-adjusted fares onto issued tickets:
+        // child 30000*50% = 15000 ; infant 30000*20% = 6000
+        $child->allIssuedTickets()->update(['selling_fare' => 15000.00]);
+        $infant->allIssuedTickets()->update(['selling_fare' => 6000.00]);
+
+        // child: 15000 - 27000 = -12000 ; infant: 6000 - 27000 = -21000
+        $this->assertEqualsWithDelta(-12000.0, $this->service->getPassengerProfitBreakdown($child->refresh())['ticket_profit'], 0.001);
+        $this->assertEqualsWithDelta(-21000.0, $this->service->getPassengerProfitBreakdown($infant->refresh())['ticket_profit'], 0.001);
     }
 
     /** @test */
@@ -354,8 +363,11 @@ class ProfitCalculationServiceTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $passenger = $this->addPassenger($user, $deps, $booking);
 
+        // Production copies offer_price onto the issued ticket when fare is offer type
+        $passenger->allIssuedTickets()->update(['offer_price' => 25000.00, 'selling_fare' => 25000.00]);
+
         // 25000 offer price - 27000 net = -2000
-        $this->assertEqualsWithDelta(-2000.0, $this->service->getPassengerProfitBreakdown($passenger)['ticket_profit'], 0.001);
+        $this->assertEqualsWithDelta(-2000.0, $this->service->getPassengerProfitBreakdown($passenger->refresh())['ticket_profit'], 0.001);
     }
 
     /** @test */
@@ -392,8 +404,16 @@ class ProfitCalculationServiceTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $passenger = $this->addPassenger($user, $deps, $booking);
 
+        // Production creates both legs as issued tickets for double-ticket packages
+        $this->addRegularTicket($user, $deps, $passenger, [
+            'issue_type' => 'pending_outbound',
+            'ticket_fare_id' => $outboundFare->id,
+            'selling_fare' => 8000.00,
+            'net_fare' => 0.00,
+        ]);
+
         // inbound 30000 + outbound 8000 = 38000 selling - 27000 net = 11000
-        $this->assertEqualsWithDelta(11000.0, $this->service->getPassengerProfitBreakdown($passenger)['ticket_profit'], 0.001);
+        $this->assertEqualsWithDelta(11000.0, $this->service->getPassengerProfitBreakdown($passenger->refresh())['ticket_profit'], 0.001);
     }
 
     /** @test */
@@ -578,8 +598,8 @@ class ProfitCalculationServiceTest extends TestCase
         $breakdown = $this->service->getPassengerProfitBreakdownDetailed($passenger->refresh());
 
         $this->assertArrayHasKey('ticket', $breakdown);
-        // Package selling fare is computed from the package fare, not ticket selling_fare
-        $this->assertEqualsWithDelta(30000.0, $breakdown['ticket']['selling_fare'], 0.001);
+        // Selling fare is summed from issued tickets (regular + pending_outbound)
+        $this->assertEqualsWithDelta(60000.0, $breakdown['ticket']['selling_fare'], 0.001);
 
         $this->assertCount(2, $breakdown['ticket']['net_fares']);
         $this->assertEquals('regular', $breakdown['ticket']['net_fares'][0]['issue_type']);
@@ -588,8 +608,8 @@ class ProfitCalculationServiceTest extends TestCase
         $this->assertEquals('pending_outbound', $breakdown['ticket']['net_fares'][1]['issue_type']);
         $this->assertEquals('Pending Outbound', $breakdown['ticket']['net_fares'][1]['label']);
 
-        // profit = selling - (27000 + 27000)
-        $this->assertEqualsWithDelta(-24000.0, $breakdown['ticket']['profit'], 0.001);
+        // profit = 60000 - (27000 + 27000)
+        $this->assertEqualsWithDelta(6000.0, $breakdown['ticket']['profit'], 0.001);
         $this->assertEqualsWithDelta($breakdown['ticket_profit'], $breakdown['ticket']['profit'], 0.001);
     }
 

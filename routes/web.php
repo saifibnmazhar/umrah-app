@@ -69,6 +69,17 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Session keep-alive. Any request through the 'web' group rewrites the Redis
+// session TTL, the browser cookie expiry and the XSRF-TOKEN cookie, so one
+// cheap ping per open tab stops a form from ever outliving its CSRF token.
+// Deliberately NOT behind 'auth': it must also answer from /login, which is
+// where a large share of the observed 419s came from.
+Route::get('/_session/ping', function () {
+    return response()->noContent()
+        ->header('X-CSRF-TOKEN', csrf_token())
+        ->header('Cache-Control', 'no-store');
+})->name('session.ping');
+
 // Protected routes (require authentication)
 Route::middleware('auth')->group(function () {
     // Home / Dashboard
@@ -106,13 +117,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/flight-date-gap', [TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::patch('/ticket-fares/{ticketFare}/toggle-active', [TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/ticket-fares/options', [TicketRequestController::class, 'ticketFares'])->name('ticket-fares.options');
-    Route::resource('ticket-fares', TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::resource('ticket-fares', TicketFareController::class)
+        ->except(['edit', 'update', 'destroy'])
+        ->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::resource('ticket-fares', TicketFareController::class)
+        ->only(['edit', 'update', 'destroy'])
+        ->middleware('role:Super Admin,Ticket Admin');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    // Standalone Visa Selling Prices page disabled; store/update/destroy power the Visa Admin "Visa Selling Prices" tab.
+    Route::resource('visa-selling-prices', VisaSellingPriceController::class)
+        ->except(['index', 'create', 'show', 'edit'])
+        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    // GET URLs of the disabled page redirect to the Visa Admin tab that replaced it (without
+    // these, Laravel returns 405 Method Not Allowed because store/update/destroy share these URIs).
+    Route::get('/visa-selling-prices', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
+    Route::get('/visa-selling-prices/{visa_selling_price}', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
+    Route::get('/visa-selling-prices/{visa_selling_price}/edit', fn () => redirect()->route('visa.admin', ['tab' => 'visa-selling-prices']));
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');
     Route::patch('/packages/{package}/toggle-active', [PackageController::class, 'toggleActive'])->name('packages.toggle-active')->middleware('role:Super Admin,Co Admin');
-    Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
+    Route::get('/packages/{package}/toggle-active', fn () => abort(404));
+    // Packages page disabled (index/create/show/edit/store/update/destroy) — packages are managed
+    // via Settings > Package Configuration, which uses settings.package.* and packages.toggle-active.
+    // Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('role:Super Admin,Co Admin');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('role:Super Admin');
     Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('role:Super Admin');
@@ -197,9 +224,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::delete('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'destroyAgent'])->name('fare.admin.agent.destroy')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::post('/fares/admin/fare', [FareAdminController::class, 'storeFare'])->name('fare.admin.fare.store')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy')->middleware('role:Super Admin,Ticket Admin');
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
@@ -585,7 +610,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);
     Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
-        ->middleware('auth');
+        ->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 });
 
 require __DIR__.'/booking-cancellation.php';

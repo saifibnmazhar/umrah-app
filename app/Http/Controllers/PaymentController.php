@@ -168,7 +168,7 @@ class PaymentController extends Controller
 
     public function printVoucher(Payment $payment)
     {
-        $payment->load(['user', 'voucher', 'currencyRate', 'ticketAgent', 'visaAgent', 'commissionAgent', 'senderBank']);
+        $payment->load(['user', 'voucher', 'currencyRate', 'ticketAgent', 'visaAgent', 'commissionAgent', 'senderBank', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
         $loggedUser = auth()->user()->name;
 

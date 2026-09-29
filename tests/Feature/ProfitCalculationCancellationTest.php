@@ -204,6 +204,7 @@ class ProfitCalculationCancellationTest extends TestCase
             'ticket_status' => 'pending',
             'address' => 'Addr',
             'package_value' => 25000.00,
+            'booking_service_charge' => $deps['package']->service_charge ?? 0,
         ], $overrides));
         VisaSubmission::create([
             'passenger_id' => $passenger->id,
@@ -219,7 +220,7 @@ class ProfitCalculationCancellationTest extends TestCase
             'booking_id' => $booking->id,
             'user_id' => $user->id,
             'ticket_fare_id' => $deps['fare']->id,
-            'selling_fare' => 28000.00,
+            'selling_fare' => 30000.00,
             'net_fare' => 27000.00,
             'issue_type' => 'regular',
             'status' => 'issued',
@@ -359,6 +360,15 @@ class ProfitCalculationCancellationTest extends TestCase
         $this->assertEqualsWithDelta(500.0, (float) $passenger->refresh()->service_charge, 0.001);
 
         $deps['package']->update(['service_charge' => 800.00]);
+
+        // Snapshot architecture: package update alone does not rewrite passenger.booking_service_charge.
+        // Production updates the snapshot when the package is edited on the booking (BookingController).
+        $this->assertEqualsWithDelta(500.0, (float) $passenger->refresh()->service_charge, 0.001);
+        $this->assertEqualsWithDelta(4350.0, (float) $passenger->refresh()->profit, 0.001);
+
+        // Production path: update passenger snapshot, then recalc
+        $passenger->update(['booking_service_charge' => 800.00]);
+        $this->service->recalculateBookingProfit($booking->refresh());
 
         // 850 visa + 3000 ticket + 800 service charge
         $this->assertEqualsWithDelta(800.0, (float) $passenger->refresh()->service_charge, 0.001);

@@ -46,10 +46,10 @@
             <div class="mb-6">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span> *</label>
                 <div class="relative">
-                    <input type="text" x-model="customerSearch" @input="searchCustomers()" @focus="customerInputFocused = true; searchCustomers()" @blur="setTimeout(() => { customerInputFocused = false; customerSuggestions = []; }, 200)" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
-                    <div x-show="customerSuggestions.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <template x-for="customer in customerSuggestions">
-                            <div @click="selectCustomer(customer)" class="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100">
+                    <input type="text" x-model="customerSearch" @input="searchCustomers()" @focus="handleCustomerFocus()" @blur="handleCustomerBlur()" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
+                    <div x-show="customerSuggestions.length > 0" x-cloak class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <template x-for="customer in customerSuggestions" :key="customer.id">
+                            <div @mousedown.prevent="selectCustomer(customer)" @click="selectCustomer(customer)" class="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100">
                                 <div class="font-medium text-slate-800" x-text="customer.name"></div>
                                 <div class="text-sm text-slate-500">Passport: <span x-text="customer.passport_no"></span> | Iqama: <span x-text="customer.iqama_no"></span></div>
                             </div>
@@ -119,7 +119,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Package</option>
                         <template x-for="pkg in allPackages" :key="pkg.id">
                             <option :value="String(pkg.id)"
@@ -205,6 +205,7 @@
                                         </span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
                                         <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
+                                        <div><span class="text-slate-500">Extra Charge:</span> <span class="text-slate-700 ml-1" x-text="$currency(passenger.extra_charge || 0)"></span></div>
                                     </div>
                                     <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
                                     <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">
@@ -226,6 +227,7 @@
                                     <input type="hidden" :name="'passengers[' + index + '][flight_date_from]'" :value="passenger.flight_date_from">
                                     <input type="hidden" :name="'passengers[' + index + '][flight_date_to]'" :value="passenger.flight_date_to">
                                     <input type="hidden" :name="'passengers[' + index + '][address]'" :value="passenger.address">
+                                    <input type="hidden" :name="'passengers[' + index + '][extra_charge]'" :value="passenger.extra_charge || 0">
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
                                     <button type="button" @click="editPassenger(index)" class="px-3 py-1.5 text-sm border border-slate-300 text-slate-600 rounded hover:bg-slate-100 transition">Edit</button>

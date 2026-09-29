@@ -56,9 +56,18 @@ class Package extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function updateLogs(): HasMany
+    {
+        return $this->hasMany(PackageUpdateLog::class);
+    }
+
     public function getIsLockedAttribute(): bool
     {
-        return ($this->bookings_count ?? 0) > 0;
+        if (! array_key_exists('bookings_count', $this->attributes)) {
+            return $this->isLocked();
+        }
+
+        return $this->bookings_count > 0;
     }
 
     public function isLocked(): bool

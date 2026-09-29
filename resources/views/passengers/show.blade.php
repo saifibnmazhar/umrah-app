@@ -97,7 +97,7 @@
                     <div class="space-y-3">
                         <div>
                             <span class="text-xs text-slate-400">Package</span>
-                            <p class="text-slate-800">{{ $passenger->booking?->package?->package_name ?? '-' }}</p>
+                            <p class="text-slate-800">{{ $passenger->booking?->package_name ?? $passenger->booking?->package?->package_name ?? '-' }}</p>
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Service Required</span>
@@ -255,6 +255,16 @@
                             <div>
                                 <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
                                 <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2, $rate)</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Booking Service Charge (SAR)</span>
+                                <p class="text-slate-800 font-medium">@currency($passenger->booking_service_charge, 2, $rate)</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400">Extra Charge (SAR)</span>
+                                <p class="text-slate-800 font-medium">@currency($passenger->extra_charge, 2, $rate)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
@@ -520,7 +530,9 @@ $visaSellingPriceValue = (float)(
 <script>
 const passengerId = {{ $passenger->id }};
 const bookingId = {{ $passenger->booking_id ?? 'null' }};
-const csrfToken = '{{ csrf_token() }}';
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
 const canDeleteDocument = {{ $canDeleteDocument ? 'true' : 'false' }};
 
 // ============================================
@@ -556,7 +568,7 @@ function handleDocumentUpload(input) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-Diag-Id': diagId,
                 },
@@ -582,7 +594,7 @@ function handleDocumentUpload(input) {
 
     fetch(`/passengers/${passengerId}/documents`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Diag-Id': diagId },
+        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'X-Diag-Id': diagId },
         body: formData
     })
     .then(response => response.json())
@@ -648,7 +660,7 @@ function deleteDocument(documentId) {
 
     fetch(`/passengers/${passengerId}/documents/${documentId}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
+        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
     })
     .then(response => response.json())
     .then(data => {
@@ -709,7 +721,7 @@ function handleCancellation(e) {
     fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-cancel`, {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': csrfToken,
+            'X-CSRF-TOKEN': getCsrfToken(),
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         },
@@ -793,7 +805,7 @@ function resubmitData() {
             fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-resubmit`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                 },

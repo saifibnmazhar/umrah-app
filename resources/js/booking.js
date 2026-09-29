@@ -9,6 +9,9 @@ Alpine.data('bookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     fingerprintCharge: 0,
@@ -83,6 +86,8 @@ Alpine.data('bookingApp', () => ({
         flight_date_from: '',
         flight_date_to: '',
         address: '',
+        extra_charge: 0,
+        extra_charge_bdt: '',
         baggage_weight: '',
         with_offer: false,
         refundable: false,
@@ -109,6 +114,7 @@ Alpine.data('bookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -137,29 +143,55 @@ Alpine.data('bookingApp', () => ({
         this.formVisible = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     openCustomerModal() {
@@ -396,6 +428,7 @@ Alpine.data('bookingApp', () => ({
                 flight_date_from: '',
                 flight_date_to: '',
                 address: '',
+                extra_charge: 0,
                 baggage_weight: '',
                 with_offer: false,
                 refundable: false
@@ -434,6 +467,7 @@ Alpine.data('bookingApp', () => ({
         passengerCopy.stay_duration_int = schedule.stayDuration;
         passengerCopy.flight_date_from = schedule.from;
         passengerCopy.flight_date_to = schedule.to;
+        passengerCopy.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
 
         if (this.editingPassengerIndex !== null) {
             this.passengers[this.editingPassengerIndex] = { ...passengerCopy };
@@ -726,6 +760,9 @@ Alpine.data('createBookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     passengerFiles: {},
@@ -839,6 +876,8 @@ Alpine.data('createBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -922,6 +961,9 @@ Alpine.data('createBookingApp', () => ({
                     this.bookingData.discountValueBdt = '';
                 }
             }
+            if (this.passengerModalVisible) {
+                this.syncExtraChargeBdt();
+            }
         });
 
         this.$nextTick(() => {
@@ -931,6 +973,14 @@ Alpine.data('createBookingApp', () => ({
             this.recalculateAllPassengerValues();
         });
 
+    },
+
+    syncExtraChargeBdt() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        this.passengerData.extra_charge_bdt = (mode === 'BDT' && rate > 0)
+            ? Math.round((parseFloat(this.passengerData.extra_charge) || 0) * rate * 100) / 100
+            : '';
     },
 
     showForm() {
@@ -945,6 +995,7 @@ Alpine.data('createBookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -999,29 +1050,55 @@ Alpine.data('createBookingApp', () => ({
         this.paymentSaved = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     calculatePassengerType() {
@@ -1379,6 +1456,8 @@ Alpine.data('createBookingApp', () => ({
             flight_date_to: '',
             baggage_weight: '',
             address: '',
+            extra_charge: 0,
+            extra_charge_bdt: '',
             with_offer: false,
             refundable: false,
             customDurationDays: ''
@@ -1504,6 +1583,7 @@ Alpine.data('createBookingApp', () => ({
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
         this.passengerData.ticket_fare_inbound_id = this.passengerData.ticket_fare_inbound_id ? String(this.passengerData.ticket_fare_inbound_id) : '';
         this.passengerData.ticket_fare_outbound_id = this.passengerData.ticket_fare_outbound_id ? String(this.passengerData.ticket_fare_outbound_id) : '';
+        this.syncExtraChargeBdt();
 
         if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1) {
             this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
@@ -1618,6 +1698,7 @@ Alpine.data('createBookingApp', () => ({
         passengerCopy.stay_duration_int = schedule.stayDuration;
         passengerCopy.flight_date_from = schedule.from;
         passengerCopy.flight_date_to = schedule.to;
+        passengerCopy.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
 
         const isEditing = this.editingPassengerIndex !== null;
         const passengerIndex = isEditing ? this.editingPassengerIndex : this.passengers.length;
@@ -2029,6 +2110,7 @@ Alpine.data('createBookingApp', () => ({
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
         this.customerModalVisible = true;
+        this.customerSearchToken++;
         this.customerSuggestions = [];
     },
 
@@ -2070,6 +2152,7 @@ Alpine.data('createBookingApp', () => ({
             if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
+                this.customerSearchToken++;
                 this.customerSuggestions = [];
                 this.closeCustomerModal();
                 this.newCustomer = {
@@ -2541,6 +2624,9 @@ Alpine.data('editBookingApp', () => ({
     customerSearch: '',
     customerSuggestions: [],
     selectedCustomer: null,
+    customerInputFocused: false,
+    customerBlurTimer: null,
+    customerSearchToken: 0,
     passengers: [],
     passengerCount: 0,
     fingerprintCharge: 0,
@@ -2619,6 +2705,8 @@ Alpine.data('editBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -2798,6 +2886,7 @@ Alpine.data('editBookingApp', () => ({
                 flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
+                extra_charge: p.extra_charge || 0,
                 baggage_weight: '',
             }));
 
@@ -2858,6 +2947,7 @@ Alpine.data('editBookingApp', () => ({
     clearForm() {
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSearchToken++;
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
@@ -2908,29 +2998,55 @@ Alpine.data('editBookingApp', () => ({
         this.paymentSaved = false;
     },
 
+    handleCustomerFocus() {
+        this.customerInputFocused = true;
+        clearTimeout(this.customerBlurTimer);
+        this.searchCustomers();
+    },
+
+    handleCustomerBlur() {
+        clearTimeout(this.customerBlurTimer);
+        this.customerBlurTimer = setTimeout(() => {
+            this.customerInputFocused = false;
+            this.customerSuggestions = [];
+        }, 200);
+    },
+
     async searchCustomers() {
         if (this.customerSearch.length < 2) {
+            this.customerSearchToken++;
             this.customerSuggestions = [];
             return;
         }
+        const token = ++this.customerSearchToken;
         try {
             const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
-            this.customerSuggestions = await response.json();
+            const data = await response.json();
+            if (token !== this.customerSearchToken) return;
+            this.customerSuggestions = data;
         } catch (e) {
+            if (token !== this.customerSearchToken) return;
             console.error('Customer search error:', e);
             this.customerSuggestions = [];
         }
     },
 
     selectCustomer(customer) {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = customer;
         this.customerSearch = customer.passport_no;
         this.customerSuggestions = [];
     },
 
     clearSelectedCustomer() {
+        this.customerSearchToken++;
+        clearTimeout(this.customerBlurTimer);
+        this.customerInputFocused = false;
         this.selectedCustomer = null;
         this.customerSearch = '';
+        this.customerSuggestions = [];
     },
 
     calculatePassengerType() {
@@ -3426,7 +3542,7 @@ Alpine.data('editBookingApp', () => ({
         this.passengerData.flight_date_from = schedule.from;
         this.passengerData.flight_date_to = schedule.to;
 
-        this.passengers.push({ ...this.passengerData });
+        this.passengers.push({ ...this.passengerData, extra_charge: parseFloat(this.passengerData.extra_charge) || 0 });
         this.recalculateAllPassengerValues();
         this.passengerCount = this.passengers.length;
         this.passengerModalVisible = false;
@@ -3811,6 +3927,7 @@ Alpine.data('editBookingApp', () => ({
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
         this.customerModalVisible = true;
+        this.customerSearchToken++;
         this.customerSuggestions = [];
     },
 
@@ -3852,6 +3969,7 @@ Alpine.data('editBookingApp', () => ({
             if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
+                this.customerSearchToken++;
                 this.customerSuggestions = [];
                 this.closeCustomerModal();
                 this.newCustomer = {
@@ -3954,6 +4072,8 @@ Alpine.data('showBookingApp', () => ({
         flight_date_to: '',
         baggage_weight: '',
         address: '',
+        extra_charge: 0,
+        extra_charge_bdt: '',
         with_offer: false,
         refundable: false,
         customDurationDays: ''
@@ -3975,6 +4095,20 @@ Alpine.data('showBookingApp', () => ({
         this.filteredTickets = this.allTickets;
         this.lastAddedPassenger = data.lastPassenger || null;
         this.firstAddedPassenger = data.firstPassenger || null;
+
+        window.addEventListener('currency-toggled', () => {
+            if (this.passengerModalVisible) {
+                this.syncExtraChargeBdt();
+            }
+        });
+    },
+
+    syncExtraChargeBdt() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        this.passengerData.extra_charge_bdt = (mode === 'BDT' && rate > 0)
+            ? Math.round((parseFloat(this.passengerData.extra_charge) || 0) * rate * 100) / 100
+            : '';
     },
 
     openPassengerModal() {
@@ -4033,6 +4167,8 @@ Alpine.data('showBookingApp', () => ({
             flight_date_to: '',
             baggage_weight: '',
             address: '',
+            extra_charge: 0,
+            extra_charge_bdt: '',
             with_offer: false,
             refundable: false,
             customDurationDays: ''
@@ -4210,6 +4346,7 @@ Alpine.data('showBookingApp', () => ({
                 flight_date_from: schedule.from,
                 flight_date_to: schedule.to,
                 address: this.passengerData.address || null,
+                extra_charge: parseFloat(this.passengerData.extra_charge) || 0,
             })
         })
         .then(response => {

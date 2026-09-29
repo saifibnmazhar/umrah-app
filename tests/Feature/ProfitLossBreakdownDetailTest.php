@@ -189,6 +189,7 @@ class ProfitLossBreakdownDetailTest extends TestCase
             'ticket_status' => 'pending',
             'address' => 'Addr',
             'package_value' => 25000.00,
+            'booking_service_charge' => $deps['package']->service_charge ?? 0,
         ]);
 
         VisaSubmission::create([
@@ -206,7 +207,7 @@ class ProfitLossBreakdownDetailTest extends TestCase
             'booking_id' => $booking->id,
             'user_id' => $user->id,
             'ticket_fare_id' => $deps['fare']->id,
-            'selling_fare' => 28000.00,
+            'selling_fare' => 30000.00,
             'net_fare' => 27000.00,
             'issue_type' => 'regular',
             'status' => 'issued',
@@ -266,9 +267,9 @@ class ProfitLossBreakdownDetailTest extends TestCase
         $this->assertEquals('pending_outbound', $breakdown['ticket']['net_fares'][1]['issue_type']);
         $this->assertEquals(10000.0, (float) $breakdown['ticket']['net_fares'][1]['net_fare']);
 
-        // Selling fare is the single package value (inbound + outbound)
-        $this->assertEquals(30000.0, (float) $breakdown['ticket']['selling_fare']);
-        $this->assertEquals(-7000.0, (float) $breakdown['ticket']['profit']);
+        // Selling fare is summed from issued tickets (regular + pending_outbound)
+        $this->assertEquals(50000.0, (float) $breakdown['ticket']['selling_fare']);
+        $this->assertEquals(13000.0, (float) $breakdown['ticket']['profit']);
 
         // Additional tickets subsection present (empty here)
         $this->assertArrayHasKey('additional_tickets', $breakdown);

@@ -124,7 +124,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
-                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputRouteType" disabled onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                             <option value="">Select</option>
                             <option value="oneway_inbound">One Way-Inbound</option>
                             <option value="oneway_outbound">One Way-Outbound</option>
@@ -134,7 +134,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputTicketType" disabled onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                             <option value="">All</option>
                             <option value="regular">Regular</option>
                             <option value="offer">Offer</option>
@@ -143,7 +143,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
-                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputFlightType" disabled onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                             <option value="">All</option>
                             <option value="direct">Direct</option>
                             <option value="transit">Transit</option>
@@ -151,7 +151,7 @@
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
-                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputTicketFare" disabled onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                             <option value="">Select Ticket</option>
                         </select>
                     </div>
@@ -586,26 +586,20 @@ function syncFareFields() {
     var fareId = document.getElementById('inputTicketFare').value;
     var f = allTicketFares.find(function(x) { return String(x.id) === String(fareId); });
 
-    var sf, nf, ofp;
+    var sf = sourceFares.selling_fare;
+    var ofp = sourceFares.offer_price;
+    var nf;
     if (f) {
         var childPct = f.child_fare_percentage || 70;
         var infantPct = f.infant_fare_percentage || 30;
-        sf = f.selling_fare ?? sourceFares.selling_fare;
         nf = f.net_fare ?? sourceFares.net_fare;
-        ofp = f.offer_price ?? sourceFares.offer_price;
         if (currentPassengerType === 'child') {
-            sf = Math.round((parseFloat(sf) || 0) * childPct / 100);
             nf = Math.round((parseFloat(nf) || 0) * childPct / 100);
-            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * childPct / 100);
         } else if (currentPassengerType === 'infant') {
-            sf = Math.round((parseFloat(sf) || 0) * infantPct / 100);
             nf = Math.round((parseFloat(nf) || 0) * infantPct / 100);
-            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * infantPct / 100);
         }
     } else {
-        sf = sourceFares.selling_fare;
         nf = sourceFares.net_fare;
-        ofp = sourceFares.offer_price;
     }
     document.getElementById('inputSellingFare').value = sf;
     document.getElementById('inputNetFare').value = nf;
@@ -773,9 +767,9 @@ function processConfirmation(ticketRequestId) {
     updateTotals();
 
     sourceFares = {
-        selling_fare: src.selling_fare ?? 0,
+        selling_fare: t.selling_fare ?? 0,
         net_fare: src.net_fare ?? 0,
-        offer_price: src.offer_price ?? 0,
+        offer_price: t.offer_price ?? 0,
     };
     document.getElementById('inputSellingFare').value = sourceFares.selling_fare;
     document.getElementById('inputNetFare').value = sourceFares.net_fare;
@@ -790,19 +784,22 @@ function processConfirmation(ticketRequestId) {
     const originalFt = src.ticket_fare?.route?.flight_type || '';
     currentTicketAirlineId = src.ticket_fare?.airline?.id || null;
 
-    const rtSelect = document.getElementById('inputRouteType');
-    rtSelect.value = originalRt;
-    rtSelect.disabled = originalRt === 'oneway_outbound';
+        const rtSelect = document.getElementById('inputRouteType');
+        rtSelect.value = originalRt;
+        rtSelect.disabled = !!originalRt;
 
-    const ttSelect = document.getElementById('inputTicketType');
-    ttSelect.value = originalTt;
+        const ttSelect = document.getElementById('inputTicketType');
+        ttSelect.value = originalTt;
+        ttSelect.disabled = !!originalTt;
 
-    const ftSelect = document.getElementById('inputFlightType');
-    ftSelect.value = originalFt;
+        const ftSelect = document.getElementById('inputFlightType');
+        ftSelect.value = originalFt;
+        ftSelect.disabled = !!originalFt;
 
-    selectedTicketFareId = src.ticket_fare_id || null;
-    originalTicketFareId = src.ticket_fare_id || null;
-    originalTicketNetFare = parseFloat(src.net_fare) || 0;
+        selectedTicketFareId = src.ticket_fare_id || null;
+        originalTicketFareId = src.ticket_fare_id || null;
+        originalTicketNetFare = parseFloat(src.net_fare) || 0;
+        document.getElementById('inputTicketFare').disabled = !!selectedTicketFareId;
 
     loadTicketFares({
         route_type: originalRt,
@@ -986,9 +983,7 @@ function confirmProcess() {
         payment_by: document.getElementById('inputPaymentBy').value || null,
         payment_option: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') ? document.getElementById('inputPaymentOption').value : undefined,
         refund_adjustment_amount: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') && document.getElementById('inputPaymentOption').value === 'refund_adjustment' ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0) : 0,
-        selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
         net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
-        offer_price: parseFloat(document.getElementById('inputOfferPrice').value) || null,
     };
 
     if (!payload.reason_id) {

@@ -14,7 +14,8 @@
         $currentTicketType = old('ticket_type', $ticketFare->ticket_type->value);
         $hasInboundBaggage = in_array($currentRouteType, ['oneway_inbound', 'round', 'multi_city']);
         $hasOutboundBaggage = in_array($currentRouteType, ['oneway_outbound', 'round', 'multi_city']);
-        $locked = $hasPackages;
+        $locked = $inUse ?? $hasPackages ?? false;
+        $inUse = $locked;
     @endphp
 
     @if($errors->any())
@@ -29,7 +30,6 @@
 
     <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}" x-data="{
         fares: {
-            net_fare: { sar: {{ old('net_fare', $ticketFare->net_fare) ?? 0 }}, bdt: 0 },
             selling_fare: { sar: {{ old('selling_fare', $ticketFare->selling_fare) ?? 0 }}, bdt: 0 },
             offer_price: { sar: {{ old('offer_price', $ticketFare->offer_price) ?? 0 }}, bdt: 0 },
         },
@@ -37,7 +37,6 @@
         init() {
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                this.fares.net_fare.bdt = Math.round(parseFloat(this.fares.net_fare.sar) * rate);
                 this.fares.selling_fare.bdt = Math.round(parseFloat(this.fares.selling_fare.sar) * rate);
                 this.fares.offer_price.bdt = Math.round(parseFloat(this.fares.offer_price.sar) * rate);
             }
@@ -46,7 +45,6 @@
                 const r = window.__currencyRate || 0;
                 if (r > 0) {
                     component._converting = true;
-                    component.fares.net_fare.bdt = Math.round(parseFloat(component.fares.net_fare.sar) * r);
                     component.fares.selling_fare.bdt = Math.round(parseFloat(component.fares.selling_fare.sar) * r);
                     component.fares.offer_price.bdt = Math.round(parseFloat(component.fares.offer_price.sar) * r);
                     component._converting = false;
@@ -165,7 +163,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Effective From *</label>
-                    <input type="date" name="effective_from" value="{{ old('effective_from', $ticketFare->effective_from->format('Y-m-d')) }}" required {{ $locked ? 'readonly' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                    <input type="date" name="effective_from" value="{{ old('effective_from', $ticketFare->effective_from->format('Y-m-d')) }}" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Effective To *</label>
@@ -184,61 +182,30 @@
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Fare Information</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
-                    @if($locked)
-                        <input type="number" name="net_fare" x-model="fares.net_fare.sar" readonly step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                    @else
-                        <input type="number" name="net_fare" x-model="fares.net_fare.sar" @input="handleSarInput('net_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                    @endif
-                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
-                        @if($locked)
-                            <input type="number" x-model="fares.net_fare.bdt" readonly step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                        @else
-                            <input type="number" x-model="fares.net_fare.bdt" @input="handleBdtInput('net_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        @endif
-                    </div>
-                </div>
+                <input type="hidden" name="net_fare" value="0">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                    @if($locked)
-                        <input type="number" name="selling_fare" x-model="fares.selling_fare.sar" readonly step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                    @else
-                        <input type="number" name="selling_fare" x-model="fares.selling_fare.sar" @input="handleSarInput('selling_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                    @endif
+                    <input type="number" name="selling_fare" x-model="fares.selling_fare.sar" @input="handleSarInput('selling_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                     <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
-                        @if($locked)
-                            <input type="number" x-model="fares.selling_fare.bdt" readonly step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                        @else
-                            <input type="number" x-model="fares.selling_fare.bdt" @input="handleBdtInput('selling_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        @endif
+                        <input type="number" x-model="fares.selling_fare.bdt" @input="handleBdtInput('selling_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                     </div>
                 </div>
                 <div id="offerPriceField" class="{{ $currentTicketType !== 'offer' ? 'hidden' : '' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                    @if($locked)
-                        <input type="number" name="offer_price" x-model="fares.offer_price.sar" readonly step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                    @else
-                        <input type="number" name="offer_price" x-model="fares.offer_price.sar" @input="handleSarInput('offer_price')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                    @endif
+                    <input type="number" name="offer_price" x-model="fares.offer_price.sar" @input="handleSarInput('offer_price')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                     <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
-                        @if($locked)
-                            <input type="number" x-model="fares.offer_price.bdt" readonly step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-100 cursor-not-allowed">
-                        @else
-                            <input type="number" x-model="fares.offer_price.bdt" @input="handleBdtInput('offer_price')" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        @endif
+                        <input type="number" x-model="fares.offer_price.bdt" @input="handleBdtInput('offer_price')" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Child Fare (%) *</label>
-                    <input type="number" name="child_fare_percentage" value="{{ old('child_fare_percentage', $ticketFare->child_fare_percentage) }}" {{ $locked ? 'readonly' : '' }} step="0.01" min="0" max="100" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                    <input type="number" name="child_fare_percentage" value="{{ old('child_fare_percentage', $ticketFare->child_fare_percentage) }}" step="0.01" min="0" max="100" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Infant Fare (%) *</label>
-                    <input type="number" name="infant_fare_percentage" value="{{ old('infant_fare_percentage', $ticketFare->infant_fare_percentage) }}" {{ $locked ? 'readonly' : '' }} step="0.01" min="0" max="100" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                    <input type="number" name="infant_fare_percentage" value="{{ old('infant_fare_percentage', $ticketFare->infant_fare_percentage) }}" step="0.01" min="0" max="100" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
             </div>
         </div>
@@ -324,7 +291,7 @@
     Cancel
 </a>
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
-                {{ $locked ? 'Update Effective To' : 'Update Ticket Fare' }}
+                Update Ticket Fare
             </button>
         </div>
     </form>
