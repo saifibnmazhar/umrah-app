@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\VisaSellingPrice;
 use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class TicketVoidTest extends TestCase
@@ -43,10 +44,22 @@ class TicketVoidTest extends TestCase
     {
         parent::setUp();
 
+        // Freeze at mid-day UTC: the void deadline is evaluated against KSA
+        // time (UTC+3), and the KSA date runs one day ahead of UTC between
+        // 21:00-24:00 UTC, which would make date-gated void tests flaky.
+        Carbon::setTestNow(now()->setTime(12, 0));
+
         $this->user = $this->makeAdmin();
         $this->actingAs($this->user);
         $this->deps = $this->seedDeps($this->user);
         $this->booking = $this->makeBooking();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     private function makeAdmin(): User
@@ -263,6 +276,125 @@ class TicketVoidTest extends TestCase
         $this->assertNull($ticket->ticket_fare_id);
     }
 
+    public function test_void_allowed_until_ksa_midnight_of_issue_date(): void
+    {
+        // 20:59 UTC = 23:59 KSA on the same date.
+        Carbon::setTestNow('2026-03-01 20:59:00');
+
+        $passenger = $this->makePassenger();
+        $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000]);
+
+        $this->issueTicket($passenger, $ticket, ['issued_date' => '2026-03-01'])->assertOk();
+
+        $this->callVoid($passenger, $ticket)->assertOk()->assertJson(['success' => true]);
+        $this->assertEquals('pending', $ticket->refresh()->status);
+    }
+
+    public function test_void_rejected_after_ksa_midnight_of_issue_date(): void
+    {
+        // 21:01 UTC is still 2026-03-01 in UTC but already 2026-03-02 00:01 in
+        // KSA: proves the deadline is evaluated against KSA time, not UTC.
+        Carbon::setTestNow('2026-03-01 21:01:00');
+
+        $passenger = $this->makePassenger();
+        $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000]);
+
+        $this->issueTicket($passenger, $ticket, ['issued_date' => '2026-03-01'])->assertOk();
+
+        $this->callVoid($passenger, $ticket)
+            ->assertStatus(400)
+            ->assertJson(['message' => 'Void is only available until 23:59:59 (KSA time) of the issue date.']);
+
+        $this->assertEquals('issued', $ticket->refresh()->status);
+        $this->assertEquals('issued', $passenger->refresh()->ticket_status->value);
+    }
+
+    public function test_void_rejected_when_issue_date_in_past(): void
+    {
+        Carbon::setTestNow('2026-03-05 12:00:00');
+
+        $passenger = $this->makePassenger();
+        $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000]);
+
+        $this->issueTicket($passenger, $ticket, ['issued_date' => '2026-03-04'])->assertOk();
+
+        $this->callVoid($passenger, $ticket)->assertStatus(400);
+        $this->assertEquals('issued', $ticket->refresh()->status);
+    }
+
+    public function test_void_allowed_when_issue_date_null_for_regular_ticket(): void
+    {
+        $passenger = $this->makePassenger();
+        $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000]);
+
+        $this->issueTicket($passenger, $ticket, ['issued_date' => null])->assertOk();
+
+        $this->callVoid($passenger, $ticket)->assertOk()->assertJson(['success' => true]);
+        $this->assertEquals('pending', $ticket->refresh()->status);
+    }
+
+    public function test_void_additional_with_null_issue_date_falls_back_to_created_at(): void
+    {
+        Carbon::setTestNow('2026-03-01 12:00:00'); // KSA 15:00 on 2026-03-01
+
+        $passenger = $this->makePassenger(['service_required' => 'ticket_only']);
+        $attrs = [
+            'issue_type' => 'additional',
+            'status' => 'issued',
+            'selling_fare' => 30000,
+            'net_fare' => 24000,
+            'ticket_fare_id' => $this->deps['fare']->id,
+            'issued_date' => null,
+        ];
+        $sameDay = $this->makeTicket($passenger, $attrs);
+        $expired = $this->makeTicket($passenger, $attrs);
+        $passenger->updateQuietly(['ticket_status' => 'issued']);
+
+        // Same KSA day as created_at (23:00 KSA on 2026-03-01) -> allowed.
+        Carbon::setTestNow('2026-03-01 20:00:00');
+        $this->callVoid($passenger, $sameDay)->assertOk()->assertJson(['success' => true]);
+        $this->assertNotNull($sameDay->refresh()->deleted_at);
+
+        // Days after created_at -> rejected.
+        Carbon::setTestNow('2026-03-03 12:00:00');
+        $this->callVoid($passenger, $expired)->assertStatus(400);
+        $this->assertEquals('issued', $expired->refresh()->status);
+    }
+
+    public function test_passenger_payload_exposes_void_issue_date(): void
+    {
+        Carbon::setTestNow('2026-03-01 12:00:00'); // KSA 15:00 on 2026-03-01
+
+        $passenger = $this->makePassenger(['service_required' => 'ticket_only']);
+        $regular = $this->makeTicket($passenger, [
+            'selling_fare' => 30000,
+            'issued_date' => '2026-03-05',
+        ]);
+        $additional = $this->makeTicket($passenger, [
+            'issue_type' => 'additional',
+            'status' => 'issued',
+            'selling_fare' => 30000,
+            'net_fare' => 24000,
+            'ticket_fare_id' => $this->deps['fare']->id,
+            'issued_date' => null,
+        ]);
+        $passenger->updateQuietly(['ticket_status' => 'issued']);
+
+        $response = $this->getJson(route('api.bookings.passengers'))->assertOk();
+        $tickets = collect($response->json('data.0.ticket_data.all_issued_tickets') ?? []);
+
+        $regularRow = $tickets->firstWhere('id', $regular->id);
+        $additionalRow = $tickets->firstWhere('id', $additional->id);
+
+        $this->assertNotNull($regularRow, 'regular ticket must be in the payload');
+        $this->assertEquals('2026-03-05', $regularRow['void_issue_date'] ?? null,
+            'regular ticket deadline basis must be its issue date');
+
+        $this->assertNotNull($additionalRow, 'additional ticket must be in the payload');
+        $this->assertEquals('2026-03-01', $additionalRow['void_issue_date'] ?? null,
+            'additional ticket without issue date must fall back to created_at in KSA');
+    }
+
     public function test_void_reverts_passenger_ticket_status(): void
     {
         $passenger = $this->makePassenger();
@@ -359,12 +491,15 @@ class TicketVoidTest extends TestCase
         $this->callVoid($passenger, $ticket)->assertStatus(422);
     }
 
-    public function test_void_blade_renders_void_button_gated_on_issued_status(): void
+    public function test_void_blade_gates_void_button_on_issued_status_and_ksa_deadline(): void
     {
         $src = file_get_contents(resource_path('views/bookings/index.blade.php'));
 
         $this->assertStringContainsString('handleTicketVoid', $src);
-        $this->assertStringContainsString("<template x-if=\"ticket.status === 'issued'\">", $src);
+        $this->assertStringContainsString('<template x-if="canVoidTicket(ticket)">', $src,
+            'void button must be hidden once the KSA void deadline has passed');
+        $this->assertStringContainsString('Asia/Riyadh', $src,
+            'client-side deadline check must evaluate today against KSA time');
     }
 
     public function test_void_issue_void_issue_void_cycle_restores_latest_pre_issue_state(): void

@@ -543,6 +543,19 @@ class TicketIssueController extends Controller
             return response()->json(['message' => 'This ticket has a pending request. Process or reject it first.'], 400);
         }
 
+        // Void is only available until 23:59:59 (KSA time) of the issue date.
+        // Additional tickets without an issue date fall back to created_at (KSA).
+        $voidIssueDate = $issuedTicket->issued_date?->toDateString()
+            ?? ($issuedTicket->issue_type === 'additional'
+                ? $issuedTicket->created_at?->copy()->setTimezone('Asia/Riyadh')->toDateString()
+                : null);
+
+        if ($voidIssueDate !== null && now('Asia/Riyadh')->toDateString() > $voidIssueDate) {
+            return response()->json([
+                'message' => 'Void is only available until 23:59:59 (KSA time) of the issue date.',
+            ], 400);
+        }
+
         $isAdditional = $issuedTicket->issue_type === 'additional';
 
         // Additional tickets never get an `issued` log; regular-like tickets must have one.

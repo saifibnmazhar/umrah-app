@@ -1470,7 +1470,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
                                                     <button type="button" @click="(passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? showToast('Refund is not available for passengers with ' + passengersTicketData[ticketInfoPassengerIndex]?.status + ' status.') : openRefundModal(ticketInfoPassengerIndex, idx)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="(ticket.has_pending_request || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-50'" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg transition">Refund</button>
                                                 </template>
-                                                <template x-if="ticket.status === 'issued'">
+                                                <template x-if="canVoidTicket(ticket)">
                                                     <button type="button"
                                                         @click="handleTicketVoid(ticket)"
                                                         :disabled="ticket.has_pending_request"
@@ -5266,6 +5266,13 @@ function bookingIndexApp() {
 
         hasViewableTickets(rowIndex) {
             return this.viewableTickets(rowIndex).length > 0;
+        },
+
+        canVoidTicket(ticket) {
+            if (ticket.status !== 'issued') return false;
+            if (!ticket.void_issue_date) return true;
+            const todayKsa = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Riyadh' });
+            return ticket.void_issue_date >= todayKsa;
         },
 
         issueTypeLabel(value) {
