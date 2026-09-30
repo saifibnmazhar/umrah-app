@@ -447,7 +447,7 @@ function loadTicketFares(filters = {}) {
                 const airline = f.airline || {};
                 const cls = f.airline_class?.class || {};
                 const routeLabel = formatRoute(route);
-                return '<option value="' + f.id + '">' +
+                return '<option value="' + f.id + '"' + (f.is_active === false ? ' disabled' : '') + '>' +
                     escapeHtml(f.ticket_type || '') + ' - ' +
                     escapeHtml(routeLabel) + ' - ' +
                     escapeHtml(airline.name || '') + ' - ' +
