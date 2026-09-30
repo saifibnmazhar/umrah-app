@@ -602,7 +602,7 @@ class TicketIssueController extends Controller
                 $issuedTicket->logAction('void', $beforeVoid, $issuedTicket->toArray());
             } else {
                 $restore = collect($issueLog->old_data)
-                    ->except(['id', 'created_at', 'updated_at', 'deleted_at'])
+                    ->except(['id', 'created_at', 'updated_at', 'deleted_at', 'selling_fare', 'offer_price'])
                     ->all();
 
                 $isRegularLike = is_null($issuedTicket->issue_type) || $issuedTicket->issue_type === 'regular';

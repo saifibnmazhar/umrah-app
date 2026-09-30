@@ -237,6 +237,32 @@ class TicketVoidTest extends TestCase
         $this->assertNull($ticket->issued_date);
     }
 
+    public function test_void_preserves_selling_fare_and_offer_price(): void
+    {
+        $passenger = $this->makePassenger();
+        $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000, 'offer_price' => 28000]);
+
+        $this->issueTicket($passenger, $ticket)->assertOk();
+
+        // Simulate post-issue fare drift (booking/package fare update or
+        // passenger-type fare snapshot recalc rewrites fares regardless of status).
+        $ticket->refresh();
+        $ticket->update(['selling_fare' => 45000, 'offer_price' => 42000]);
+
+        $this->callVoid($passenger, $ticket)->assertOk()->assertJson(['success' => true]);
+
+        $ticket->refresh();
+        // Selling/offer fare must keep the values the ticket had at void time.
+        $this->assertEquals(45000.0, (float) $ticket->selling_fare);
+        $this->assertEquals(42000.0, (float) $ticket->offer_price);
+        // Everything else still reverts to the pre-issue state.
+        $this->assertEquals('pending', $ticket->status);
+        $this->assertNull($ticket->ticket_number);
+        $this->assertNull($ticket->pnr);
+        $this->assertEquals(0.0, (float) $ticket->net_fare);
+        $this->assertNull($ticket->ticket_fare_id);
+    }
+
     public function test_void_reverts_passenger_ticket_status(): void
     {
         $passenger = $this->makePassenger();
