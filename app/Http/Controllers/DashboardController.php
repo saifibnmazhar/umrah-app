@@ -48,13 +48,20 @@ class DashboardController extends Controller
                 ->whereNull('cb.deleted_at');
         });
 
-        $excludeCancelledPassengers = fn ($query) => $query->whereNotExists(function ($q) {
-            $q->select(DB::raw(1))
-                ->from('cancelled_passengers as cp')
-                ->whereColumn('cp.passenger_id', 'p.id')
-                ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
-                ->whereNull('cp.deleted_at');
-        });
+        $excludeCancelledPassengers = fn ($query) => $query
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('cancelled_passengers as cp')
+                    ->whereColumn('cp.passenger_id', 'p.id')
+                    ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
+                    ->whereNull('cp.deleted_at');
+            })
+            ->where(function ($q) {
+                $q->whereNull('p.passenger_status_id')
+                    ->orWhere('p.passenger_status_id', '<>', DB::raw(
+                        "COALESCE((SELECT id FROM passenger_statuses WHERE name = 'Cancel'), -1)"
+                    ));
+            });
 
         $packages = Package::where('is_active', true)
             ->with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
@@ -189,10 +196,7 @@ class DashboardController extends Controller
                             ->whereNull('it.deleted_at')
                             ->where('it.issue_type', 'additional')
                             ->whereIn('it.status', ['issued', 're-issued', 'refunded'])
-                            ->whereRaw(
-                                'COALESCE(it.issued_date, (SELECT itl.created_at FROM issued_ticket_logs itl WHERE itl.issued_ticket_id = it.id AND itl.new_data LIKE ? ORDER BY itl.created_at DESC LIMIT 1)) BETWEEN ? AND ?',
-                                ['%"status":"issued"%', $effectiveDateFrom, $effectiveDateTo]
-                            );
+                            ->whereBetween('it.issued_date', [$effectiveDateFrom, $effectiveDateTo]);
                     })
                     ->orWhereExists(function ($exists) use ($effectiveDateFrom, $effectiveDateTo) {
                         $exists->select(DB::raw(1))

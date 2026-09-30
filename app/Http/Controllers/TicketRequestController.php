@@ -520,7 +520,7 @@ class TicketRequestController extends Controller
             'pnr' => 'nullable|string|max:50',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
-            'issued_date' => 'nullable|date',
+            'issued_date' => 'required|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
             'remarks' => 'nullable|string',

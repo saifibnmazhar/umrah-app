@@ -1710,7 +1710,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
-                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY"
+                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required
                                    @input="ticketFareForm.errors.date = ''"
                                    :class="ticketFareForm.errors.date ? 'border-red-500' : ''"
                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">

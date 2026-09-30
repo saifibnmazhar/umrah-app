@@ -198,6 +198,7 @@ class TicketRequestProcessAdditionalTest extends TestCase
             'pnr' => 'PNR123',
             'ticket_number' => 'TKT123',
             'net_fare' => 1234.567890,
+            'issued_date' => now()->toDateString(),
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
@@ -221,6 +222,7 @@ class TicketRequestProcessAdditionalTest extends TestCase
 
         $response = $this->putJson(route('ticket-requests.process-additional', $ticketRequest->id), [
             'ticket_fare_id' => $this->deps['fare']->id,
+            'issued_date' => now()->toDateString(),
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
