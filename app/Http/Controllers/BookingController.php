@@ -1088,6 +1088,8 @@ class BookingController extends Controller
             'pnr' => $t->pnr ?? '',
             'status' => $t->status,
             'issue_type' => $t->issue_type,
+            'void_issue_date' => $t->issued_date?->toDateString()
+                ?? ($t->issue_type === 'additional' ? $t->created_at?->copy()->setTimezone('Asia/Riyadh')->toDateString() : null),
             'has_pending_request' => $t->pendingRequests->isNotEmpty(),
             'is_refundable' => $t->is_refundable ?? false,
             'is_exchangeable' => $t->is_exchangeable ?? false,
