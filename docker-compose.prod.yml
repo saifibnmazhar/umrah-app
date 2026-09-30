@@ -1,8 +1,9 @@
-name: ${COMPOSE_PROJECT_NAME:-umrah-app}
+name: ${COMPOSE_PROJECT_NAME:-umrah-binmishaltravels-com}
 
 services:
+
   app:
-    image: ${APP_IMAGE}:${IMAGE_TAG:-latest}
+    image: ${APP_IMAGE:-ghcr.io/saifibnmazhar/umrah-app}:${IMAGE_TAG:-latest}
 
     env_file:
       - .env.production
@@ -16,11 +17,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-        required: false
       redis:
         condition: service_healthy
-        required: false
 
+    # Kept only because the copy running on the production server carries it.
+    # Nothing runs Watchtower, so the label is inert.
     labels:
       - com.centurylinklabs.watchtower=true
 
@@ -36,51 +37,32 @@ services:
     networks:
       - backend
 
+
   db:
-    profiles: ["${DB_TYPE:-mysql}"]
     image: ${DB_IMAGE:-mysql:8.0}
+
     env_file:
       - .env.production
+
     volumes:
       - db_data:/var/lib/mysql
+
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h 127.0.0.1 -P 3306 -uroot --password=$${MYSQL_ROOT_PASSWORD}",
+          "mysqladmin ping -h 127.0.0.1 -P 3306 -uroot --password=$${MYSQL_ROOT_PASSWORD}"
         ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
+
     restart: unless-stopped
+
     networks:
       - backend
 
-  db-postgres:
-    profiles: ["postgresql"]
-    image: ${DB_IMAGE:-postgres:16-alpine}
-    env_file:
-      - .env.production
-    environment:
-      - POSTGRES_DB=${DB_DATABASE:-binmishal_umrah_live}
-      - POSTGRES_USER=${DB_USERNAME:-binmishal_umrah}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-${MYSQL_PASSWORD:-}}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -h 127.0.0.1 -p 5432 -U ${DB_USERNAME:-binmishal_umrah}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    restart: unless-stopped
-    networks:
-      - backend
 
   redis:
     image: ${REDIS_IMAGE:-redis:7-alpine}
@@ -92,14 +74,21 @@ services:
       [
         "sh",
         "-c",
-        'exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
+        "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec"
       ]
+
+    # Sessions live in Redis (SESSION_DRIVER=redis), so an ephemeral Redis
+    # means every restart logs every user out — and an in-flight POST then
+    # fails with 419. Append-only mode plus this volume makes those keys
+    # survive a restart, a redeploy and a host reboot.
+    volumes:
+      - redis_data:/data
 
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG',
+          "redis-cli --pass \"$${REDIS_PASSWORD}\" ping | grep PONG"
         ]
       interval: 5s
       timeout: 3s
@@ -111,10 +100,12 @@ services:
     networks:
       - backend
 
+
 volumes:
   app_storage:
   db_data:
-  postgres_data:
+  redis_data:
+
 
 networks:
   backend:

@@ -1238,7 +1238,7 @@ function handleEditPassengerDocUpload(input) {
         fetch(`/passengers/${editPassengerId}/documents`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
             },
             body: formData
         })
@@ -1291,7 +1291,7 @@ function deleteEditPassengerDoc(documentId) {
     fetch(`/passengers/${editPassengerId}/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
         }
     })
     .then(response => response.json())

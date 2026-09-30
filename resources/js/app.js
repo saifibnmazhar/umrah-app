@@ -135,3 +135,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 })
+
+// ---------------------------------------------------------------------------
+// Session keep-alive
+//
+// A form rendered at T carries _token=T0. Without this, the Redis session key
+// and the browser cookie both expire at T+SESSION_LIFETIME, so a submit after
+// that starts a brand new session with a new token and VerifyCsrfToken answers
+// 419. Any request through the 'web' group refreshes all three of them (the
+// session TTL, the cookie expiry and the XSRF-TOKEN cookie), so a ping keeps
+// the page's token valid indefinitely.
+//
+// The ping response also carries the live token, which we write back into the
+// CSRF meta tag and every hidden _token input. That covers the cases where the
+// session id changed underneath us (a logout in another tab, a restore from
+// the back/forward cache): every AJAX call reads the meta tag at request time,
+// so refreshing it refreshes the whole page.
+// ---------------------------------------------------------------------------
+const sessionPingUrl = '/_session/ping'
+const sessionPingIntervalMs = 10 * 60 * 1000
+const sessionPingDebounceMs = 60 * 1000
+
+function applyCsrfToken(token) {
+    if (!token) return
+    const meta = document.querySelector('meta[name="csrf-token"]')
+    if (meta) meta.setAttribute('content', token)
+    document.querySelectorAll('input[name="_token"]').forEach(input => {
+        input.value = token
+    })
+}
+
+let lastSessionPing = 0
+async function pingSession() {
+    const now = Date.now()
+    if (now - lastSessionPing < sessionPingDebounceMs) return
+    lastSessionPing = now
+
+    try {
+        const response = await fetch(sessionPingUrl, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+        })
+        if (response.ok) {
+            applyCsrfToken(response.headers.get('X-CSRF-TOKEN'))
+        }
+    } catch (e) {
+        // Offline or the server is unreachable - the interval will retry.
+    }
+}
+
+setInterval(pingSession, sessionPingIntervalMs)
+window.addEventListener('focus', pingSession)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pingSession()
+})
+// Fires on every page load; `persisted` is only true when the page came back
+// from the back/forward cache, which is exactly when the token may be stale.
+window.addEventListener('pageshow', event => {
+    if (event.persisted) pingSession()
+})

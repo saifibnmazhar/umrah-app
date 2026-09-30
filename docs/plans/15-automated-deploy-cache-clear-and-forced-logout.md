@@ -1,6 +1,7 @@
-# Plan: Automated Post-Deploy Cache Clear, CSRF Tripwire, and Forced Global Logout
+# Plan: Automated Post-Deploy Cache Clear and Forced Global Logout
 
-**Status: PLAN ONLY — DO NOT IMPLEMENT until explicitly approved.**
+**Status: IMPLEMENTED (Phases 1-4) + follow-up implemented (419 keep-alive).** See
+[Round 2](#round-2-the-419s-were-idle-session-expiry-not-caches) for the corrected root cause.
 
 Target: `umrah.binmishaltravels.com` (Laravel 12 + Docker Compose prod stack, `deploy-prod.sh`).
 
@@ -26,9 +27,89 @@ Desired end state: **the deploy does all of this automatically**, and **every lo
 deliberately logged out** at the end of a successful deployment (re-login is now intended product
 behaviour, not a workaround).
 
+> **Round 2 correction.** The premise above — that *cache presence* is what breaks CSRF — did not
+> survive the deploy. The clears shipped, `bootstrap/cache/config.php` and `routes-*.php` were absent
+> afterwards, and users still hit 419. See Round 2 below for the measured cause and the fix that
+> replaced it.
+
+## Round 2: the 419s were idle session expiry, not caches
+
+### What the deployed clears actually proved
+
+Round 1's hypothesis was falsified by the thing it was supposed to fix:
+
+- The deploy log shows `config:clear` / `route:clear` / `view:clear` running, and afterwards neither
+  `bootstrap/cache/config.php` nor `bootstrap/cache/routes-*.php` existed — yet 419s continued.
+- Infrastructure was exonerated at the same time: 0 container restarts, `evicted_keys: 0` on Redis,
+  the `sessions` table exists, and Redis DB 0 held ~637 session keys.
+- The user-visible fix was **always re-login**, never a cache clear. The clears correlated with the
+  recovery because the recovery happened at the same time, not because they caused it.
+
+### The measured cause
+
+`expired_keys` on Redis was **253126 over 32 days ≈ 7910/day**. With ~637 live sessions and a
+120-minute idle window, expected expiries are `637 × 12/h = 7644/day`. The observed rate matches the
+**`SESSION_LIFETIME` idle timer** almost exactly — sessions were not evicted, not flushed, not lost:
+they simply aged out after two hours without a request. An open tab keeps its `_token` from page load,
+so the next POST carried a token whose session no longer existed → `419`.
+
+Two things the earlier rounds had wrong, both now corrected here:
+
+1. *"No `sessions` table migration exists in this repo."* False —
+   `database/migrations/0001_01_01_000000_create_users_table.php` creates it alongside `users`. It is
+   simply unused, because production runs `SESSION_DRIVER=redis`.
+2. The cache clears are still correct hygiene (a deploy must not leave stale caches), but they are
+   **not** the 419 fix and never were.
+
+### The fix shipped with this change
+
+| # | Change | Where |
+| --- | --- | --- |
+| 1 | Keep-alive route `GET /_session/ping` → `204`, `X-CSRF-TOKEN` header, `Cache-Control: no-store`. In the `web` group but **not** behind `auth`, so it works for the guest's own `login` session too. | `routes/web.php` (`session.ping`) |
+| 2 | Heartbeat: `fetch` every **10 min**, plus on `focus`, on `visibilitychange`→visible, and on `pageshow` when `event.persisted` (bfcache restore). 60 s debounce so several tabs don't stampede. | `resources/js/app.js` |
+| 3 | Token re-sync: the ping response writes `X-CSRF-TOKEN` into `<meta name="csrf-token">` **and** every `input[name=_token]`. | `resources/js/app.js` |
+| 4 | Six views baked `{{ csrf_token() }}` into inline JS at render time (a token frozen until reload). They now read the live meta tag. | `bookings/index`, `cancelled-bookings/confirm`, `passengers/edit`, `passengers/show` |
+| 5 | Graceful 419 + forensics: a render callback logs `CSRF token mismatch` with the fields needed to tell the three failure modes apart, then redirects (guest → `route('login')` with the message as an `email` field error; authenticated → `back()`; JSON → real `419`). | `bootstrap/app.php` |
+| 6 | `SESSION_LIFETIME=720` (provisional, user-approved) in both env samples. Read at `config/session.php:35` → `SessionManager.php:180` (Redis TTL) and `StartSession.php:259,272,227` (cookie expiry). | `.env.production.sample`, `.env.staging.sample` |
+
+### Why one request per tab is enough
+
+All three artefacts are refreshed on *every* request, not just at login:
+
+- `StartSession::saveSession()` runs on every request → `CacheBasedSessionHandler::write()` →
+  `Cache::put($id, $data, lifetime*60)` → **the Redis TTL is reset**.
+- `StartSession::addCookieToResponse()` → **cookie `expires` is reset** (`now + lifetime*60`).
+- `VerifyCsrfToken` refreshes the `XSRF-TOKEN` cookie on GET too (`isReading()`), and the ping's
+  `X-CSRF-TOKEN` header re-syncs the meta/hidden-field copies the form actually submits.
+
+So a tab that is merely *open* and visible stays alive indefinitely; a backgrounded tab is covered by
+the `focus`/`visibilitychange`/`pageshow` listeners the moment the user returns.
+
+### Reading the log line
+
+`grep 'CSRF token mismatch' storage/logs/*.log` yields, per incident:
+
+| Field | Meaning |
+| --- | --- |
+| `session_cookie=false` | The cookie itself is gone (idle past `SESSION_LIFETIME`). |
+| `session_cookie=true`, `user_id=null` | Cookie survived, session destroyed → infrastructure (restart/flush). |
+| `session_cookie=true`, `user_id` set | Session is fine; the form carried a stale token (another tab logged out, or a bfcache restore). Only the redirect helps. |
+
+Also logged: `config_cache` / `route_cache` (so a stale-cache regression is visible), `lifetime`,
+`driver`, `input_token` vs `session_token` (hashed, 12 chars), `has_auth_key`, `cf_ray`.
+
+### What is *not* the cause (re-verified)
+
+`SessionManager::createRedisDriver()` (`:136-147`) calls `setConnection(config('session.connection'))`
+= `null` → Redis **DB 0**, while the app cache uses `REDIS_CACHE_CONNECTION=cache` → `REDIS_CACHE_DB=1`.
+`createCacheHandler()` (`:174-182`) `clone`s the cache Repository, and `Repository::__clone()` deep-clones
+the store (`Repository.php:987`) — so the `setConnection(null)` applies only to the session's own store.
+⇒ `php artisan cache:clear` and any `Cache::flush()` hit **DB 1** and cannot log anyone out; the
+`SessionInvalidator` comment about flushing the session store specifically is correct.
+
 ## Verified findings (evidence)
 
-1. **`config:cache` is exonerated.** Round 1 testing on the live container: the CSRF probe returned
+1. **`config:cache` is exonerated.** Round 1 testing on the live container: the CSRF outcome was
    `403` (pass) in live, `config:cache`d, and `config:cleared` states, and `php artisan config:show
    session` / `config:show app` output was byte-identical cached vs uncached.
 2. **`route:cache` cannot break CSRF or drop middleware.** The routing callback built by
@@ -52,29 +133,32 @@ behaviour, not a workaround).
    on the cache connection, `RedisStore.php:282-287`). A dedicated session-aware command is required.
 6. **`app/` contains no direct `Redis::` usage**, so Redis DB 0 holds session keys only — flushing
    that DB is effectively surgical.
-7. **Redis has no volume** (`docker-compose.prod.yml:85-117`; only `app_storage`, `db_data`,
-   `postgres_data` are declared) and runs `--maxmemory 128mb --maxmemory-policy allkeys-lru`. Any
-   Redis recreation or restart loses all sessions, and LRU pressure can evict them.
-8. **Watchtower can restart the app container outside `deploy-prod.sh`** (`com.centurylinklabs.watchtower`
-   label, `docker-compose.prod.yml:24-25`), so anything that must happen on every boot belongs in the
+7. **Redis had no volume** (`docker-compose.prod.yml` declared only `app_storage` and `db_data`)
+   and ran `--maxmemory 128mb --maxmemory-policy allkeys-lru`. Any Redis recreation or restart
+   lost all sessions, and LRU pressure could evict them.
+   *(`redis_data` + `--appendonly yes --appendfsync everysec` have since been added — see §Follow-ups.)*
+8. **Watchtower could restart the app container outside `deploy-prod.sh`** (`com.centurylinklabs.watchtower`
+   label, `docker-compose.prod.yml:23-26`), so anything that must happen on every boot belongs in the
    entrypoint, not only in the deploy script.
-9. **Env sample drift**: `.env.production.sample:44` says `SESSION_DRIVER=database` while production
-   runs `redis`; `:48` sets `SESSION_DOMAIN=umrah.binmishaltravels.com` while production resolves
-   `session.domain = null`.
+   *(Nothing runs Watchtower on either server — the label is kept only to match the live copy and is
+   inert; boots are now server reboot / `docker restart` / `compose restart`. Nothing to do here.)*
+9. **Env sample drift** *(resolved)*: `.env.production.sample` said `SESSION_DRIVER=database` while
+   production ran `redis`, and set `SESSION_DOMAIN=umrah.binmishaltravels.com` while production
+   resolved `session.domain = null`. Both samples now read `SESSION_DRIVER=redis` (`:61`); the
+   production sample reads `SESSION_DOMAIN=null` (`:66`).
 
 ## Goals
 
 - G1. A successful `deploy-prod.sh` run leaves the app in the known-good state: **no** config, route,
   or view cache.
 - G2. No manual artisan commands are needed after a deploy.
-- G3. Container boots (including Watchtower restarts) never build caches, so no boot can
-  re-introduce the incident.
-- G4. A deploy that leaves CSRF broken is **detected and reported loudly** during the deploy.
-- G5. After a successful deploy, **every logged-in user is logged out** and must re-login.
+- G3. Container boots (server reboot, `docker restart`, `docker compose restart`) never build caches,
+  so no boot can re-introduce the incident.
+- G4. After a successful deploy, **every logged-in user is logged out** and must re-login.
 
 ## Non-goals
 
-- Not fixing the underlying session-loss cause (see §Open follow-ups). This plan makes the deploy
+- Not fixing the underlying session-loss cause (see §Follow-ups). This plan makes the deploy
   deterministic and the symptom invisible to users; it does not add Redis persistence.
 - Not adding `optimize`/`config:cache` performance tuning back.
 - Not changing the login, ticket, or visa workflows themselves.
@@ -84,16 +168,13 @@ behaviour, not a workaround).
 - **D1.** The three clears live in `deploy-prod.sh` (runs after the health check), *not* in the
   entrypoint. Reason: the entrypoint should not build state that the deploy then has to tear down.
 - **D2.** The entrypoint stops building caches entirely. This is the durable fix and closes the
-  Watchtower hole (finding 8). Until the next image build, D1 keeps the deploy path correct.
-- **D3.** The CSRF tripwire is **warn-only**: on `419` it prints a detailed diagnostic (including the
-  manual fix commands) and the deploy **continues**. It must never abort a deploy.
-- **D4.** Forced logout is an explicit, intended post-deploy step implemented as a driver-aware
+  restart hole (finding 8, since closed for good — no Watchtower runs any more). Until the next
+  image build, D1 keeps the deploy path correct.
+- **D3.** Forced logout is an explicit, intended post-deploy step implemented as a driver-aware
   Artisan command, run **last** so it only happens after a fully successful deploy.
-- **D5.** Order matters: the probe runs **before** the session flush, otherwise the probe's own
-  session would be destroyed and the probe would report a false `419`.
-- **D6.** Users with open forms lose unsaved work on deploy. Accepted: it is the intended behaviour
+- **D4.** Users with open forms lose unsaved work on deploy. Accepted: it is the intended behaviour
   and matches what already happens in practice.
-- **D7.** The clears deliberately do **not** use `|| true` (the script runs `set -Eeuo pipefail`): a
+- **D5.** The clears deliberately do **not** use `|| true` (the script runs `set -Eeuo pipefail`): a
   failed clear must abort the deploy, not silently leave the broken state in place.
 
 ## Steps (implementation order)
@@ -181,49 +262,9 @@ protected $description = 'Invalidate all active sessions, forcing every user to 
 - Resolve `SessionInvalidator`, print a one-line result including driver/store, return
   `Command::SUCCESS` / `Command::FAILURE`.
 
-### 4. `deploy-prod.sh` — CSRF probe helper (warn-only)
+### 4. `deploy-prod.sh` — post-health block
 
-Add a `csrf_probe()` function next to `compose()` (after line 79). It runs entirely inside the
-container and prints either an HTTP status code or `PROBE_ERROR`:
-
-```sh
-csrf_probe() {
-  compose exec -T app sh -c '
-    headers=$(curl -sS -D - -o /tmp/_csrf_probe.html http://localhost/login 2>/dev/null) || { echo PROBE_ERROR; exit 0; }
-    token=$(sed -n "s/.*name=\"csrf-token\" content=\"\([^\"]*\)\".*/\1/p" /tmp/_csrf_probe.html | head -n 1)
-    cookie=$(printf "%s\n" "$headers" | sed -n "s/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p" | tr -d "\r" | head -n 1)
-    rm -f /tmp/_csrf_probe.html
-    if [ -z "$token" ] || [ -z "$cookie" ]; then echo PROBE_ERROR; exit 0; fi
-    curl -sS -o /dev/null -w "%{http_code}" -X POST http://localhost/login \
-      -H "X-CSRF-TOKEN: $token" \
-      -H "Cookie: $cookie" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      --data "email=deploy-probe@example.invalid&password=deploy-probe" 2>/dev/null || echo PROBE_ERROR
-  ' 2>/dev/null || echo "PROBE_ERROR"
-}
-```
-
-Implementation constraints (all learned the hard way during diagnosis):
-- `curl` is available in the image (the existing healthcheck uses it).
-- The `Cookie:` header must be passed **manually**: `SESSION_SECURE_COOKIE=true`, and curl refuses to
-  send `Secure` cookies over plain `http://`. Reading the cookie from the `Set-Cookie` response header
-  (rather than hardcoding `umrah-app-session`) keeps it correct if the cookie name ever changes.
-- Use `sed`, never `grep -P` — the container's `grep` is busybox.
-- `set -e` safety: the function must never exit non-zero; the caller treats any failure as
-  `PROBE_ERROR`.
-
-Host-side interpretation (warn-only per D3):
-
-| Result | Action |
-| --- | --- |
-| `200` / `302` / `401` / `403` / `422` / `429` | `OK` — CSRF verification passed (invalid credentials and login throttling are expected non-419 outcomes) |
-| `419` | `WARNING` + "POST requests will fail with 419 until caches are cleared" + the three manual `*:clear` commands; deploy continues |
-| `PROBE_ERROR` | `WARNING` naming which part failed (no meta token / no `Set-Cookie` / curl failed); deploy continues |
-
-### 5. `deploy-prod.sh` — post-health block
-
-Insert a new section **after** the application health-wait loop (i.e. after line 319, before
-"Setting Laravel permissions" at line 322):
+Insert a new section after the migration block (the `fi`), just before `# Final status`:
 
 ```sh
 # Clear config/route/view caches so a deploy never leaves the app in the state
@@ -231,14 +272,9 @@ Insert a new section **after** the application health-wait loop (i.e. after line
 compose exec -T app php artisan config:clear --no-interaction
 compose exec -T app php artisan route:clear  --no-interaction
 compose exec -T app php artisan view:clear   --no-interaction
-
-# CSRF tripwire (warn only, never aborts)
-PROBE_STATUS="$(csrf_probe)"
-# ... case statement per the table above ...
 ```
 
-Then keep the existing `chown` block (lines 330-334) and `migrate` block (lines 346-366) as they are,
-and add a **final** section after migrations, just before "Final status" (line 368):
+Then add a **final** section just before "Final status":
 
 ```sh
 # Force every logged-in user to re-login (intended post-deploy behaviour).
@@ -246,9 +282,9 @@ compose exec -T app php artisan sessions:flush --force --no-interaction
 ```
 
 Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis` → `up app` → wait health →
-**clear caches** → **CSRF probe (warn)** → chown → migrate → **`sessions:flush`** → status.
+chown → migrate → **clear caches** → **`sessions:flush`** → status.
 
-### 6. Tests
+### 5. Tests
 
 - `tests/Unit/SessionInvalidatorTest.php` — new. `phpunit.xml` gives `SESSION_DRIVER=array` and
   `CACHE_STORE=array` and a real MySQL `umrah_test` database, so the test can drive each branch by
@@ -264,7 +300,7 @@ Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis`
   textual guards against the exact regression being fixed (same style as the existing
   `UploadSizeLimitTest.php` / `SecureSessionCookieTest.php`).
 
-### 7. Documentation
+### 6. Documentation
 
 - `DEPLOYMENT.md:225-231` — rewrite "Reset Laravel cache": the deploy now clears config/route/view
   automatically; the manual equivalent is the three `*:clear` commands (never `config:cache` /
@@ -274,29 +310,28 @@ Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis`
   claiming the entrypoint caches on startup; replace with a short "why we do not cache in
   production" paragraph and point at the deploy script. Keep the generic "Clear specific caches"
   section, but annotate `cache:clear` with the warning that it does **not** clear sessions.
-- `.env.production.sample:44` — `SESSION_DRIVER=redis` to match production reality (there is no
-  `sessions` table migration in this repo, so `database` would break sessions outright).
-- `.env.production.sample:48` — reconcile `SESSION_DOMAIN` with production (`null`) so the sample
+- `.env.production.sample:61` — `SESSION_DRIVER=redis` to match production reality. (`database` would
+  work — `0001_01_01_000000_create_users_table.php` does create the `sessions` table — but production
+  has never used it, and `SessionInvalidator` has a branch for it.)
+- `.env.production.sample:66` — reconcile `SESSION_DOMAIN` with production (`null`) so the sample
   stops implying a cookie-domain dependency that does not exist.
 
 ## Verification (before/while deploying)
 
 1. `php artisan test --filter=SessionInvalidator` and the new entrypoint/deploy guard tests.
 2. `bash -n deploy-prod.sh` (syntax) and `sh -n docker/entrypoint.sh`.
-3. Dry-run the probe block against a healthy container and confirm it prints a non-419 status.
-4. `php artisan sessions:flush --force` on a staging/local Redis: confirm `redis-cli -n 0 --scan`
+3. `php artisan sessions:flush --force` on a staging/local Redis: confirm `redis-cli -n 0 --scan`
    shows session keys gone while `redis-cli -n 1 DBSIZE` (app cache) is untouched.
-5. On the first real deploy, confirm from the log: clears ran → probe status line → migrations →
-   "sessions flushed" line, and that a logged-in browser is redirected to `/login`.
+4. On the first real deploy, confirm from the log: migrations ran → clears ran → "sessions
+   flushed" line, and that a logged-in browser is redirected to `/login`.
 
 ## Risks and mitigations
 
 | Risk | Mitigation |
 | --- | --- |
 | A clear fails mid-deploy | `set -Eeuo pipefail` aborts before users are told anything; the app is still up and the clears are re-runnable by hand |
-| Probe false positive (throttling → `429`, layout change → no meta token) | Warn-only, and any non-419 is treated as pass; message states exactly what was seen |
 | Flushing DB 0 could drop non-session keys | `app/` has no `Redis::` usage (verified), so DB 0 is session-only; a future default-connection user must revisit this step |
-| Deploys during active work discard unsaved forms | Intended (D6); deploy announcements should warn staff |
+| Deploys during active work discard unsaved forms | Intended (D4); deploy announcements should warn staff |
 | Entrypoint change needs a rebuild | `deploy-prod.sh` clears are live immediately, so behaviour is correct before the new image ships |
 | `sessions:flush` run by hand accidentally | Interactive confirmation unless `--force`; deploy always passes `--force` |
 
@@ -305,23 +340,34 @@ Final deploy order: `pull` → `stop app` → `up db` → wait db → `up redis`
 1. `docker/entrypoint.sh` contains no cache-building artisan calls.
 2. After `deploy-prod.sh` completes, `bootstrap/cache/config.php` and `bootstrap/cache/routes-v7.php`
    do not exist, and `storage/framework/views` has been cleared.
-3. The deploy log contains a CSRF probe status line; a `419` prints a detailed warning but the deploy
-   still finishes.
-4. Immediately after a successful deploy, any previously logged-in browser session is anonymous and
+3. Immediately after a successful deploy, any previously logged-in browser session is anonymous and
    is redirected to the login page.
-5. `php artisan test` passes (including the new tests), `bash -n deploy-prod.sh` is clean.
+4. `php artisan test` passes (including the new tests), `bash -n deploy-prod.sh` is clean.
 
-## Open follow-ups (explicitly out of scope here)
+## Follow-ups
 
-- **Why sessions vanish after deploys.** Redis has no volume and runs `allkeys-lru` at 128mb
-  (`docker-compose.prod.yml:85-117`), and `deploy-prod.sh:231` runs `compose up -d redis` on every
-  deploy — if the rendered Redis config ever changes, the container is recreated and every session
-  is lost. Recommended hardening: add a `redis_data` volume + `appendonly yes`, raise `maxmemory`,
-  and/or move sessions to MySQL (requires adding a `sessions` table migration — none exists today).
-  Until then, users may occasionally be logged out at random times.
+- **Redis persistence is in the repo but not on the server.** Both compose files declare a
+  `redis_data` volume and `--appendonly yes --appendfsync everysec`, but the production server has
+  **not been patched yet** — on the last inspection `aof_enabled` was still `0` and there was no
+  `redis_data` mount. Until Phase 6 lands, a Redis recreation still drops every session (which is a
+  mass logout, not a 419 — the session cookie would survive with an empty session). Also still open:
+  raise `maxmemory` / revisit `allkeys-lru`. Moving to MySQL is now a one-line config change
+  (`SESSION_DRIVER=database`) — `0001_01_01_000000_create_users_table.php` already creates the
+  `sessions` table.
+- **`SESSION_LIFETIME=720` is provisional.** Set now on the user's instruction rather than on
+  measurement. B6: 24 h after deploy, tabulate `CSRF token mismatch` log lines by `session_cookie`
+  true/false. `session_cookie=true` in volume ⇒ idle expiry was not the dominant mode and the 720
+  should be re-examined; `session_cookie=false` dominating before and dropping after ⇒ confirmed.
 - **Untested combination.** `route:cache` / `view:cache` with a *pre-existing* session was never
-  exercised (findings 2 and 3 argue they cannot cause a token mismatch). If a 419 ever reappears,
-  run that probe bisect before touching the deploy script again.
-- **Failure forensics.** Consider a `TokenMismatchException` render hook in `bootstrap/app.php`
-  logging session id, user id, route, and cache-state flags, so any future incident is diagnosable
-  from `storage/logs` without needing to be present at deploy time.
+  exercised (findings 2 and 3 argue they cannot cause a token mismatch). Round 2 independently
+  falsified the cache-presence premise, so this is closed unless a 419 reappears **and** the new log
+  line points at `config_cache=true` / `route_cache=true`.
+- **Failure forensics — done.** `bootstrap/app.php` now has a render callback typed on
+  `Symfony\Component\HttpKernel\Exception\HttpException` filtering `getStatusCode() === 419` that
+  logs `CSRF token mismatch` with session id, user id, route, both token hashes, and the cache-state
+  flags. Note for anyone extending it: `Handler::prepareException()` converts
+  `TokenMismatchException` → `HttpException(419)` *before* render callbacks run, so a callback typed
+  on `TokenMismatchException` never fires; and there is a pre-existing, separate bug — the
+  `ModelNotFoundException` callback is typed correctly but the same conversion happens for it
+  (`NotFoundHttpException`), so it is dead code. No test asserts its message; fixing it is out of
+  scope for this plan.

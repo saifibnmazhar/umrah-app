@@ -129,7 +129,7 @@ Custom slate colors (50-950) are defined in `resources/css/app.css` via `@theme`
 |----------|---------|
 | [docs/README.md](docs/README.md) | **Development Handbook** — onboarding, architecture, conventions, testing, CI/CD |
 | [AGENTS.md](AGENTS.md) | Agent conventions and TDD workflow |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment guide (ISPConfig, Watchtower, rollback, backups) |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment guide (ISPConfig, deploy script, rollback, backups) |
 
 ## Docker Development
 
@@ -156,7 +156,7 @@ php artisan key:generate
 ./deploy-prod.sh
 ```
 
-The app runs on port 8000 on localhost. See [DEPLOYMENT.md](DEPLOYMENT.md) for full production deployment instructions including ISPConfig reverse proxy setup and Watchtower auto-deploy configuration.
+The app runs on port 8000 on localhost. See [DEPLOYMENT.md](DEPLOYMENT.md) for full production deployment instructions including ISPConfig reverse proxy setup, the `deploy-prod.sh` script, rollback and backups.
 
 ### Docker Configuration Files
 

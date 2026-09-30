@@ -12,7 +12,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -71,5 +73,80 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect()->back()->with('error', $message);
+        });
+
+        // A 419 used to reach the user as a raw "CSRF token mismatch" page.
+        // Keep the incident diagnosable and turn the failure into something the
+        // user can act on: JSON clients still get a real 419 (their error paths
+        // key off the status code), browser form posts get bounced back to
+        // something they can submit again.
+        //
+        // Typed on HttpException rather than TokenMismatchException because
+        // Handler::prepareException() rewrites the latter into HttpException(419)
+        // BEFORE render callbacks run. 419 is only ever produced by CSRF
+        // verification in this app (no abort(419) anywhere).
+        //
+        // The log line is what tells us WHY the mismatch happened:
+        //   session_cookie=false             -> the cookie itself is gone (idle past
+        //                                      SESSION_LIFETIME); raise the lifetime.
+        //   session_cookie=true, user_id=null -> the session was destroyed while
+        //                                      the cookie survived; infrastructure.
+        //   session_cookie=true, user_id set -> the session is fine and the form
+        //                                      carried a stale token (another tab
+        //                                      logged out, or a back/forward-cache
+        //                                      restore); only the redirect helps.
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 419) {
+                return null;
+            }
+
+            $session = $request->hasSession() ? $request->session() : null;
+            $sessionCookie = $request->cookies->get(config('session.cookie'));
+            $inputToken = $request->input('_token')
+                ?: $request->header('X-CSRF-TOKEN')
+                ?: $request->header('X-XSRF-TOKEN');
+            $sessionToken = $session?->get('_token');
+            $sessionKeys = $session ? array_keys($session->all()) : [];
+
+            Log::warning('CSRF token mismatch', [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'referer' => $request->headers->get('referer'),
+                'user_id' => auth()->id(),
+                'ip' => $request->ip(),
+                'cf_ray' => $request->header('cf-ray'),
+                'session_cookie' => $sessionCookie !== null,
+                'session_id' => $session ? substr(hash('sha256', $session->getId()), 0, 12) : null,
+                'session_keys' => $sessionKeys,
+                'has_auth_key' => (bool) array_filter(
+                    $sessionKeys,
+                    fn (string $key) => str_starts_with($key, 'login_web_')
+                ),
+                'input_token' => $inputToken ? substr(hash('sha256', (string) $inputToken), 0, 12) : null,
+                'session_token' => $sessionToken ? substr(hash('sha256', (string) $sessionToken), 0, 12) : null,
+                'config_cache' => file_exists(base_path('bootstrap/cache/config.php')),
+                'route_cache' => (bool) glob(base_path('bootstrap/cache/routes-*.php')),
+                'lifetime' => config('session.lifetime'),
+                'driver' => config('session.driver'),
+                'environment' => app()->environment(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your session has expired. Please log in again.',
+                ], 419);
+            }
+
+            $message = 'Your session has expired. Please log in again and retry.';
+            $input = $request->except(['_token', 'password']);
+
+            // One hop only: flash data survives a single request, so sending a
+            // guest through back() -> auth -> /login would drop the message.
+            if (auth()->check()) {
+                return redirect()->back()->withInput($input)->with('error', $message);
+            }
+
+            return redirect()->route('login')->withInput($input)->withErrors(['email' => $message]);
         });
     })->create();
