@@ -5783,6 +5783,7 @@ function bookingIndexApp() {
                     const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
                     this.showToast(`Ticket refunded successfully for ${passengerName}`, 'warning');
                     this.closeRefundModal();
+                    this.isTicketInfoModalOpen = false;
                     this.loadPassengerData();
                 } else {
                     this.showToast(res.message || 'Failed to refund ticket.', 'error');
@@ -5822,10 +5823,8 @@ function bookingIndexApp() {
                 const res = await r.json();
                 if (res.success) {
                     this.showToast('Ticket voided successfully.', 'warning');
+                    this.isTicketInfoModalOpen = false;
                     await this.loadPassengerData();
-                    if (!this.viewableTickets(this.ticketInfoPassengerIndex).length) {
-                        this.isTicketInfoModalOpen = false;
-                    }
                 } else {
                     this.showToast(res.message || 'Failed to void ticket.', 'error');
                 }
@@ -6043,6 +6042,7 @@ function bookingIndexApp() {
                     const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
                     this.showToast(`Ticket re-issued successfully for ${passengerName}`, 'primary');
                     this.closeReIssueModal();
+                    this.isTicketInfoModalOpen = false;
                     this.loadPassengerData();
                 } else {
                     this.showToast(res.message || 'Failed to re-issue ticket.', 'error');
@@ -6275,6 +6275,7 @@ function bookingIndexApp() {
                         const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
                         this.showToast(`Ticket updated successfully for ${passengerName}`, 'info');
                         this.closeTicketFareModal();
+                        this.isTicketInfoModalOpen = false;
                         this.loadPassengerData();
                         return;
                     }
@@ -6431,6 +6432,7 @@ function bookingIndexApp() {
                     const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
                     this.showToast(`Ticket saved successfully for ${passengerName}`, 'info');
                     this.closeTicketFareModal();
+                    this.isTicketInfoModalOpen = false;
                     this.loadPassengerData();
                 } else {
                     this.showToast(data.message || 'Failed to save ticket.', 'error');
