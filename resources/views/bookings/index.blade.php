@@ -1637,7 +1637,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <form novalidate @submit.prevent="handleTicketFareSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                    <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select x-model="ticketFareForm.ticket_type" :disabled="isEditingReIssued && !!ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                         <option value="">Select</option>
                         <option value="regular">Regular</option>
                         <option value="offer">Offer</option>
@@ -1650,7 +1650,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" :disabled="ticketFareForm.isOutboundMode" :class="ticketFareForm.isOutboundMode ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" :disabled="ticketFareForm.isOutboundMode || (isEditingReIssued && !!ticketFareForm.route_type)" :class="(ticketFareForm.isOutboundMode || isEditingReIssued) ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -1660,7 +1660,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="ticketFareForm.flight_type" @change="handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.flight_type" :disabled="isEditingReIssued && !!ticketFareForm.flight_type" @change="handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
@@ -1668,7 +1668,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_option" :disabled="isEditingReIssued && !!ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
@@ -1891,7 +1891,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001"
+                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001" readonly
                                        @input="handleTicketFareBdtInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
                                        :class="ticketFareForm.errors.selling_fare ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -1918,7 +1918,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                                 <p x-show="ticketFareForm.errors.net_fare" x-text="ticketFareForm.errors.net_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
-                        <div x-show="ticketFareForm.ticket_type === 'offer'">
+                        <div x-show="ticketFareForm.ticket_type === 'offer' || ticketFareForm.offer_price > 0">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) * (snapshot, readonly)</label>
                                 <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" readonly
@@ -1927,7 +1927,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
-                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001"
+                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001" readonly
                                        @input="handleTicketFareBdtInput('offer_price'); ticketFareForm.errors.offer_price = ''"
                                        :class="ticketFareForm.errors.offer_price ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -2133,7 +2133,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
             <form novalidate @submit.prevent="handleReIssueSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                    <select x-model="reIssueForm.ticket_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select x-model="reIssueForm.ticket_type" :disabled="!!reIssueForm.ticket_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                         <option value="">Select</option>
                         <option value="regular">Regular</option>
                         <option value="offer">Offer</option>
@@ -2146,7 +2146,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.route_type" :disabled="!!reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -2156,7 +2156,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="reIssueForm.flight_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="reIssueForm.flight_type" :disabled="!!reIssueForm.flight_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
@@ -2164,10 +2164,10 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
+                            <select x-model="reIssueForm.ticket_option" :disabled="!!reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()"
                                     @input="reIssueForm.errors.ticket_option = ''"
                                     :class="reIssueForm.errors.ticket_option ? 'border-red-500' : ''"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredReIssueTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
@@ -4882,7 +4882,7 @@ function bookingIndexApp() {
                             id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: 'pending_outbound',
-                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
+                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0, offer_price: t.offer_price ?? 0,
                             is_refundable: t.is_refundable ?? false,
                             is_exchangeable: t.is_exchangeable ?? false,
                             baggage_inbound: '', baggage_outbound: t.baggage_outbound || '',
@@ -4928,9 +4928,12 @@ function bookingIndexApp() {
             this.ticketFareForm.route = '';
             this.ticketFareForm.airline = '';
             this.ticketFareForm.travel_class = '';
-            this.ticketFareForm.selling_fare = 0;
+            this.ticketFareForm.selling_fare = pendingOutbound?.selling_fare || 0;
             this.ticketFareForm.net_fare = 0;
-            this.ticketFareForm.offer_price = 0;
+            this.ticketFareForm.offer_price = pendingOutbound?.offer_price || 0;
+            this.ticketFareForm.selling_fare_bdt = '';
+            this.ticketFareForm.net_fare_bdt = '';
+            this.ticketFareForm.offer_price_bdt = '';
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.outbound_pending = false;
@@ -4950,21 +4953,20 @@ function bookingIndexApp() {
                 this.ticketFareForm.airline = fare.airline || '';
                 this.ticketFareForm.travel_class = fare.travel_class || '';
                 const pType = row.passenger_type || 'adult';
-                this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                if (fare.with_offer && fare.offer_price) {
-                    this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                }
-            }
-
-            const pendingSnap = (row.all_issued_tickets || []).find(t => ['pending', 'awaiting-group'].includes(t.status) && (!t.issue_type || t.issue_type === 'regular'));
-            if (pendingSnap) {
-                this.ticketFareForm.selling_fare = pendingSnap.selling_fare || 0;
-                this.ticketFareForm.offer_price = pendingSnap.offer_price || 0;
             }
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
+
+            this.ticketFareForm.selling_fare = pendingOutbound?.selling_fare || 0;
+            this.ticketFareForm.offer_price = pendingOutbound?.offer_price || 0;
+            const outboundRate = window.__currencyRate || 0;
+            if (outboundRate > 0) {
+                this.ticketFareForm.selling_fare_bdt = Math.round((parseFloat(this.ticketFareForm.selling_fare) || 0) * outboundRate);
+                this.ticketFareForm.offer_price_bdt = Math.round((parseFloat(this.ticketFareForm.offer_price) || 0) * outboundRate);
+            }
+
             this.isTicketFareModalOpen = true;
         },
 
@@ -5018,14 +5020,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.route = fare.route_display || '';
                 this.ticketFareForm.airline = fare.airline || '';
                 this.ticketFareForm.travel_class = fare.travel_class || '';
-                if (!this.ticketFareForm.selling_fare) {
+                if (!this.ticketFareForm.net_fare) {
                     const pType = row.passenger_type || 'adult';
-                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                }
-                if (!this.ticketFareForm.offer_price && fare.with_offer && fare.offer_price) {
-                    const pType = row.passenger_type || 'adult';
-                    this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 }
                 if (!this.ticketFareForm.baggage_outbound) {
                     this.ticketFareForm.baggage_outbound = fare.baggage_outbound || '';
@@ -5034,6 +5031,14 @@ function bookingIndexApp() {
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
+
+            this.ticketFareForm.selling_fare = poit.selling_fare || 0;
+            this.ticketFareForm.offer_price = poit.offer_price || 0;
+            const outboundRate = window.__currencyRate || 0;
+            if (outboundRate > 0) {
+                this.ticketFareForm.selling_fare_bdt = Math.round((parseFloat(this.ticketFareForm.selling_fare) || 0) * outboundRate);
+                this.ticketFareForm.offer_price_bdt = Math.round((parseFloat(this.ticketFareForm.offer_price) || 0) * outboundRate);
+            }
 
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
             this.ticketFareForm.pnr = poit.pnr || '';
@@ -5086,9 +5091,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.date = this.formatToDDMMMYY(src.re_issue_date || src.issued_date) || today;
                 this.ticketFareForm.inbound_date = this.formatToDDMMMYY(src.inbound_date) || '';
                 this.ticketFareForm.outbound_date = this.formatToDDMMMYY(src.outbound_date) || '';
-                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = src.net_fare || 0;
-                this.ticketFareForm.offer_price = src.offer_price || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
                 this.ticketFareForm.non_refundable = !src.is_refundable;
                 this.ticketFareForm.non_exchangeable = !src.is_exchangeable;
                 this.ticketFareForm.baggage_inbound = src.baggage_inbound || '';
@@ -5122,9 +5127,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
                 this.ticketFareForm.date = this.formatToDDMMMYY(row.ticket_fare.date) || today;
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
-                this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
+                this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
-                this.ticketFareForm.offer_price = row.ticket_fare.offer_price || 0;
+                this.ticketFareForm.offer_price = 0;
                 this.ticketFareForm.non_refundable = row.ticket_fare.non_refundable || false;
                 this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
                 this.ticketFareForm.baggage_inbound = row.ticket_fare.baggage_inbound || '';
@@ -5150,6 +5155,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_agent = '';
                 this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.offer_price = 0;
                 this.ticketFareForm.non_refundable = false;
                 this.ticketFareForm.non_exchangeable = false;
                 this.ticketFareForm.baggage_inbound = '';
@@ -5175,18 +5181,6 @@ function bookingIndexApp() {
                 }
             }
 
-            if (isAlreadyIssued && src) {
-                this.ticketFareForm.selling_fare = src.selling_fare || 0;
-                this.ticketFareForm.net_fare = src.net_fare || 0;
-                this.ticketFareForm.offer_price = src.offer_price || 0;
-                const r = window.__currencyRate || 0;
-                if (r > 0) {
-                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r);
-                    this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r);
-                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r);
-                }
-            }
-
             if (row.is_double_ticket && row.ticket_fare_inbound_id) {
                 if (isAlreadyIssued && this.ticketFareForm.outbound_pending) {
                     this.ticketFareForm.double_ticket_active = true;
@@ -5206,6 +5200,18 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_option = fare.id;
                 this.handleTicketOptionChange();
             }
+                }
+            }
+
+            if (lit) {
+                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
+                this.ticketFareForm.net_fare = src.net_fare || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round((parseFloat(this.ticketFareForm.selling_fare) || 0) * r);
+                    this.ticketFareForm.net_fare_bdt = Math.round((parseFloat(this.ticketFareForm.net_fare) || 0) * r);
+                    this.ticketFareForm.offer_price_bdt = Math.round((parseFloat(this.ticketFareForm.offer_price) || 0) * r);
                 }
             }
 
@@ -5449,13 +5455,13 @@ function bookingIndexApp() {
             this.reIssueForm.booking_id = row.booking_id;
             this.reIssueForm.rowIndex = rowIndex;
 
-            this.reIssueForm.selling_fare = fareSrc.selling_fare || 0;
+            this.reIssueForm.selling_fare = ticket.selling_fare || 0;
             this.reIssueForm.net_fare = fareSrc.net_fare || 0;
-            this.reIssueForm.offer_price = fareSrc.offer_price || 0;
+            this.reIssueForm.offer_price = ticket.offer_price || 0;
             this.reIssueOriginalFares = {
-                selling_fare: fareSrc.selling_fare || 0,
+                selling_fare: ticket.selling_fare || 0,
                 net_fare: fareSrc.net_fare || 0,
-                offer_price: fareSrc.offer_price || 0,
+                offer_price: ticket.offer_price || 0,
             };
 
             this.reIssueForm.ticket_type = '';
@@ -5511,13 +5517,13 @@ function bookingIndexApp() {
             this.reIssueForm.refunded_net_fare_bdt = '';
 
             if (re) {
-                this.reIssueForm.selling_fare = re.selling_fare || 0;
+                this.reIssueForm.selling_fare = ticket.selling_fare || 0;
                 this.reIssueForm.net_fare = re.net_fare || 0;
-                this.reIssueForm.offer_price = re.offer_price || 0;
+                this.reIssueForm.offer_price = ticket.offer_price || 0;
                 this.reIssueOriginalFares = {
-                    selling_fare: re.selling_fare || 0,
+                    selling_fare: ticket.selling_fare || 0,
                     net_fare: re.net_fare || 0,
-                    offer_price: re.offer_price || 0,
+                    offer_price: ticket.offer_price || 0,
                 };
                 this.reIssueForm.ticket_type = re.ticket_type || '';
                 this.reIssueForm.route_type = re.route_type ? (
@@ -5590,12 +5596,12 @@ function bookingIndexApp() {
 
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                this.reIssueForm.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueForm.selling_fare_bdt = Math.round((ticket.selling_fare || 0) * rate);
                 this.reIssueForm.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
-                this.reIssueForm.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
-                this.reIssueOriginalFares.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueForm.offer_price_bdt = Math.round((ticket.offer_price || 0) * rate);
+                this.reIssueOriginalFares.selling_fare_bdt = Math.round((ticket.selling_fare || 0) * rate);
                 this.reIssueOriginalFares.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
-                this.reIssueOriginalFares.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
+                this.reIssueOriginalFares.offer_price_bdt = Math.round((ticket.offer_price || 0) * rate);
             }
 
             this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
@@ -6041,12 +6047,8 @@ function bookingIndexApp() {
             this.ticketFareForm.travel_class = '';
             this.ticketFareForm.route_id = '';
             this.ticketFareForm.airline_id = '';
-                this.ticketFareForm.selling_fare = 0;
-                this.ticketFareForm.net_fare = 0;
-                this.ticketFareForm.offer_price = 0;
-            this.ticketFareForm.selling_fare_bdt = '';
+            this.ticketFareForm.net_fare = 0;
             this.ticketFareForm.net_fare_bdt = '';
-            this.ticketFareForm.offer_price_bdt = '';
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.inbound_date = '';
@@ -6112,9 +6114,9 @@ function bookingIndexApp() {
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
             if (!f.ticket_agent) f.errors.ticket_agent = 'Please select a ticket agent';
-            if (!f.selling_fare || parseFloat(f.selling_fare) <= 0) f.errors.selling_fare = 'Selling fare must be greater than 0';
+            if (parseFloat(f.selling_fare || 0) < 0) f.errors.selling_fare = 'Selling fare cannot be negative';
             if (!f.net_fare || parseFloat(f.net_fare) <= 0) f.errors.net_fare = 'Net fare must be greater than 0';
-            if (f.ticket_type === 'offer' && (!f.offer_price || parseFloat(f.offer_price) <= 0)) f.errors.offer_price = 'Offer price must be greater than 0';
+            if (parseFloat(f.offer_price || 0) < 0) f.errors.offer_price = 'Offer price cannot be negative';
             if (f.showInboundDate && (!f.inbound_date || !f.inbound_date.trim())) f.errors.inbound_date = 'Inbound date is required';
             if (f.showOutboundDate && (!f.outbound_date || !f.outbound_date.trim())) f.errors.outbound_date = 'Outbound date is required';
 
@@ -6244,6 +6246,7 @@ function bookingIndexApp() {
                         outbound_date: this.formatToDDMMMYY(t.outbound_date),
                         selling_fare: t.selling_fare,
                         net_fare: t.net_fare,
+                        offer_price: t.offer_price,
                         is_refundable: t.is_refundable,
                         is_exchangeable: t.is_exchangeable,
                         baggage_inbound: t.baggage_inbound,
@@ -6266,7 +6269,7 @@ function bookingIndexApp() {
                             id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: t.issue_type,
-                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
+                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0, offer_price: t.offer_price ?? 0,
                             is_refundable: t.is_refundable ?? false,
                             is_exchangeable: t.is_exchangeable ?? false,
                             baggage_inbound: t.baggage_inbound || '',
@@ -6326,7 +6329,7 @@ function bookingIndexApp() {
                                 id: po.id, passenger_id: row.id, outbound_pending: po.outbound_pending ?? false, ticket_number: po.ticket_number || '',
                                 issued_date: po.issued_date || '', status: po.status,
                                 pnr: po.pnr || '', issue_type: 'pending_outbound',
-                                selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0,
+                                selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0, offer_price: po.offer_price ?? 0,
                                 is_refundable: po.is_refundable ?? false,
                                 is_exchangeable: po.is_exchangeable ?? false,
                                 baggage_inbound: '', baggage_outbound: po.baggage_outbound || '',
@@ -6468,15 +6471,12 @@ function bookingIndexApp() {
                 this.ticketFareForm.travel_class = '';
                 this.ticketFareForm.route_id = '';
                 this.ticketFareForm.airline_id = '';
-                this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.baggage_inbound = '';
                 this.ticketFareForm.baggage_outbound = '';
                 this.ticketFareForm.inbound_date = '';
                 this.ticketFareForm.outbound_date = '';
-                this.ticketFareForm.selling_fare_bdt = '';
                 this.ticketFareForm.net_fare_bdt = '';
-                this.ticketFareForm.offer_price_bdt = '';
                 return;
             }
             const fare = this.ticketFaresList.find(f => f.id == val);
@@ -6505,29 +6505,17 @@ function bookingIndexApp() {
                 const row = this.passengersTicketData[this.editingPassengerIndex];
                 if (row?.ticket_fare && fare.id === row.ticket_fare.ticket_fare_id) {
                     const pType = row.passenger_type || 'adult';
-                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
-                    if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
-                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(row.ticket_fare.offer_price, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
-                    }
                     const r3 = window.__currencyRate || 0;
                     if (r3 > 0) {
-                        this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r3);
                         this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r3);
-                        this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r3);
                     }
                 } else {
                     const pType = row?.passenger_type || 'adult';
-                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                    if (fare.ticket_type === 'offer' && fare.offer_price) {
-                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                    }
                     const r4 = window.__currencyRate || 0;
                     if (r4 > 0) {
-                        this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r4);
                         this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r4);
-                        this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r4);
                     }
                 }
             }
