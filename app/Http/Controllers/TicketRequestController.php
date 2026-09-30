@@ -191,6 +191,15 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $sourceFareIds = collect([
+            $issuedTicket->ticket_fare_id,
+            $issuedTicket->latestReIssuedTicket?->ticket_fare_id,
+        ])->filter();
+
+        if (! $selectedFare->is_active && ! $sourceFareIds->contains($selectedFare->id)) {
+            return response()->json(['message' => 'The selected ticket is inactive and cannot be re-issued.'], 400);
+        }
+
         $sellingFare = (float) ($issuedTicket->selling_fare ?? 0);
         $netFare = (float) ($validated['net_fare'] ?? $issuedTicket->net_fare ?? 0);
         $offerPrice = (float) ($issuedTicket->offer_price ?? 0);
@@ -533,6 +542,10 @@ class TicketRequestController extends Controller
         }
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
+
+        if (! $selectedFare->is_active) {
+            return response()->json(['message' => 'The selected ticket is inactive and cannot be issued.'], 400);
+        }
 
         $passengerType = $passenger->passenger_type?->value ?? 'adult';
         $childPct = (float) ($selectedFare->child_fare_percentage ?: 70);
