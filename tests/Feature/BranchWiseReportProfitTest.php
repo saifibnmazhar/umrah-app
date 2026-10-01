@@ -24,6 +24,7 @@ use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class BranchWiseReportProfitTest extends TestCase
@@ -252,5 +253,27 @@ class BranchWiseReportProfitTest extends TestCase
             // Only bookingA belongs to branchId; bookingB is in another branch.
             ->assertSee('data-sar="4550.000000"', false)
             ->assertDontSee('data-sar="14549.000000"', false);
+    }
+
+    /** @test */
+    public function test_branchwise_effective_filter_reads_issued_date_without_log_subquery(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $bookingA = $this->createBooking($user, $deps);
+        $branchId = $bookingA->booking_branch_id;
+
+        DB::enableQueryLog();
+        $this->actingAs($user)
+            ->get(route('report.branch-wise', ['branch_id' => $branchId]))
+            ->assertOk();
+        DB::disableQueryLog();
+
+        $sql = collect(DB::getQueryLog())->pluck('query')->implode("\n");
+        $this->assertStringNotContainsString(
+            'issued_ticket_logs itl',
+            $sql,
+            'A4: branch-wise effective filter must read issued_date directly, not the correlated log subquery.'
+        );
     }
 }

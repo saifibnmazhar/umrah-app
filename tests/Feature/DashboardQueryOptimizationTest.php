@@ -293,6 +293,28 @@ class DashboardQueryOptimizationTest extends TestCase
     }
 
     /** @test */
+    public function test_dashboard_effective_filter_reads_issued_date_without_log_subquery(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+        $this->createBooking($user, $deps, 1, 1);
+
+        Auth::login($user);
+
+        DB::enableQueryLog();
+        $response = $this->get(route('dashboard'));
+        DB::disableQueryLog();
+
+        $response->assertOk();
+        $sql = collect(DB::getQueryLog())->pluck('query')->implode("\n");
+        $this->assertStringNotContainsString(
+            'issued_ticket_logs itl',
+            $sql,
+            'A4: dashboard effective filter must read issued_date directly, not the correlated log subquery.'
+        );
+    }
+
+    /** @test */
     public function test_dashboard_profit_calculation_remains_correct(): void
     {
         $user = $this->setupUser();

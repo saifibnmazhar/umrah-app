@@ -771,6 +771,11 @@ function pendingOutboundReport(options = {}) {
                 this.showToast('Ticket agent is required.', 'error');
                 return;
             }
+            if (!f.issued_date || !this.parseDDMMMYY(f.issued_date)) {
+                this.isSubmitting = false;
+                this.showToast('Issue date is required.', 'error');
+                return;
+            }
 
             const payload = {
                 issued_ticket_id: f.issued_ticket_id,

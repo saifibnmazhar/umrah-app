@@ -19,6 +19,7 @@ use App\Models\PassengerStatus;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TransactionType;
@@ -133,7 +134,24 @@ class TicketRequestProcessAdditionalTest extends TestCase
             'address' => 'A',
         ]);
 
-        return compact('district', 'customer', 'package', 'fpCharge', 'fare');
+        $agent = TicketAgent::create(['name' => 'Agent A', 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'agent');
+    }
+
+    private function validAdditionalPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'ticket_fare_id' => $this->deps['fare']->id,
+            'route_type' => 'round',
+            'pnr' => 'PNR123',
+            'ticket_number' => 'TKT123',
+            'ticket_agent_id' => $this->deps['agent']->id,
+            'issued_date' => now()->toDateString(),
+            'inbound_date' => now()->toDateString(),
+            'outbound_date' => now()->addDays(7)->toDateString(),
+            'net_fare' => 1234.567890,
+        ], $overrides);
     }
 
     private function createBookingWithPassenger(): array
@@ -193,12 +211,7 @@ class TicketRequestProcessAdditionalTest extends TestCase
         [$booking, $passenger] = $this->createBookingWithPassenger();
         $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
 
-        $response = $this->putJson(route('ticket-requests.process-additional', $ticketRequest->id), [
-            'ticket_fare_id' => $this->deps['fare']->id,
-            'pnr' => 'PNR123',
-            'ticket_number' => 'TKT123',
-            'net_fare' => 1234.567890,
-        ]);
+        $response = $this->putJson(route('ticket-requests.process-additional', $ticketRequest->id), $this->validAdditionalPayload());
 
         $response->assertOk()->assertJson(['success' => true]);
 
@@ -214,20 +227,161 @@ class TicketRequestProcessAdditionalTest extends TestCase
         ]);
     }
 
-    public function test_process_additional_defaults_net_fare_to_zero_when_omitted(): void
+    public function test_process_additional_rejects_missing_net_fare(): void
     {
         [$booking, $passenger] = $this->createBookingWithPassenger();
         $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
 
-        $response = $this->putJson(route('ticket-requests.process-additional', $ticketRequest->id), [
-            'ticket_fare_id' => $this->deps['fare']->id,
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['net_fare' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['net_fare']);
+        $this->assertDatabaseHas('ticket_requests', [
+            'id' => $ticketRequest->id,
+            'status' => 'pending',
         ]);
+    }
+
+    public function test_process_additional_rejects_negative_net_fare(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['net_fare' => -5])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['net_fare']);
+    }
+
+    public function test_process_additional_rejects_missing_pnr(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['pnr' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['pnr']);
+    }
+
+    public function test_process_additional_rejects_missing_ticket_number(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['ticket_number' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['ticket_number']);
+    }
+
+    public function test_process_additional_rejects_missing_ticket_agent(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['ticket_agent_id' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['ticket_agent_id']);
+    }
+
+    public function test_process_additional_rejects_missing_route_type(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['route_type' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['route_type']);
+    }
+
+    public function test_process_additional_requires_inbound_date_for_round_route(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['route_type' => 'round', 'inbound_date' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['inbound_date']);
+    }
+
+    public function test_process_additional_requires_outbound_date_for_round_route(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['route_type' => 'round', 'outbound_date' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['outbound_date']);
+    }
+
+    public function test_process_additional_requires_inbound_date_for_oneway_inbound_route(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload(['route_type' => 'oneway_inbound', 'inbound_date' => null])
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['inbound_date']);
+    }
+
+    public function test_process_additional_allows_missing_inbound_date_when_oneway_outbound(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload([
+                'route_type' => 'oneway_outbound',
+                'inbound_date' => null,
+                'outbound_date' => now()->toDateString(),
+            ])
+        );
 
         $response->assertOk()->assertJson(['success' => true]);
+        $this->assertNull(IssuedTicket::latest('id')->first()->inbound_date);
+    }
 
-        $issuedTicket = IssuedTicket::latest('id')->first();
-        $this->assertNotNull($issuedTicket);
-        $this->assertEqualsWithDelta(0, (float) $issuedTicket->net_fare, 0.000001);
+    public function test_process_additional_allows_missing_outbound_date_when_oneway_inbound(): void
+    {
+        [$booking, $passenger] = $this->createBookingWithPassenger();
+        $ticketRequest = $this->createPendingAdditionalRequest($booking, $passenger);
+
+        $response = $this->putJson(
+            route('ticket-requests.process-additional', $ticketRequest->id),
+            $this->validAdditionalPayload([
+                'route_type' => 'oneway_inbound',
+                'outbound_date' => null,
+                'inbound_date' => now()->toDateString(),
+            ])
+        );
+
+        $response->assertOk()->assertJson(['success' => true]);
+        $this->assertNull(IssuedTicket::latest('id')->first()->outbound_date);
     }
 
     public function test_confirm_process_payload_includes_net_fare(): void
@@ -239,5 +393,46 @@ class TicketRequestProcessAdditionalTest extends TestCase
             '/net_fare\s*:\s*parseFloat\(\s*document\.getElementById\(\s*[\'"]inputNetFare[\'"]\s*\)\.value\s*\)/',
             $view
         );
+    }
+
+    public function test_confirm_process_payload_includes_route_type(): void
+    {
+        $view = file_get_contents(resource_path('views/tickets/add-confirmation.blade.php'));
+
+        $this->assertMatchesRegularExpression(
+            '/route_type\s*:\s*document\.getElementById\(\s*[\'"]inputRouteType[\'"]\s*\)\.value/',
+            $view
+        );
+    }
+
+    public function test_add_confirmation_gates_ticket_dropdown_on_all_three_filters(): void
+    {
+        $view = file_get_contents(resource_path('views/tickets/add-confirmation.blade.php'));
+
+        $this->assertStringContainsString('hasCompleteFilters', $view);
+        $this->assertStringContainsString('inputTicketType', $view);
+        $this->assertStringContainsString('inputRouteType', $view);
+        $this->assertStringContainsString('inputFlightType', $view);
+        $this->assertStringContainsString('getElementById(\'inputTicketFare\').disabled', $view);
+    }
+
+    public function test_add_confirmation_shows_inline_field_errors(): void
+    {
+        $view = file_get_contents(resource_path('views/tickets/add-confirmation.blade.php'));
+
+        $this->assertStringContainsString('setFieldError', $view);
+        $this->assertStringContainsString('data-error-for', $view);
+        $this->assertStringContainsString('clearFieldErrors', $view);
+    }
+
+    public function test_add_confirmation_maps_server_validation_errors_to_fields(): void
+    {
+        $view = file_get_contents(resource_path('views/tickets/add-confirmation.blade.php'));
+
+        $this->assertStringContainsString('data.errors', $view);
+        $this->assertStringContainsString('inputPnr', $view);
+        $this->assertStringContainsString('inputTicketNumber', $view);
+        $this->assertStringContainsString('inputAgent', $view);
+        $this->assertStringContainsString('inputNetFare', $view);
     }
 }
