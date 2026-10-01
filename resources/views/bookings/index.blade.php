@@ -1557,31 +1557,37 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund" :max="refundForm.net_fare"
-                                       @input="handleRefundSarInput('iata_refund')"
+                                       @input="handleRefundSarInput('iata_refund'); refundForm.errors.iata_refund = ''"
+                                       :class="refundForm.errors.iata_refund ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt" :max="refundForm.net_fare_bdt"
-                                       @input="handleRefundBdtInput('iata_refund')"
+                                       @input="handleRefundBdtInput('iata_refund'); refundForm.errors.iata_refund = ''"
+                                       :class="refundForm.errors.iata_refund ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.iata_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                             </div>
+                            <p x-show="refundForm.errors.iata_refund" x-text="refundForm.errors.iata_refund" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund" :max="refundForm.net_fare"
-                                       @input="handleRefundSarInput('customer_refund')"
+                                       @input="handleRefundSarInput('customer_refund'); refundForm.errors.customer_refund = ''"
+                                       :class="refundForm.errors.customer_refund ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt" :max="refundForm.net_fare_bdt"
-                                       @input="handleRefundBdtInput('customer_refund')"
+                                       @input="handleRefundBdtInput('customer_refund'); refundForm.errors.customer_refund = ''"
+                                       :class="refundForm.errors.customer_refund ? 'border-red-500' : ''"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.customer_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                             </div>
+                            <p x-show="refundForm.errors.customer_refund" x-text="refundForm.errors.customer_refund" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
@@ -4218,10 +4224,10 @@ function bookingIndexApp() {
             travel_class: '',
             reason_id: '',
             rowIndex: null,
-            iata_refund: 0,
-            iata_refund_bdt: 0,
-            customer_refund: 0,
-            customer_refund_bdt: 0,
+            iata_refund: '',
+            iata_refund_bdt: '',
+            customer_refund: '',
+            customer_refund_bdt: '',
             service_charge: 0,
             service_charge_bdt: 0,
             refund_compensation: 0,
@@ -4230,6 +4236,8 @@ function bookingIndexApp() {
             remarks: '',
             errors: {
                 reason_id: '',
+                iata_refund: '',
+                customer_refund: '',
             },
         },
 
@@ -5669,20 +5677,22 @@ function bookingIndexApp() {
             f.travel_class = src.travel_class || '';
             f.reason_id = '';
             f.rowIndex = rowIndex;
-            f.iata_refund = 0;
-            f.customer_refund = 0;
+            f.iata_refund = '';
+            f.customer_refund = '';
             f.service_charge = 0;
             f.refund_compensation = 0;
             f.payment_by = '';
             f.remarks = '';
             f.errors.reason_id = '';
+            f.errors.iata_refund = '';
+            f.errors.customer_refund = '';
 
             const rate = window.__currencyRate || 0;
             f.selling_fare_bdt = 0;
             f.net_fare_bdt = 0;
             f.offer_price_bdt = 0;
-            f.iata_refund_bdt = 0;
-            f.customer_refund_bdt = 0;
+            f.iata_refund_bdt = '';
+            f.customer_refund_bdt = '';
             f.service_charge_bdt = 0;
             f.refund_compensation_bdt = 0;
             if (rate > 0) {
@@ -5738,15 +5748,34 @@ function bookingIndexApp() {
             if (this.isSubmitting) return;
             const f = this.refundForm;
             f.errors.reason_id = '';
+            f.errors.iata_refund = '';
+            f.errors.customer_refund = '';
 
             if (!f.reason_id) {
                 f.errors.reason_id = 'Please select a reason.';
-                return;
             }
 
-            if ((parseFloat(f.iata_refund) || 0) > (parseFloat(f.net_fare) || 0)
-                || (parseFloat(f.customer_refund) || 0) > (parseFloat(f.net_fare) || 0)) {
-                this.showToast('Refund amounts cannot exceed the net fare.', 'error');
+            const netFare = parseFloat(f.net_fare) || 0;
+
+            if (f.iata_refund === '' || f.iata_refund === null || f.iata_refund === undefined) {
+                f.errors.iata_refund = 'IATA refund is required.';
+            } else if (parseFloat(f.iata_refund) < 0) {
+                f.errors.iata_refund = 'IATA refund cannot be negative.';
+            } else if (parseFloat(f.iata_refund) > netFare) {
+                f.errors.iata_refund = 'IATA refund cannot exceed the net fare.';
+            }
+
+            if (f.customer_refund === '' || f.customer_refund === null || f.customer_refund === undefined) {
+                f.errors.customer_refund = 'Customer refund is required.';
+            } else if (parseFloat(f.customer_refund) < 0) {
+                f.errors.customer_refund = 'Customer refund cannot be negative.';
+            } else if (parseFloat(f.customer_refund) > netFare) {
+                f.errors.customer_refund = 'Customer refund cannot exceed the net fare.';
+            }
+
+            const firstError = Object.values(f.errors).find(e => e);
+            if (firstError) {
+                this.showToast(firstError, 'error');
                 return;
             }
 
@@ -5783,9 +5812,17 @@ function bookingIndexApp() {
                 },
                 body: JSON.stringify(payload)
             })
-            .then(r => r.json())
-            .then(res => {
-                if (res.success) {
+            .then(r => r.json().then(data => ({ status: r.status, data })))
+            .then(({ status, data }) => {
+                if (status === 422 && data.errors) {
+                    f.errors.reason_id = data.errors.reason_id ? data.errors.reason_id[0] : '';
+                    f.errors.iata_refund = data.errors.iata_refund ? data.errors.iata_refund[0] : '';
+                    f.errors.customer_refund = data.errors.customer_refund ? data.errors.customer_refund[0] : '';
+                    const firstMessage = data.message || Object.values(data.errors).flat()[0] || 'Validation failed.';
+                    this.showToast(firstMessage, 'error');
+                    return;
+                }
+                if (data.success) {
                     const passenger = this.passengersList[this.refundForm.rowIndex];
                     const passengerName = passenger?.first_name + ' ' + passenger?.last_name;
                     this.showToast(`Ticket refunded successfully for ${passengerName}`, 'warning');
@@ -5793,7 +5830,7 @@ function bookingIndexApp() {
                     this.isTicketInfoModalOpen = false;
                     this.loadPassengerData();
                 } else {
-                    this.showToast(res.message || 'Failed to refund ticket.', 'error');
+                    this.showToast(data.message || 'Failed to refund ticket.', 'error');
                 }
             })
             .catch(err => {
