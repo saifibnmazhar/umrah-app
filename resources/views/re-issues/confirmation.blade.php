@@ -96,7 +96,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
-                        <select id="inputPaymentBy" onchange="handlePaymentByChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputPaymentBy" onchange="handlePaymentByChange(); clearFieldError('inputPaymentBy')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
                             <option value="customer">Customer</option>
                             <option value="airline">Airline</option>
@@ -189,31 +189,31 @@
                         </div>
                     </div>
                     <div id="fieldUpDate">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
-                        <input type="text" id="inputUpDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                        <input type="text" id="inputUpDate" placeholder="DD-MMM-YY" oninput="clearFieldError('inputUpDate')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div id="fieldDownDate">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
-                        <input type="text" id="inputDownDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                        <input type="text" id="inputDownDate" placeholder="DD-MMM-YY" oninput="clearFieldError('inputDownDate')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Re-issue Date</label>
-                        <input type="text" id="inputTravelDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
+                        <input type="text" id="inputTravelDate" placeholder="DD-MMM-YY" oninput="clearFieldError('inputTravelDate')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
-                        <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                        <select id="inputAgent" onchange="clearFieldError('inputAgent')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Agent</option>
                         </select>
                     </div>
                     <div>
                         <div id="fieldReIssueChargeSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
-                            <input type="number" id="inputReIssueCharge" oninput="handleFieldSarInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputReIssueCharge" oninput="handleFieldSarInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals(); clearFieldError('inputReIssueCharge')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                         <div id="fieldReIssueChargeBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
-                            <input type="number" id="inputReIssueChargeBdt" oninput="handleFieldBdtInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputReIssueChargeBdt" oninput="handleFieldBdtInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals(); clearFieldError('inputReIssueCharge')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                             <input type="number" id="inputReIssueChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
@@ -702,6 +702,7 @@ function renderConfirmation(requests) {
 
 function processConfirmation(ticketRequestId) {
     currentTicketRequestId = ticketRequestId;
+    clearFieldErrors();
     const r = allRequests.find(req => req.id === ticketRequestId);
     if (!r) return;
 
@@ -963,8 +964,40 @@ function holdProcess() {
 }
 */
 
+function setFieldError(inputId, message) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const container = input.closest('div');
+    if (!container) return;
+    container.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(el => el.remove());
+    input.classList.add('border-red-500');
+    const p = document.createElement('p');
+    p.setAttribute('data-error-for', inputId);
+    p.className = 'mt-1 text-xs text-red-500';
+    p.textContent = message;
+    container.appendChild(p);
+}
+
+function clearFieldError(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) input.classList.remove('border-red-500');
+    document.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(el => el.remove());
+}
+
+function clearFieldErrors() {
+    document.querySelectorAll('[data-error-for]').forEach(el => el.remove());
+    document.querySelectorAll('#processConfirmationModal .border-red-500').forEach(el => el.classList.remove('border-red-500'));
+}
+
+function focusFirstFieldError() {
+    const first = document.querySelector('[data-error-for]');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function confirmProcess() {
     if (!currentTicketRequestId) return;
+
+    clearFieldErrors();
 
     const payload = {
         reason_id: document.getElementById('inputReason').value,
@@ -1013,6 +1046,36 @@ function confirmProcess() {
             showToast('Refund adjustment amount exceeds the available refund payable.', 'error');
             return;
         }
+    }
+
+    const inboundVisible = !document.getElementById('fieldUpDate').classList.contains('hidden');
+    const outboundVisible = !document.getElementById('fieldDownDate').classList.contains('hidden');
+    const inboundRaw = (document.getElementById('inputUpDate').value || '').trim();
+    const outboundRaw = (document.getElementById('inputDownDate').value || '').trim();
+
+    if (inboundVisible) {
+        if (!inboundRaw) setFieldError('inputUpDate', 'Inbound date is required');
+        else if (!parseDDMMMYY(inboundRaw)) setFieldError('inputUpDate', 'Inbound date must be in DD-MMM-YY format');
+    }
+    if (outboundVisible) {
+        if (!outboundRaw) setFieldError('inputDownDate', 'Outbound date is required');
+        else if (!parseDDMMMYY(outboundRaw)) setFieldError('inputDownDate', 'Outbound date must be in DD-MMM-YY format');
+    }
+
+    const travelDateRaw = (document.getElementById('inputTravelDate').value || '').trim();
+    if (!travelDateRaw) setFieldError('inputTravelDate', 'Issue date is required');
+
+    if (!document.getElementById('inputAgent').value) setFieldError('inputAgent', 'Please select a ticket agent');
+    if (!document.getElementById('inputPaymentBy').value) setFieldError('inputPaymentBy', 'Please select a payment method');
+
+    const reIssueChargeRaw = document.getElementById('inputReIssueCharge').value;
+    if (reIssueChargeRaw === '' || reIssueChargeRaw === null || reIssueChargeRaw === undefined || parseFloat(reIssueChargeRaw) < 0) {
+        setFieldError('inputReIssueCharge', 'Re-issue charge is required');
+    }
+
+    if (document.querySelector('[data-error-for]')) {
+        focusFirstFieldError();
+        return;
     }
 
     fetch('/ticket-requests/' + currentTicketRequestId + '/process-reissue', {
