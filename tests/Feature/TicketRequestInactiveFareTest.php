@@ -22,6 +22,7 @@ use App\Models\ReIssueRefundReason;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TransactionType;
@@ -159,7 +160,9 @@ class TicketRequestInactiveFareTest extends TestCase
             'default_payment_by' => 'customer',
         ]);
 
-        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'inactiveFare', 'reason');
+        $agent = TicketAgent::create(['name' => 'Agent A', 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'inactiveFare', 'reason', 'agent');
     }
 
     private function createBookingWithPassengerAndIssuedTicket(): array
@@ -237,8 +240,14 @@ class TicketRequestInactiveFareTest extends TestCase
 
         $response = $this->putJson(route('ticket-requests.process-additional', $ticketRequest->id), [
             'ticket_fare_id' => $this->deps['inactiveFare']->id,
+            'route_type' => 'round',
             'pnr' => 'PNR123',
             'ticket_number' => 'TKT123',
+            'ticket_agent_id' => $this->deps['agent']->id,
+            'issued_date' => now()->toDateString(),
+            'inbound_date' => now()->toDateString(),
+            'outbound_date' => now()->addDays(7)->toDateString(),
+            'net_fare' => 500,
         ]);
 
         $response->assertStatus(400)->assertJson([

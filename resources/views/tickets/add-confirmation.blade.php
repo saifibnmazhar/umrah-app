@@ -72,7 +72,7 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Ticket Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
                         <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
                             <option value="regular">Regular</option>
@@ -345,6 +345,7 @@ function renderConfirmation(requests) {
 
 function processConfirmation(ticketRequestId) {
     currentTicketRequestId = ticketRequestId;
+    clearFieldErrors();
     const r = allRequests.find(req => req.id === ticketRequestId);
     if (!r) return;
     const p = r.passenger || {};
@@ -428,6 +429,21 @@ function loadAgents() {
 }
 
 function loadTicketFares(filters = {}) {
+    const completeFilters = !!(filters.route_type && filters.ticket_type && filters.flight_type);
+    document.getElementById('inputTicketFare').disabled = !completeFilters;
+
+    if (!completeFilters) {
+        allTicketFares = [];
+        selectedTicketFareId = null;
+        document.getElementById('inputTicketFare').innerHTML = '<option value="">Select Ticket</option>';
+        document.getElementById('inputTicketFare').value = '';
+        clearTicketFields();
+        setFieldError('inputTicketFare', 'Select Ticket Type, Route Type & Flight Type first to load tickets');
+        return;
+    }
+
+    clearFieldError('inputTicketFare');
+
     const params = new URLSearchParams();
     if (filters.route_type) params.append('route_type', filters.route_type);
     if (filters.ticket_type) params.append('ticket_type', filters.ticket_type);
@@ -633,29 +649,116 @@ function applyRouteType() {
     document.getElementById('baggageOutboundSection').classList.toggle('hidden', rt === 'oneway_inbound');
 }
 
+function getFieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+}
+
+function isValidDateValue(value) {
+    if (!value) return false;
+    return !isNaN(new Date(value).getTime());
+}
+
+function setFieldError(inputId, message) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const container = input.closest('div');
+    if (!container) return;
+    container.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(el => el.remove());
+    const p = document.createElement('p');
+    p.setAttribute('data-error-for', inputId);
+    p.className = 'mt-1 text-xs text-red-600';
+    p.textContent = message;
+    container.appendChild(p);
+}
+
+function clearFieldError(inputId) {
+    document.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(el => el.remove());
+}
+
+function clearFieldErrors() {
+    document.querySelectorAll('[data-error-for]').forEach(el => el.remove());
+}
+
+function focusFirstFieldError() {
+    const first = document.querySelector('[data-error-for]');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function hasCompleteFilters() {
+    return !!(getFieldValue('inputTicketType') && getFieldValue('inputRouteType') && getFieldValue('inputFlightType'));
+}
+
 function confirmProcess() {
     if (!currentTicketRequestId) return;
 
+    clearFieldErrors();
+
+    const pnr = getFieldValue('inputPnr');
+    const ticketNumber = getFieldValue('inputTicketNumber');
+    const issuedDate = getFieldValue('inputTravelDate');
+    const netFareRaw = getFieldValue('inputNetFare');
+    const inboundDate = getFieldValue('inputUpDate');
+    const outboundDate = getFieldValue('inputDownDate');
+    const ticketAgentId = getFieldValue('inputAgent');
+    const ticketFareId = document.getElementById('inputTicketFare').value || selectedTicketFareId;
+    const inboundVisible = !document.getElementById('fieldUpDate').classList.contains('hidden');
+    const outboundVisible = !document.getElementById('fieldDownDate').classList.contains('hidden');
+
+    const errors = {};
+
+    if (!getFieldValue('inputTicketType')) errors.inputTicketType = 'Ticket type is required';
+    if (!getFieldValue('inputRouteType')) errors.inputRouteType = 'Route type is required';
+    if (!getFieldValue('inputFlightType')) errors.inputFlightType = 'Flight type is required';
+
+    if (!hasCompleteFilters()) {
+        errors.inputTicketFare = 'Select Ticket Type, Route Type & Flight Type first';
+    } else if (!ticketFareId) {
+        errors.inputTicketFare = 'Ticket is required';
+    }
+
+    if (!pnr) errors.inputPnr = 'PNR is required';
+    else if (pnr.length > 50) errors.inputPnr = 'PNR must be 50 characters or fewer';
+
+    if (!ticketNumber) errors.inputTicketNumber = 'Ticket number is required';
+    else if (ticketNumber.length > 100) errors.inputTicketNumber = 'Ticket number must be 100 characters or fewer';
+
+    if (!issuedDate) errors.inputTravelDate = 'Issue date is required';
+    else if (!isValidDateValue(issuedDate)) errors.inputTravelDate = 'Issue date is invalid';
+
+    if (!ticketAgentId) errors.inputAgent = 'Ticket agent is required';
+
+    if (inboundVisible) {
+        if (!inboundDate) errors.inputUpDate = 'Inbound date is required';
+        else if (!isValidDateValue(inboundDate)) errors.inputUpDate = 'Inbound date is invalid';
+    }
+
+    if (outboundVisible) {
+        if (!outboundDate) errors.inputDownDate = 'Outbound date is required';
+        else if (!isValidDateValue(outboundDate)) errors.inputDownDate = 'Outbound date is invalid';
+    }
+
+    if (netFareRaw === '') errors.inputNetFare = 'Net fare is required';
+    else if (isNaN(parseFloat(netFareRaw))) errors.inputNetFare = 'Net fare must be a number';
+    else if (parseFloat(netFareRaw) < 0) errors.inputNetFare = 'Net fare cannot be negative';
+
+    if (Object.keys(errors).length) {
+        Object.entries(errors).forEach(([inputId, message]) => setFieldError(inputId, message));
+        focusFirstFieldError();
+        return;
+    }
+
     const payload = {
-        ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
-        pnr: document.getElementById('inputPnr').value || null,
-        ticket_number: document.getElementById('inputTicketNumber').value || null,
-        inbound_date: document.getElementById('inputUpDate').value || null,
-        outbound_date: document.getElementById('inputDownDate').value || null,
-        issued_date: document.getElementById('inputTravelDate').value || null,
-        ticket_agent_id: document.getElementById('inputAgent').value || null,
-        net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
+        ticket_fare_id: ticketFareId,
+        route_type: document.getElementById('inputRouteType').value,
+        pnr: pnr,
+        ticket_number: ticketNumber,
+        inbound_date: inboundVisible ? inboundDate : null,
+        outbound_date: outboundVisible ? outboundDate : null,
+        issued_date: issuedDate,
+        ticket_agent_id: ticketAgentId,
+        net_fare: parseFloat(document.getElementById('inputNetFare').value),
     };
-
-    if (!payload.ticket_fare_id) {
-        showToast('Please select a ticket', 'error');
-        return;
-    }
-
-    if (!payload.issued_date) {
-        showToast('Issue date is required', 'error');
-        return;
-    }
 
     fetch('/ticket-requests/' + currentTicketRequestId + '/process-additional', {
         method: 'PUT',
@@ -666,8 +769,12 @@ function confirmProcess() {
         },
         body: JSON.stringify(payload),
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(res => res.json().catch(() => ({})).then(data => ({ res, data })))
+    .then(({ res, data }) => {
+        if (res.status === 422 && data.errors) {
+            showServerValidationErrors(data.errors);
+            return;
+        }
         if (data.success) {
             const req = allRequests.find(x => x.id === currentTicketRequestId);
             const p = req?.passenger || {};
@@ -682,6 +789,34 @@ function confirmProcess() {
     .catch(err => {
         showToast('Error processing request', 'error');
     });
+}
+
+const serverErrorFieldMap = {
+    route_type: 'inputRouteType',
+    ticket_fare_id: 'inputTicketFare',
+    pnr: 'inputPnr',
+    ticket_number: 'inputTicketNumber',
+    issued_date: 'inputTravelDate',
+    inbound_date: 'inputUpDate',
+    outbound_date: 'inputDownDate',
+    ticket_agent_id: 'inputAgent',
+    net_fare: 'inputNetFare',
+};
+
+function showServerValidationErrors(errors) {
+    let firstFieldId = null;
+    Object.entries(errors).forEach(([key, messages]) => {
+        const inputId = serverErrorFieldMap[key];
+        if (!inputId) return;
+        setFieldError(inputId, Array.isArray(messages) ? messages[0] : String(messages));
+        if (!firstFieldId) firstFieldId = inputId;
+    });
+    if (firstFieldId) {
+        const el = document.querySelector('[data-error-for="' + firstFieldId + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        showToast('The given data was invalid', 'error');
+    }
 }
 
 function rejectAddTicket(ticketRequestId) {
@@ -756,6 +891,12 @@ function showToast(message, type = 'info') {
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
+
+document.querySelectorAll('#processConfirmationModal input, #processConfirmationModal select').forEach(el => {
+    if (!el.id) return;
+    el.addEventListener('input', () => clearFieldError(el.id));
+    el.addEventListener('change', () => clearFieldError(el.id));
+});
 
 loadConfirmation();
 </script>

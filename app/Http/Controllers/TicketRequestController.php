@@ -525,15 +525,15 @@ class TicketRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'ticket_number' => 'nullable|string|max:100',
-            'pnr' => 'nullable|string|max:50',
-            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
+            'ticket_number' => 'required|string|max:100',
+            'pnr' => 'required|string|max:50',
+            'ticket_agent_id' => 'required|exists:ticket_agents,id',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'issued_date' => 'required|date',
-            'inbound_date' => 'nullable|date',
-            'outbound_date' => 'nullable|date',
-            'remarks' => 'nullable|string',
-            'net_fare' => 'nullable|numeric|min:0',
+            'inbound_date' => ['nullable', 'date', Rule::requiredIf(in_array($request->route_type, ['oneway_inbound', 'round', 'multi_city'], true))],
+            'outbound_date' => ['nullable', 'date', Rule::requiredIf(in_array($request->route_type, ['oneway_outbound', 'round', 'multi_city'], true))],
+            'net_fare' => 'required|numeric|min:0',
         ]);
 
         $passenger = $ticketRequest->passenger;
