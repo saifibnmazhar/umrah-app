@@ -2185,7 +2185,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.ticket_option" x-text="reIssueForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Outbound'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
                             <input type="text" x-model="reIssueForm.inbound_date" placeholder="DD-MMM-YY"
                                    @input="reIssueForm.errors.inbound_date = ''"
                                    :class="reIssueForm.errors.inbound_date ? 'border-red-500' : ''"
@@ -2193,7 +2193,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                             <p x-show="reIssueForm.errors.inbound_date" x-text="reIssueForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Inbound'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
                             <input type="text" x-model="reIssueForm.outbound_date" placeholder="DD-MMM-YY"
                                    @input="reIssueForm.errors.outbound_date = ''"
                                    :class="reIssueForm.errors.outbound_date ? 'border-red-500' : ''"
@@ -5983,6 +5983,18 @@ function bookingIndexApp() {
             if (!form.payment_by) form.errors.payment_by = 'Please select a payment method';
             if (form.re_issue_charge === '' || form.re_issue_charge === null || form.re_issue_charge === undefined || parseFloat(form.re_issue_charge) < 0) form.errors.re_issue_charge = 'Re-issue charge is required';
             if (form.payment_by === 'customer' && (form.total_payment === '' || form.total_payment === null || form.total_payment === undefined || parseFloat(form.total_payment) < (parseFloat(form.total_cost) || 0))) form.errors.total_payment = 'Total customer payment must be at least total cost';
+
+            const showInboundDate = !form.route_type || form.route_type !== 'One Way-Outbound';
+            const showOutboundDate = !form.route_type || form.route_type !== 'One Way-Inbound';
+
+            if (showInboundDate) {
+                if (!form.inbound_date || !form.inbound_date.trim()) form.errors.inbound_date = 'Inbound date is required';
+                else if (!this.parseDDMMMYY(form.inbound_date)) form.errors.inbound_date = 'Inbound date must be in DD-MMM-YY format';
+            }
+            if (showOutboundDate) {
+                if (!form.outbound_date || !form.outbound_date.trim()) form.errors.outbound_date = 'Outbound date is required';
+                else if (!this.parseDDMMMYY(form.outbound_date)) form.errors.outbound_date = 'Outbound date must be in DD-MMM-YY format';
+            }
 
             const firstError = Object.values(form.errors).find(e => e);
             if (firstError) {
