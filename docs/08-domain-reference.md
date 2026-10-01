@@ -72,7 +72,7 @@ Domain notes:
 - **In-use fare edit** (Super Admin / Ticket Admin): `selling_fare`,
   `offer_price`, `effective_from`, `effective_to`, `child_fare_percentage`,
   `infant_fare_percentage`; other fields locked. See
-  `docs/11-fare-snapshot-before-after-and-manual-tests.md`.
+  `docs/plans/11-fare-snapshot-before-after-and-manual-tests.md`.
 - **Fare deletion** is blocked while referenced by any package or passenger
   (single/inbound/outbound — `TicketFare::isLocked()`). `issued_tickets`
   stores value snapshots with no FK, so profit history survives deletion of
