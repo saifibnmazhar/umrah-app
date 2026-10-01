@@ -1,57 +1,172 @@
 # Plan: Rebuild `/reports/statement` (Ticket Statement)
 
-> Target: match `docs/Sales & Customer Statement Format.xlsx`.
+> Target: match `docs/Sales & Customer Statement Format.xlsx` (with the deviations
+> recorded in §10 — Excel's balance example and "Cash" pay cell are explicitly wrong).
 > Route: `http://127.0.0.1:8000/reports/statement` (currently a static placeholder).
 
 ---
 
-## 1. Excel Spec (decoded)
+## 1. Excel Spec (decoded) & Deviations
 
-**Header — 2 rows** (rows 3 & 4 in the sheet):
+**Header — 2 rows** (rows 3 & 4 in the sheet; A–F & N are two stacked cells,
+G–M are single cells merged `G3:G4 … M3:M4` — the `SAR` label lives in each
+*data* row 2, not in the header):
 
-| Col | Row 1 | Row 2 | Merge |
-|-----|-------|-------|-------|
-| A | Issue Date | Category (Ticket/Re-issue/Payment/Refund) | stacked |
-| B | Ticket No | Invoice No | stacked |
-| C | PAX Name | Customer Name | stacked |
-| D | PNR | Passport | stacked |
-| E | Sector | Carrier \| Class \| Pay | stacked |
-| F | Flight Date | Return Date | stacked |
-| G | Customer Amount | `SAR` label | `rowspan=2` |
-| H | Agent Fare (Net) | `SAR` label | `rowspan=2` |
-| I | MARKUP | `SAR` label | `rowspan=2` |
-| J | Customer Refund | `SAR` label | `rowspan=2` |
-| K | IATA Refund | `SAR` label | `rowspan=2` |
-| L | Payment to IATA | `SAR` label | `rowspan=2` |
-| M | Balance Agent | `SAR` label | `rowspan=2` |
-| N | IATA Agent | Ticket Staff | stacked |
+| Col | Row 1 | Row 2 |
+|-----|-------|-------|
+| A | Issue Date | Category (Ticket/Re-issue/Payment/Refund) |
+| B | **Reference ID** *(Excel says "Invoice No"; renamed — see §2)* | *(stacked)* |
+| C | PAX Name | Customer Name |
+| D | PNR | Passport |
+| E | Sector | Carrier \| Class \| Pay |
+| F | Flight Date | Return Date |
+| G | Customer Amount | *(merged, `SAR` shown in data row 2)* |
+| H | Agent Fare (Net) | *(merged)* |
+| I | MARKUP | *(merged)* |
+| J | Customer Refund | *(merged)* |
+| K | IATA Refund | *(merged)* |
+| L | Payment to IATA | *(merged)* |
+| M | Balance Agent | *(merged)* |
+| N | IATA Agent | Ticket Staff |
 
 **Data — each record renders as 2 stacked `<tr>` rows:**
 
 - **Row 1 (primary):** Issue Date, Ticket No, PAX Name, PNR, Sector, Flight Date, money columns (G–M incl. running Balance Agent), IATA Agent.
-- **Row 2 (secondary):** Category, Invoice No, Customer Name, Passport, Carrier|Class|Pay, Return Date, `SAR` labels under G–M, Ticket Staff.
+- **Row 2 (secondary):** Category, Reference ID, Customer Name, Passport, Carrier|Class|Pay, Return Date, `SAR` labels under G–M, Ticket Staff.
 
-**Footer — Ticket Statement Summary box (bottom-left of last page):**
+**Footer — Ticket Statement Summary box** (bottom-left of last page; all
+**10** fields rendered — Excel shows 8 labels, we add `Total Re-Issue Cost`
+and `Total Paid`, see §5).
 
-- Opening B/L, Total Ticket's, Total Sale Amount, Total Cus RFND
-- Closing B/L, Total Agent Fare, Total MarkUP, Total Agent RFND
+**Filters (Excel row 1):** SEARCH BOX (PNR/TICKET NUM/PASSPORT/INVOICE), Filter Agents, Filter Travel Dates (From/To), Filter Issue Dates (From/To).
 
-**Filters:** SEARCH BOX (PNR/TICKET NUM/PASSPORT/INVOICE), Filter Agents, Filter Travel Dates (From/To), Filter Issue Dates (From/To).
+**Excel "Add/Hide Options" (J23–J26):** toggle Customer Amount, MARKUP, Customer Refund columns.
+
+**Deviations from Excel (confirmed):**
+
+1. Header col B label → **Reference ID** (was "Invoice No").
+2. `Carrier | Class | Pay` → **Pay is an amount** (offer-aware fare), not the word "Cash".
+3. Balance formula → our own Paid − Payable (Excel's example is wrong, see §10 I7/I8).
+4. Footer → 10 fields, not Excel's 8 labels.
+5. No export buttons this iteration (Excel has "Export Options pdf/excel" — deferred).
 
 ---
 
 ## 2. Scope Decisions (confirmed)
 
 - **Full:** layout + live data (controller, JSON API, running balance, summary footer). No PDF/Excel export this iteration.
-- **Balance logic:** `+ issued_tickets.net_fare` per Ticket, `+ re_issued_tickets.total_cost` per Re-issue, `− refunded_tickets.iata_refunded_amount` per Refund, `− payments.amount` per Payment. Opening B/L = same sums over all history **before** `issue_from`.
-- **Row sources:** Ticket + Payment + Refund + **Re-issue** (4 categories).
+- **Balance = Paid − Payable** (matches `TicketAgentReportController`; negative = due to agent). Per-row deltas:
+  - Ticket: **− `issued_tickets.net_fare`**
+  - Re-issue: **− `re_issued_tickets.total_cost`** (used as-is; the paired refund row already accounts for the IATA refund)
+  - Refund: **+ `refunded_tickets.iata_refunded_amount`**
+  - Payment: **+ `payments.amount`**
+- **Row sources:** Ticket + Payment + Refund + Re-issue (4 categories).
 - **Access:** `role:Super Admin,Co Admin,Ticket Admin` on both page and API routes.
+- **No branch filter** this iteration.
+- **Ticket rows:** only `issued_tickets.status IN ('issued', 're-issued', 'refunded')`.
 
 ---
 
-## 3. Implementation Steps
+## 3. Filters
 
-### 3.1 Routes — `routes/web.php:332`
+Single date range + date-type selector:
+
+```
+[ Date Type ▾ ]  From [date]  To [date]   [ Agents ▾ ]  [ SEARCH BOX ]  [Search]
+```
+
+- **Date Type options:** `Issue Date` (default) · `Flight Date (Inbound Date)` · `Return Date (Outbound Date)`
+- **Date column per type:**
+
+| Date Type | Ticket/Re-issue/Refund rows | Payment rows |
+|---|---|---|
+| Issue Date | `issued_date` / `re_issue_date` / `refund_date` (`COALESCE(date, created_at)` for the latter two) | `payment_date` |
+| Flight Date (Inbound) | `inbound_date` — NULL → row excluded | excluded |
+| Return Date (Outbound) | `outbound_date` — NULL → row excluded | excluded |
+
+- **Payment rows render only when Date Type = Issue Date.**
+- **All filters (search, agent, date) affect balance math.** Opening B/L uses
+  identical filters with `date < From`.
+- **Range cap: 92 days** → 422 if exceeded. API route also throttled.
+
+| Param | Applies to | Notes |
+|---|---|---|
+| `date_type` | which date column is used | `issue` (default) / `flight` / `return` |
+| `date_from` / `date_to` | selected date column | required; max span 92 days; default: start of current month → today |
+| `search` | all rows + math | matches ticket_number, pnr, passport_no, Reference ID (`bookings.invoice_id` or `vouchers.voucher_id`), pax/customer name |
+| `agent_id` | all rows + math | `ticket_agent_id` (guaranteed NOT NULL, see §7); empty = All |
+
+---
+
+## 4. Column Mapping
+
+| Column | Source |
+|---|---|
+| **Ticket No** | `ticket_number` on the row's own table (`issued_tickets` / `re_issued_tickets` / `refunded_tickets`); payment rows → `-` |
+| **Reference ID** | Ticket/Re-issue/Refund → `bookings.invoice_id` (via `booking`, or `refund->issuedTicket->booking`, `reissue->issuedTicket->booking`); Payment → `payment->voucher->voucher_id`. Search matches both. |
+| **Carrier \| Class \| Pay** | Airline/Class → `ticket_fare_id` **on the row's own table** → `ticket_fares.airline` / `airlineClass`, fallback `-`. **Pay → amount:** `offer_price` if `ticket_fares.ticket_type == 'offer'` else `selling_fare`, read from the row's own table (`group` → `selling_fare`) |
+| **Customer Amount** | Same offer-aware amount as Pay |
+| **MARKUP (Ticket/Re-issue/Refund rows)** | Ticket: `Pay − net_fare`. Re-issue: `re_issued_tickets.service_charge`. Refund: `refunded_tickets.service_charge` |
+| **Flight Date** | `inbound_date` (row's table); payment rows `-` |
+| **Return Date** | `outbound_date` (row's table); payment rows `-` |
+| **Customer Name** | `booking.customer->name` |
+| **PAX Name / Passport / Sector** | ticket → `passenger`; reissue/refund → `issuedTicket->passenger`; Sector = `passenger->route_display` accessor |
+| **Ticket Staff** | `user_id` on the row's own table (`issuer()` on IssuedTicket, `user()` on ReIssuedTicket/RefundedTicket); **payment row → empty** |
+| **IATA Agent** | `ticket_agent_id` → `ticket_agents.name` (NOT NULL) |
+
+**Re-issue row** = full Ticket-style row, all values from `re_issued_tickets`
+joined to booking/passenger via `issued_ticket_id` (required server-side —
+nullable in DB only for historical reasons; no null handling needed).
+
+**Payment rows short-circuit:** all ticket/pax/staff detail cells render `-`
+without walking booking relations.
+
+---
+
+## 5. Running Balance & Summary
+
+### 5.1 Running balance
+
+1. Merge the four source queries (filters applied — including search).
+2. Sort `date asc → category asc → id asc` (stable tie-break).
+3. Iterate, keeping per-agent counters keyed by `ticket_agent_id`:
+   - `opening[agent]` = Σ deltas of filtered rows with `date < date_from`
+   - `running[agent]` starts at `opening[agent]`, += row delta each row
+4. Row payload's `balance` = `running[agent]` after that row.
+5. `closing_balance` = Opening + Σ period deltas (equals last row's balance per agent).
+
+### 5.2 Display: agent-grouped sections
+
+- **Agent filter = single agent:** one continuous table, rows date-asc.
+- **Agent filter = All:** rows grouped by agent (ordered by `TicketAgent.name`):
+  1. Section header row (full width): `FLYBURJ — Opening B/L: 15,000.00`
+  2. That agent's rows, date-asc, coherent per-agent running balance
+  3. Section total row: `FLYBURJ — Closing B/L: 22,000.00`
+- Balance column always reads as one continuous sequence inside a section.
+- Global footer: `opening_balance` = Σ agent openings; `closing_balance` = Σ agent closings.
+
+### 5.3 Summary footer — all 10 fields
+
+| Key | Formula |
+|---|---|
+| `opening_balance` | Σ deltas, filtered rows with `date < date_from` |
+| `closing_balance` | Opening + Σ period deltas (= Σ agent closings) |
+| `total_tickets` | COUNT of Ticket rows (status-filtered, in period) |
+| `total_sale_amount` | Σ **Pay** (offer-aware amounts) |
+| `total_customer_refund` | Σ `refunded_tickets.refund_to_customer` |
+| `total_agent_fare` | Σ `issued_tickets.net_fare` |
+| `total_markup` | Σ ticket-row markup (`Pay − net_fare`) + Σ `re_issued_tickets.service_charge` + Σ `refunded_tickets.service_charge` |
+| `total_agent_refund` | Σ `refunded_tickets.iata_refunded_amount` |
+| `total_reissue_cost` | Σ `re_issued_tickets.total_cost` |
+| `total_paid` | Σ `payments.amount` |
+
+All totals computed over period rows with all filters applied.
+
+---
+
+## 6. Implementation Steps
+
+### 6.1 Routes — `routes/web.php:332`
 
 ```php
 // Replace closure:
@@ -61,41 +176,27 @@ Route::get('/reports/statement', [StatementController::class, 'index'])
 
 Route::get('/api/reports/statement', [StatementController::class, 'data'])
     ->name('api.reports.statement')
-    ->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    ->middleware(['role:Super Admin,Co Admin,Ticket Admin', 'throttle:30,1']);
 ```
 
 Add `use App\Http\Controllers\StatementController;`.
 
-### 3.2 New controller — `app/Http/Controllers/StatementController.php`
+### 6.2 New controller — `app/Http/Controllers/StatementController.php`
 
-Pattern sources: `TicketAgentReportController` (index/data JSON), `VisaAgentReportController:246-254` (running balance), `PendingOutboundReportController` (query building + filters).
+Self-contained — **no pattern references** for balance or header markup (see §10 I5).
+Verified references kept: `TicketAgentReportController` (index/data JSON,
+`paid − payable` sign), `PendingOutboundReportController` (query building + filters).
 
-**`index()`** — load `TicketAgent::orderBy('name')->get()` → `view('reports.statement')`.
-
-**`data(Request $request)`** — filters:
-
-| Param | Applies to | Notes |
-|---|---|---|
-| `search` | all rows | matches ticket_number, pnr, passport_no, invoice (booking.invoice_id), pax/customer name |
-| `agent_id` | all rows | `ticket_agent_id`; required per-agent balance grouping |
-| `issue_from` / `issue_to` | date column of each source | default: start of current month → today |
-| `travel_from` / `travel_to` | outbound/inbound dates of ticket-like rows | payment rows not travel-filtered |
-
-**Source queries (merged, sorted by date asc):**
-
-| Category | Source | Date col | Balance | Row values |
-|---|---|---|---|---|
-| Ticket | `issued_tickets` | `issued_date` | **+ `net_fare`** | Customer Amt = `selling_fare`, Agent Fare = `net_fare`, MARKUP = selling − net |
-| Re-issue | `re_issued_tickets` | `re_issue_date` | **+ `total_cost`** | Customer Amt = `total_customer_payment`, Agent Fare = `total_cost`, MARKUP = diff |
-| Refund | `refunded_tickets` | `refund_date` | **− `iata_refunded_amount`** | Customer Refund = `refund_to_customer`, IATA Refund = `iata_refunded_amount` |
-| Payment | `payments` (`ticket_agent_id` NOT NULL) | `payment_date` | **− `amount`** | Payment to IATA = `amount` |
-
-**Balance rules:**
-
-- Opening B/L = Σ(same deltas) over rows with `date < issue_from` for the selected agent(s).
-- Running balance accumulates row-by-row (date asc) in the period.
-- Closing B/L = Opening + Σ period deltas.
-- If agent filter = All, running balance is computed **per agent independently** (grouped by `ticket_agent_id`).
+- **`index()`** — `TicketAgent::orderBy('name')->get()` → `view('reports.statement')`.
+- **`data(Request $request)`** — validate params (`date_type`, `date_from/date_to`
+  max 92 days, `search`, `agent_id`); run the four source queries per §3/§4;
+  apply status filter (`issued`,`re-issued`,`refunded`) on `issued_tickets`;
+  `COALESCE(date, created_at)` for `re_issue_date`/`refund_date`;
+  model queries only (soft-deleted rows excluded automatically);
+  merge → sort (`date, category, id`) → per-agent balances (§5.1) →
+  group for display when All (§5.2) → summary (§5.3).
+- **Response JSON:** `{ "rows": [...], "sections": [...] (when All), "summary": {...}, "agents": [...] }`.
+  `agents` returned from `index()` view data only (not duplicated in `data()`).
 
 **Row payload shape (one entry = one logical record = 2 `<tr>`s):**
 
@@ -104,13 +205,13 @@ Pattern sources: `TicketAgentReportController` (index/data JSON), `VisaAgentRepo
   "date": "01-Mar-26",
   "category": "Ticket | Re-issue | Payment | Refund",
   "ticket_no": "779-9461466422",
-  "invoice_no": "INV #04499",
+  "reference_id": "INV #04499",
   "pax_name": "Md Kamal",
   "customer_name": "ISLAM/MD ROBIUL MR",
   "pnr": "JJUKMH",
   "passport": "A1234567",
   "sector": "RUH-DAC",
-  "carrier_class_pay": "BS | Eco | Cash",
+  "carrier_class_pay": "BS | Eco | 2820",
   "flight_date": "10-Apr-26",
   "return_date": "-",
   "customer_amount": 2820.00,
@@ -119,53 +220,100 @@ Pattern sources: `TicketAgentReportController` (index/data JSON), `VisaAgentRepo
   "customer_refund": null,
   "iata_refund": null,
   "payment_to_iata": null,
-  "balance": 2820.00,
+  "balance": -2700.00,
   "agent_name": "FLYBURJ",
   "staff_name": "Shahadat"
 }
 ```
 
-**Column mapping for Row 2 data:**
+### 6.3 Write-side fix — L3 (2 small edits)
 
-- Invoice No → `booking.invoice_id` (via `issued_ticket->booking`, `refund->issuedTicket->booking`, `payment->booking/invoice`).
-- Customer Name → `booking.customer->name`.
-- Passport → `passenger->passport_no`.
-- Sector → `passenger->route_display` accessor.
-- Carrier|Class|Pay → ticket fare airline + class + linked `payments.payment_method` (`cash`/`bank`), fallback `-`.
-- Flight Date → outbound; Return Date → inbound (`inbound_date` / `passenger->flight_date_to`).
-- Ticket Staff → `issued_tickets.user_id → users.name`.
+- `ReIssueController` and `RefundController` store
+  `ticket_agent_id = $validated['ticket_agent_id'] ?? $sourceTicket->ticket_agent_id`
+  (mirrors `TicketRequestController:233,454`).
+- Report-side `COALESCE` **not used** — the NOT NULL constraint (§6.4) is the
+  single source of truth; queries filter/group on `ticket_agent_id` directly.
 
-**Response JSON:** `{ "rows": [...], "summary": {...}, "agents": [...] }`.
+### 6.4 Migration A — `database/migrations/2026_10_01_000001_backfill_and_not_null_ticket_agent_id.php`
 
-**Summary keys:** `opening_balance`, `total_tickets`, `total_sale_amount`, `total_customer_refund`, `closing_balance`, `total_agent_fare`, `total_markup`, `total_agent_refund`, `total_reissue_cost`, `total_paid`.
+1. Backfill `re_issued_tickets` / `refunded_tickets` `ticket_agent_id` from the
+   source `issued_tickets.ticket_agent_id` where NULL (pre-check query: warn if
+   any source ticket also has NULL).
+2. `->change()` both columns to `NOT NULL`.
 
-### 3.3 Rewrite view — `resources/views/reports/statement.blade.php`
+### 6.5 Migration B — `database/migrations/2026_10_01_000002_add_date_indexes_for_statement_report.php`
 
-- Alpine `x-data` with `filters`, `rows`, `summary`, `loading`; `init()` calls `loadData()`; `loadData()` builds `URLSearchParams` and fetches `/api/reports/statement` (pattern: `pending-outbound.blade.php:605-631`).
-- **Filters row:** SEARCH BOX input, Filter Agents select, Filter Travel Dates From/To, Filter Issue Dates From/To, Search button (with `@input.debounce.300ms`).
-- **`<thead>` = 2 `<tr>`:**
-  - Row 1: `th` for A–F + N (stacked), `rowspan="2"` for G–M.
-  - Row 2: `th` for Category, Invoice No, Customer Name, Passport, Carrier|Class|Pay, Return Date, Ticket Staff.
-  - Grouped-header reference: `reports/fingerprint/index.blade.php:129-161`.
-- **Body:** `<template x-for>` renders **two `<tr>` per record** (primary then secondary, one after another); category-colored rows (`table-row-ticket`, `table-row-pymt`, `table-row-refund`, `table-row-reissue` — style like `ui-references/statement.html`); second row shows `SAR` labels under money columns.
-- **Column hide/show toggles** (Alpine booleans) for Customer Amount, MARKUP, Customer Refund — Excel "Add/Hide Options" (J23–J26).
-- **Footer:** Ticket Statement Summary box (8 fields, bottom-left) + loading/empty states.
+No date indexes exist today (verified):
+
+- `issued_tickets`: `issued_date`, `inbound_date`, `outbound_date`, `(ticket_agent_id, issued_date)`
+- `re_issued_tickets`: `re_issue_date`, `inbound_date`, `outbound_date`
+- `refunded_tickets`: `refund_date`, `inbound_date`, `outbound_date`
+- `payments`: `payment_date`, `(ticket_agent_id, payment_date)`
+
+### 6.6 Rewrite view — `resources/views/reports/statement.blade.php`
+
+- Alpine `x-data` with `filters`, `rows`, `summary`, `loading`; `init()` →
+  `loadData()` builds `URLSearchParams` and fetches `/api/reports/statement`
+  (fetch pattern: `pending-outbound.blade.php:605-631`).
+- **Filters row:** Date Type dropdown (3 options), From/To dates, Agents select, SEARCH BOX input, Search button (`@input.debounce.300ms`).
+- **`<thead>` = 2 `<tr>` — specified inline, no external reference:**
+
+```html
+<tr> <!-- row 1 -->
+  <th rowspan="2">Issue Date</th> <th rowspan="2">Ticket No</th>
+  <th rowspan="2">PAX Name</th> <th rowspan="2">PNR</th>
+  <th rowspan="2">Sector</th> <th rowspan="2">Flight Date</th>
+  <th rowspan="2">Customer Amount</th> <th rowspan="2">Agent Fare (Net)</th>
+  <th rowspan="2">MARKUP</th> <th rowspan="2">Customer Refund</th>
+  <th rowspan="2">IATA Refund</th> <th rowspan="2">Payment to IATA</th>
+  <th rowspan="2">Balance Agent</th> <th rowspan="2">IATA Agent</th>
+</tr>
+<tr> <!-- row 2 -->
+  <th>Category</th><th>Reference ID</th><th>Customer Name</th><th>Passport</th>
+  <th>Carrier | Class | Pay</th><th>Return Date</th><th>Ticket Staff</th>
+</tr>
+```
+
+- **Body:** `<template x-for>` renders **two `<tr>` per record** (primary then
+  secondary). When Agent = All, insert agent **section header/total rows** (§5.2).
+  Category-colored rows: `table-row-ticket`, `table-row-pymt`, `table-row-rfnd`,
+  `table-row-reis` (new). Second data row shows `SAR` labels under money columns.
+- **Row colors:** inline `<style>` block in this view (pattern:
+  `reports/due.blade.php:32`) — do **not** touch `app.css`.
+- **Column hide/show toggles** (Alpine booleans) for Customer Amount, MARKUP, Customer Refund.
+- **Footer:** Ticket Statement Summary box with all 10 fields (bottom-left) + loading/empty states.
 - No export buttons this iteration.
 
-### 3.4 TDD tests — `tests/Feature/StatementReportTest.php` (write first)
+### 6.7 Nav gate — `resources/views/partials/nav.blade.php`
 
-Use `RefreshDatabase`; fixture helpers patterned on `ReportQueryOptimizationTest::createBookingWithPassengers()` and `ProfitLossReportBranchFilterTest`.
+Lines 40 and 150: change `$canAccessTicket` → **`$canAccessTicketReport`**
+(Ticket Statement visible only to Super Admin / Co Admin / Ticket Admin —
+otherwise Ticket Staff sees the link and gets 403).
+
+---
+
+## 7. TDD Tests — `tests/Feature/StatementReportTest.php` (write first)
+
+Use `RefreshDatabase`; fixture helpers patterned on `ReportQueryOptimizationTest::createBookingWithPassengers()` (private — copy, don't call) and `ProfitLossReportBranchFilterTest` (role attach: `Role::create` + `roles()->attach`).
 
 1. `test_api_returns_all_four_categories` — fixtures for ticket/reissue/refund/payment; assert row categories + payload shape.
-2. `test_running_balance_and_opening_closing` — Opening B/L from pre-period history; running Balance Agent per row; Closing = Opening + deltas.
-3. `test_issue_date_filter` — rows outside range excluded.
-4. `test_travel_date_filter` — ticket rows filtered by outbound/inbound; payments unaffected.
-5. `test_search_filter` — by ticket no / PNR / passport / invoice.
-6. `test_agent_filter` — per-agent balance isolation when agent selected.
-7. `test_role_middleware` — 403 for unauthorized role, 200 for Super Admin / Ticket Admin.
-8. `test_view_renders_two_row_layout` — render view; assert stacked header (`Issue Date` + `Category`) and two-row record structure.
+2. `test_running_balance_paid_minus_payable` — Paid − Payable signs per §2; opening from pre-period history; `closing_balance == last row balance`.
+3. `test_date_type_filters` — Issue/Flight/Return each select the right rows; payment rows absent under Flight/Return; NULL inbound/outbound excluded under those types.
+4. `test_date_range_cap` — span > 92 days → 422.
+5. `test_search_filter` — ticket no / PNR / passport / `bookings.invoice_id` / `vouchers.voucher_id`.
+6. `test_agent_grouped_sections` — All → section headers/closings per agent; single agent → flat table; per-agent balance isolation.
+7. `test_role_middleware` — 403 for authenticated unauthorized role; 302 for guest (auth group).
+8. `test_status_and_soft_delete_filters` — `pending` tickets excluded; soft-deleted rows excluded.
+9. `test_created_at_fallback` — null `re_issue_date`/`refund_date` fall back to `created_at`.
+10. `test_offer_aware_pricing` — offer fare → `offer_price`, regular → `selling_fare`; assert MARKUP, `total_sale_amount`, `total_markup`.
+11. `test_reissue_row_joins_via_issued_ticket` — reissue row shows booking/passenger data through `issued_ticket_id`.
+12. `test_agent_fallback_on_write` — reissue/refund created without explicit agent inherits source ticket's agent; DB rejects NULL (`ticket_agent_id` NOT NULL).
+13. `test_summary_formulas` — assert each of the 10 footer fields against fixtures.
+14. `test_view_renders_two_row_layout` — stacked header (`Issue Date` + `Category`), **Reference ID** label, 10-field footer, payment row short-circuit (no ticket/staff cells).
 
-### 3.5 Verify (commit checklist)
+---
+
+## 8. Verify (commit checklist)
 
 ```bash
 php artisan test
@@ -177,81 +325,68 @@ docker compose -f docker-compose.prod.yml config --quiet
 
 ---
 
-## 4. Assumptions
+## 9. Assumptions
 
-1. Re-issue row: `Agent Fare (Net) = total_cost` (drives balance), `Customer Amount = total_customer_payment`.
-2. Payment rows = `payments` where `ticket_agent_id` is set (payments made *to* the IATA agent).
-3. Travel-date filter applies to ticket/reissue/refund rows only; payment rows settle regardless.
-4. Currency label stays `SAR` as in the Excel (no multi-currency handling).
-5. Default issue-date range = current month.
-6. No pagination initially — date-bounded query, all rows returned (default range is one month).
+1. Re-issue row: `Agent Fare (Net) = total_cost` (drives balance), `Customer Amount = offer-aware selling/offer price`, `MARKUP = service_charge`.
+2. Payment rows = `payments` where `ticket_agent_id` is set (payments made *to* the IATA agent); shown only under Date Type = Issue Date.
+3. Currency label stays `SAR` (no multi-currency handling).
+4. Default date range = current month start → today, capped at 92 days.
+5. No pagination — date-bounded query (≤ 92 days), all rows returned.
+6. `issued_date` is always populated (client + server-side validation); `re_issue_date`/`refund_date` fall back to `created_at`.
+7. `re_issued_tickets.issued_ticket_id` / `refunded_tickets.issued_ticket_id` always set (required server-side).
+8. `ticket_agent_id` always set on re-issue/refund (write-side fallback + NOT NULL).
+9. Money displayed with 2 decimals (`number_format`); no rounding of stored `decimal(14,6)` values in math.
 
 ---
 
-## 5. Files Touched
+## 10. Decisions Log (audit findings → resolutions)
+
+| Item | Resolution |
+|---|---|
+| I1 CSS classes | Row colors via inline `<style>` in the view; classes `table-row-ticket`, `table-row-pymt`, `table-row-rfnd`, `table-row-reis` (new) |
+| I2 Nav/role mismatch | Nav gate → `$canAccessTicketReport` (§6.7) |
+| I3 Payment Invoice No | Header renamed **Reference ID**; payment rows show `vouchers.voucher_id`; search matches it |
+| I4 §1 header table | Corrected — G–M are merged cells, `SAR` in data rows |
+| I5 Reference drift | Plan no longer depends on `VisaAgentReportController` / fingerprint header; balance algorithm and rowspan markup specified in-plan (§5.1, §6.6) |
+| I6 No re-issue sample in Excel | Re-issue row = full issue row + re-issue fields from `re_issued_tickets` (§4) |
+| I7/I8 Excel balance example wrong | Excel example ignored; own Paid − Payable formula used (§2) |
+| I9/L8 Refund/Re-issue markup | Refund → `refunded_tickets.service_charge`; Re-issue → `re_issued_tickets.service_charge` |
+| I10 `issued_date` nullable | Guaranteed by validation; treated as non-null |
+| L1 Filters + balance math | All filters affect math (§3) |
+| L2 Re-issue after refund | `total_cost` used as-is; refund row accounts for IATA refund |
+| L3 NULL agent | Write-side fallback (§6.3) + backfill + NOT NULL (§6.4) |
+| L4 Nullable dates | `COALESCE(date, created_at)` (Issue Date type); NULL inbound/outbound excluded under Flight/Return types |
+| L5 Soft deletes | Eloquent model queries only |
+| L6 Summary formulas | Explicit formulas for all 10 keys (§5.3) |
+| L7 Per-agent balance hostile | Agent-grouped sections when All (§5.2) |
+| L9 Tie-breaking | Sort `date → category → id` |
+| L10/L17 Performance | Throttle (`30,1`), 92-day cap, date indexes (§6.5) |
+| L11 Misc gaps | `agents` loaded once in `index()`; 2-decimal display; `agent_id` empty = All; `carrier_class_pay` resolved via L13 |
+| L12 Status filter | Only `issued`, `re-issued`, `refunded` |
+| L13 Pay semantics | Pay = offer-aware fare amount; airline/class from row's `ticket_fare_id` |
+| L14 Travel filter semantics | Date Type selector defines the exact column; NULL handling per §3 |
+| L15 Branch filter | None this iteration |
+| L16 Footer fields | All 10 rendered |
+| L18 Footer formulas | Per §5.3 |
+| Smaller 1 | Balance = Paid − Payable (like Ticket Agent Report) |
+| Smaller 2 | Staff column empty for payment rows |
+| Smaller 3 | Files table updated (§11) |
+| Smaller 4 | Payment rows short-circuit (§4) |
+
+---
+
+## 11. Files Touched
 
 | File | Change |
 |---|---|
-| `routes/web.php` | Replace closure route; add API route + role middleware |
+| `routes/web.php` | Replace closure; add API route + role middleware + throttle |
 | `app/Http/Controllers/StatementController.php` | **New** — index/data |
-| `resources/views/reports/statement.blade.php` | Full rewrite — 2-row header, stacked rows, filters, footer |
+| `app/Http/Controllers/ReIssueController.php` | Agent fallback on write (L3) |
+| `app/Http/Controllers/RefundController.php` | Agent fallback on write (L3) |
+| `database/migrations/2026_10_01_000001_backfill_and_not_null_ticket_agent_id.php` | **New** — backfill + NOT NULL |
+| `database/migrations/2026_10_01_000002_add_date_indexes_for_statement_report.php` | **New** — date/agent indexes |
+| `resources/views/reports/statement.blade.php` | Full rewrite — 2-row rowspan header, stacked rows, filters, agent sections, 10-field footer, inline row-color styles |
+| `resources/views/partials/nav.blade.php` | Gate → `$canAccessTicketReport` |
 | `tests/Feature/StatementReportTest.php` | **New** — feature tests |
 
 Reference only (do not modify): `docs/Sales & Customer Statement Format.xlsx`, `ui-references/statement.html`.
-
----
-
-## 6. Audit Findings (inconsistencies & loopholes)
-
-> Result of investigating this plan against the Excel spec, the codebase, and the
-> DB schema **before** implementation. Every item below must be resolved (or
-> explicitly accepted) before Step 3.x starts.
-
-### 6.1 Factual inconsistencies (plan vs. reality)
-
-| # | Finding | Evidence | Resolution needed |
-|---|---|---|---|
-| I1 | **Wrong CSS class names** — `table-row-refund` and `table-row-reissue` exist nowhere in the repo. The reference defines `table-row-ticket`, `table-row-pymt`, **`table-row-rfnd`**, and has **no re-issue class at all**. Those styles live only inside `ui-references/` (not loaded at runtime); `resources/css/app.css` has no equivalent. | `ui-references/statement.html:66-95`; `resources/css/app.css:30-57` | Add row-color CSS to `resources/css/app.css` (or an inline `<style>` like `reports/due.blade.php:32`) — **must be added to Files Touched**. Use `table-row-rfnd`; invent a re-issue class (e.g. `table-row-reis`). |
-| I2 | **Nav/role mismatch** — route role = `Super Admin,Co Admin,Ticket Admin`, but the nav link is gated by `$canAccessTicket`, which **includes `Ticket Staff`**. Ticket Staff sees the menu item → 403. | `partials/nav.blade.php:6,40,150` | Either add `Ticket Admin,Ticket Staff` to the route role, or change the nav gate to `$canAccessTicketReport` (`nav.blade.php:7`). Add the touched file to §5. |
-| I3 | **Payment "Invoice No" mismatch** — Excel shows `PYMNT #0325` for payment rows; plan maps to `booking.invoice_id`. The DB has **no payment-number column** (grep: none). | Excel sheet rows 11/19; `payments` migrations | Pick a scheme (e.g. `PYMNT #` + `payments.id`) and make the `search` filter match it (search box claims INVOICE). |
-| I4 | **§1 header table contradicts the sheet** — it lists `SAR` as header row 2 for G–M, but those cells are merged `G3:G4 … M3:M4` (no second header cell). `SAR` appears in each *data* row 2 (sheet row 7), which §1 "Data" and §3.3 already get right. | Excel merges: `G3:G4`–`M3:M4`; sheet row 7 | Fix the §1 table (mark G–M header as single merged cell; move `SAR` to the data-row description). |
-| I5 | **Reference drift (minor)** — `VisaAgentReportController` running balance is `:245-255`, and it is a **single global** balance — it does not demonstrate the harder *per-agent independent* balance this plan requires. `fingerprint/index.blade.php:129-161` uses `colspan`, **not** `rowspan=2` — no reference exists for the rowspan header. | `VisaAgentReportController.php:245-255` | Correct the line refs; note that per-agent balance and rowspan header are new code with no copy-paste source. |
-| I6 | **Excel contains no Re-issue sample rows** — data rows only show Ticket / Payment / Refund. §1 implies the Excel defines the Re-issue category; it doesn't. | Excel rows 6–19 | Re-issue row layout & values are unverified assumptions — confirm with stakeholder. |
-
-### 6.2 Logic loopholes
-
-| # | Loophole | Why it matters | Resolution needed |
-|---|---|---|---|
-| L1 | **Balance integrity under filters (biggest hole).** Opening B/L = all history before `issue_from` (agent filter only), while period rows are narrowed by search/travel filters — and payment rows are explicitly exempt from travel filtering. The Balance column can show a running total whose deltas don't match the visible rows (e.g., travel filter hides an in-period ticket but its refund/payment still nets against a balance that never included the ticket). The plan never states whether filters affect the *math* or only the *display*. | §3.2, Assumption 3 | **Decide before coding:** do search/travel filters apply to balance math (opening + running), or only to which rows render? Recommended: opening/running balance computed from date+agent only; search/travel act as display filters — but then label the balance column accordingly. |
-| L2 | **Re-issue `+total_cost` may double-count after a refund.** `total_cost` embeds `refundedNetFare` (`ReIssueController.php:148-154`), but the paired refund row only subtracts `iata_refunded_amount` — these differ in the Excel's own sample (net 3400 vs IATA refund 1000). Pre-issue → refund → re-issue sequences may inflate the balance. | §2 balance logic, Assumption 1 | Confirm domain rule: `+total_cost` as-is, or `total_cost − refundedNetFare`? Add a dedicated refund+reissue test either way. |
-| L3 | **NULL `ticket_agent_id` on reissue/refund.** Both columns are nullable and `ReIssueController`/`RefundController` store paths have **no fallback** to the source ticket's agent (only `TicketRequestController` does: `:233`, `:454`). Plan says agent filter is "required per-agent grouping" but gives no rule for NULLs. | `re_issued_tickets`/`refunded_tickets` migrations `:15` | Pick: `COALESCE(x.ticket_agent_id, it.ticket_agent_id)` (recommended), or exclude NULL rows, or orphan group under "All". |
-| L4 | **Nullable dates.** `re_issue_date` / `refund_date` are nullable — those rows silently vanish from date-filtered ranges and the date-asc sort (which drives running balance). Existing reports sidestep this by filtering `created_at` (`BranchWiseReportController.php:262-307`). | source date cols | Define `COALESCE(date, created_at)` or explicit exclusion (`whereNotNull`), consistently across period + opening-balance queries. |
-| L5 | **Soft deletes unstated.** All 3 ticket tables are soft-deleting; correctness depends on using Eloquent model queries. Plan's "merged source queries" doesn't say. (`payments` has no soft delete.) | models/migrations | Explicitly require model queries / `whereNull(deleted_at)` on `issued_tickets`, `re_issued_tickets`, `refunded_tickets`. |
-| L6 | **Summary keys have no formulas.** Does `total_sale_amount` include re-issue `total_customer_payment`? Does `total_tickets` count only category=Ticket? Does markup total include the refund row's markup? What is a single Opening/Closing B/L when agent = All (sum of per-agent balances)? | §3.2 summary keys | Write an explicit formula per summary key (§ Excel footer, rows 22–25). |
-| L7 | **Per-agent running balance + "All" agents is display-hostile.** Rows interleaved by date each carry a *different* agent's running balance — the column jumps up/down nonsensically. The Excel only ever shows one agent (FLYBURJ). | §3.2 balance rules | Decide: single-agent-only statement, agent-grouped sections, or sum-aggregate balance when All. |
-| L8 | **MARKUP on refund rows unmapped.** Excel row 16 shows `MARKUP=200` on the refund row; plan's refund row values omit markup. Candidates: `refunded_tickets.refund_compensation` (`RefundController.php:103`) or `iata_refunded − refund_to_customer` (1000−800=200 in the sample). | Excel row 16 | Pick the source (or confirm it's out of scope). |
-| L9 | **Same-date tie-breaking.** Four sources merged with `date asc` only — rows sharing a date have unstable order, so per-row running balance can differ between runs. | §3.2 source queries | Add secondary sort (e.g. date → category → id). |
-| L10 | **Performance.** Opening balance scans full history of 4 tables every request (×per-agent when All), no pagination, user can widen date range indefinitely. | Assumption 6 | Note required indexes on date columns; consider capping the range or computing opening via indexed aggregate. |
-| L11 | **Smaller gaps.** `carrier_class_pay` defined only for ticket rows (link via `payments.passenger_id`? ambiguous; reissue/refund fallback undefined); money is `decimal(14,6)` but no rounding/format rule; `agent_id` called "required" yet "All" allowed; `data()` returns `agents` while `index()` already loads them (pick one). | §3.2 | Resolve during implementation. |
-
-### 6.3 Test coverage gaps (extend §3.4)
-
-Missing from the planned test list:
-
-1. Re-issue balance sign / refund + reissue sequence (L2).
-2. NULL `ticket_agent_id` handling on reissue/refund (L3).
-3. Summary formulas (L6) — assert each footer field against fixtures.
-4. Refund-row MARKUP source (L8).
-5. Payment invoice display `PYMNT #…` + search match (I3).
-6. `closing_balance` = opening + Σ deltas **and** equals last row's running `balance`.
-7. `Ticket Staff` → 403 (or 200, once I2 is decided).
-   - Note: `test_role_middleware` must log in a user *with* an unauthorized role —
-     unauthenticated requests are redirected to login (302), not 403.
-
-### 6.4 Open questions (blocking)
-
-1. Do search/travel filters affect balance math, or only which rows render? (L1)
-2. Re-issue after refund: `+total_cost` correct, or `total_cost − refundedNetFare`? (L2)
-3. NULL agent on reissue/refund: COALESCE to source ticket's agent, or drop? (L3)
-4. Payment reference: `PYMNT #<id>` vs booking invoice — and refund-row MARKUP source? (I3, L8)
-5. Ticket Staff: add to route role, or hide the nav link? (I2)
