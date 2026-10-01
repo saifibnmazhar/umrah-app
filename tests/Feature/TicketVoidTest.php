@@ -327,7 +327,11 @@ class TicketVoidTest extends TestCase
         $passenger = $this->makePassenger();
         $ticket = $this->makeTicket($passenger, ['selling_fare' => 30000]);
 
-        $this->issueTicket($passenger, $ticket, ['issued_date' => null])->assertOk();
+        // issue() now requires issued_date, so issue with a real date (which
+        // also creates the 'issued' log void requires), then null the column
+        // to simulate a legacy regular ticket with no issue date.
+        $this->issueTicket($passenger, $ticket, ['issued_date' => now()->toDateString()])->assertOk();
+        $ticket->update(['issued_date' => null]);
 
         $this->callVoid($passenger, $ticket)->assertOk()->assertJson(['success' => true]);
         $this->assertEquals('pending', $ticket->refresh()->status);
@@ -519,6 +523,7 @@ class TicketVoidTest extends TestCase
             'ticket_number' => 'TN-EDITED',
             'pnr' => 'PNR-EDITED',
             'net_fare' => 5000,
+            'issued_date' => now()->toDateString(),
         ])->assertOk();
 
         $this->issueTicket($passenger, $ticket, [
