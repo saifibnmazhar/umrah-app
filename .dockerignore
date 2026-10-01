@@ -39,6 +39,11 @@ docker-compose*.yml
 Dockerfile
 DEPLOYMENT.md
 deploy-prod.sh
+deploy-staging.sh
+
+# Local DB bootstrap helper — holds a hardcoded MySQL root password and
+# must never be baked into an image.
+create_db.php
 
 # Agent / tooling artifacts
 .hermes

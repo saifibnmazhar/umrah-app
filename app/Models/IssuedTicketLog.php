@@ -25,4 +25,15 @@ class IssuedTicketLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function scopeNotSupersededByVoid($query): void
+    {
+        $query->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('issued_ticket_logs as void_logs')
+                ->whereColumn('void_logs.issued_ticket_id', 'issued_ticket_logs.issued_ticket_id')
+                ->where('void_logs.action', 'void')
+                ->whereColumn('void_logs.id', '>', 'issued_ticket_logs.id');
+        });
+    }
 }

@@ -444,7 +444,8 @@ class BookingPassengerQuery
                     }
                 })),
                 'ticket_issued' => $this->query->whereHas('issuedTickets', fn ($it) => $it->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                    $log->where(fn ($log) => $log->where('action', 'issued')->orWhere('new_data->status', 'issued'));
+                    $log->notSupersededByVoid()
+                        ->where(fn ($log) => $log->where('action', 'issued')->orWhere('new_data->status', 'issued'));
                     if ($dateFrom) {
                         $log->whereDate('created_at', '>=', $dateFrom);
                     }

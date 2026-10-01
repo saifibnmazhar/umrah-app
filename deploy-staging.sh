@@ -1,90 +1,246 @@
 #!/bin/bash
-set -euo pipefail
+
+set -Eeuo pipefail
 
 # ============================================================
-# Staging deployment script
-# Run this on the staging server after GitHub Actions has
-# built and pushed the staging-<sha> image to ghcr.io.
+# Generic Laravel Docker deployment script for STAGING
+# Mirrors deploy-prod.sh — uses docker-compose.staging.yml
 #
-# Usage:
-#   IMAGE_TAG=staging-<sha> ./deploy-staging.sh
-# Or:
-#   ./deploy-staging.sh  (uses IMAGE_TAG env or 'staging')
+# Expected structure:
+#
+# /var/www/staging-umrah.binmishaltravels.com/web/
+# ├── deploy-staging.sh
+# ├── docker-compose.staging.yml
+# └── .env.staging
+#
+# This file mirrors the copy that actually runs on the staging server.
+# That directory is NOT a git clone, so changes have to be applied there
+# by hand or by copying this file over.
 # ============================================================
+
+# ------------------------------------------------------------
+# Paths
+# ------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Auto-derive COMPOSE_PROJECT_NAME from the web directory path if not set
-# /var/www/umrah.binmishaltravels.com/web → umrah-binmishaltravels-com
-if [ -z "${COMPOSE_PROJECT_NAME:-}" ]; then
-    WEB_DIR="$SCRIPT_DIR"
-    DOMAIN_PATH=$(echo "$WEB_DIR" | sed 's|/var/www/||' | sed 's|/web$||')
-    if [ -n "$DOMAIN_PATH" ]; then
-        COMPOSE_PROJECT_NAME=$(echo "$DOMAIN_PATH" | sed 's|/|-|g')
-    else
-        COMPOSE_PROJECT_NAME=$(basename "$WEB_DIR")
-    fi
-    export COMPOSE_PROJECT_NAME
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.staging.yml"
+ENV_FILE="${SCRIPT_DIR}/.env.staging"
+
+# ------------------------------------------------------------
+# Validate required files
+# ------------------------------------------------------------
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "ERROR: docker-compose.staging.yml not found:"
+  echo "$COMPOSE_FILE"
+  exit 1
 fi
 
-IMAGE_TAG=${IMAGE_TAG:-staging}
-
-echo "🚀 Deploying to staging (image: ghcr.io/saifibnmazhar/umrah-app:${IMAGE_TAG})"
-
-# Ensure .env.staging exists
-if [ ! -f "$SCRIPT_DIR/.env.staging" ]; then
-    echo "❌ .env.staging file not found"
-    echo "   Copy .env.staging.sample to .env.staging and configure it"
-    exit 1
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "ERROR: .env.staging not found:"
+  echo "$ENV_FILE"
+  echo ""
+  echo "Copy .env.staging.sample to .env.staging and configure it."
+  exit 1
 fi
 
-# Update IMAGE_TAG in env file
-sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" "$SCRIPT_DIR/.env.staging"
-
-# Load staging env vars for docker compose
-# Extract DB_TYPE for profile selection (Compose --profile needs shell env)
-# All other vars are loaded via --env-file flag in the compose() function
-
-# IMPORTANT: Do NOT use:
-#   source .env.production
-# Laravel .env files are not Bash scripts.
-
-# Read DB_TYPE from .env.staging for profile selection
-DB_TYPE=$(grep -E '^DB_TYPE=' "$SCRIPT_DIR/.env.staging" | tail -1 | cut -d'=' -f2- | tr -d '\r' || true)
-if [ -z "$DB_TYPE" ]; then
-    DB_TYPE=mysql
-fi
+# ------------------------------------------------------------
+# Docker Compose helper
+# ------------------------------------------------------------
 
 compose() {
   docker compose \
-    --env-file "$SCRIPT_DIR/.env.staging" \
-    -f "$SCRIPT_DIR/docker-compose.staging.yml" \
-    --profile "${DB_TYPE}" \
+    --env-file "$ENV_FILE" \
+    -f "$COMPOSE_FILE" \
     "$@"
 }
 
-# Pull the new image
-echo "📥 Pulling image..."
+# ------------------------------------------------------------
+# Load staging environment variables
+# ------------------------------------------------------------
+# Source the env file so bash can access variables like MIGRATE
+# .env.staging with quoted values (APP_NAME="Umrah App Staging")
+# is safe to source.
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
+
+# ------------------------------------------------------------
+# Deployment information
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Laravel Docker Deployment (Staging)"
+echo "========================================"
+echo "Directory : $SCRIPT_DIR"
+echo "Compose   : $COMPOSE_FILE"
+echo "Env file  : $ENV_FILE"
+echo "========================================"
+echo ""
+
+# ------------------------------------------------------------
+# Validate Compose configuration
+# ------------------------------------------------------------
+
+echo "Validating Docker Compose configuration..."
+
+compose config --quiet
+
+echo "Compose configuration is valid."
+
+# ------------------------------------------------------------
+# Show project name
+# ------------------------------------------------------------
+
+PROJECT_NAME="$(
+  compose config --format json |
+    python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+print(data.get("name", "unknown"))
+'
+)"
+
+echo ""
+echo "Docker project: $PROJECT_NAME"
+echo ""
+
+# ------------------------------------------------------------
+# Pull latest application image
+# ------------------------------------------------------------
+
+echo "========================================"
+echo " Pulling application image"
+echo "========================================"
+
 compose pull app
 
-# Stop existing containers
-echo "🛑 Stopping existing containers..."
-compose down
+# ------------------------------------------------------------
+# Stop application
+#
+# We intentionally use `stop` instead of `down`.
+#
+# This preserves:
+# - volumes
+# - networks
+# - containers
+#
+# Most importantly, it only affects THIS Compose project.
+# ------------------------------------------------------------
 
-# Remove old images to free disk space (keep latest)
-docker image prune -f --filter "until=24h" || true
+echo ""
+echo "========================================"
+echo " Stopping application"
+echo "========================================"
 
-# Start new containers
-echo "▶️  Starting containers..."
-compose up -d
+compose stop app || true
 
-# Wait for the entrypoint to finish before running artisan commands.
-# Healthy ⇔ supervisord/nginx up ⇔ entrypoint done: config/route/view
-# cache built and its own migrations run. Running `php artisan migrate`
-# earlier races the entrypoint's `route:cache` (which deletes
-# bootstrap/cache/routes-v7.php, rebuilds, then rewrites it) and causes
-# the routes-v7.php ENOENT failure.
-echo "⏳ Waiting for application to become healthy..."
+# ------------------------------------------------------------
+# Start database
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting database"
+echo "========================================"
+
+compose up -d db
+
+# ------------------------------------------------------------
+# Wait for database health
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Waiting for database"
+echo "========================================"
+
+DB_WAIT_TIMEOUT="${DB_WAIT_TIMEOUT:-120}"
+DB_WAIT_INTERVAL="${DB_WAIT_INTERVAL:-3}"
+
+ELAPSED=0
+
+while true; do
+
+  DB_CONTAINER="$(compose ps -q db)"
+
+  if [[ -z "$DB_CONTAINER" ]]; then
+    echo "Database container has not been created yet."
+  else
+
+    DB_STATUS="$(
+      docker inspect \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+        "$DB_CONTAINER" \
+        2>/dev/null || true
+    )"
+
+    if [[ "$DB_STATUS" == "healthy" ]]; then
+      echo "Database is healthy."
+      break
+    fi
+
+    if [[ "$DB_STATUS" == "no-healthcheck" ]]; then
+      echo "WARNING: Database has no healthcheck."
+      break
+    fi
+
+    echo "Database status: ${DB_STATUS:-starting}"
+  fi
+
+  if ((ELAPSED >= DB_WAIT_TIMEOUT)); then
+    echo ""
+    echo "ERROR: Database did not become healthy within ${DB_WAIT_TIMEOUT} seconds."
+    echo ""
+
+    compose ps
+    exit 1
+  fi
+
+  sleep "$DB_WAIT_INTERVAL"
+  ELAPSED=$((ELAPSED + DB_WAIT_INTERVAL))
+done
+
+# ------------------------------------------------------------
+# Start Redis
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting Redis"
+echo "========================================"
+
+compose up -d redis
+
+# ------------------------------------------------------------
+# Start application
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting application"
+echo "========================================"
+
+compose up -d app
+
+# ------------------------------------------------------------
+# Wait for application health
+#
+# The entrypoint runs chown and its own migrations BEFORE
+# supervisord/nginx start. The healthcheck only turns "healthy"
+# after that, so waiting here guarantees the artisan commands
+# below never run against a half-started app.
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Waiting for application"
+echo "========================================"
 
 APP_WAIT_TIMEOUT="${APP_WAIT_TIMEOUT:-300}"
 APP_WAIT_INTERVAL="${APP_WAIT_INTERVAL:-5}"
@@ -96,7 +252,7 @@ while true; do
   APP_CONTAINER="$(compose ps -q app)"
 
   if [[ -z "$APP_CONTAINER" ]]; then
-    echo "❌ Application container was not created."
+    echo "ERROR: Application container was not created."
     compose ps
     exit 1
   fi
@@ -104,17 +260,16 @@ while true; do
   APP_STATUS="$(
     docker inspect \
       --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
-      "$APP_CONTAINER" \
-      2>/dev/null || true
+      "$APP_CONTAINER" 2>/dev/null || true
   )"
 
   if [[ "$APP_STATUS" == "healthy" ]]; then
-    echo "✅ Application is healthy."
+    echo "Application is healthy."
     break
   fi
 
   if [[ "$APP_STATUS" == "no-healthcheck" ]]; then
-    echo "⚠️ WARNING: Application has no healthcheck."
+    echo "WARNING: Application has no healthcheck."
     break
   fi
 
@@ -124,15 +279,17 @@ while true; do
 
   if (( RESTARTS >= 3 )); then
     echo ""
-    echo "❌ Application container has restarted ${RESTARTS}x — entrypoint is crash-looping (usually a migration error)."
+    echo "ERROR: application container has restarted ${RESTARTS}x — entrypoint is crash-looping (usually a migration error)."
     echo ""
     compose logs --tail=60 app || true
     exit 1
   fi
 
+  echo "Application status: ${APP_STATUS:-starting}"
+
   if ((ELAPSED >= APP_WAIT_TIMEOUT)); then
     echo ""
-    echo "❌ Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
+    echo "ERROR: Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
     echo ""
     compose ps
     exit 1
@@ -142,26 +299,98 @@ while true; do
   ELAPSED=$((ELAPSED + APP_WAIT_INTERVAL))
 done
 
-# Run migrations
-echo "📦 Running migrations..."
-compose exec -T app php artisan migrate --force
+# ------------------------------------------------------------
+# Clear Laravel caches
+#
+# No `|| true` on purpose: the script runs with `set -Eeuo pipefail`,
+# so a failed clear aborts loudly instead of shipping broken state.
+# ------------------------------------------------------------
 
-# Run seeders (for fresh staging DBs — ignores duplicates)
-echo "🌱 Running seeders..."
-compose exec -T app php artisan db:seed --force 2>/dev/null || true
+echo ""
+echo "========================================"
+echo " Clearing Laravel caches"
+echo "========================================"
 
-# Health check
-echo "🏥 Health check..."
-STAGING_URL=$(grep '^APP_URL=' "$SCRIPT_DIR/.env.staging" | cut -d'=' -f2-)
-if [ -z "$STAGING_URL" ]; then
-    APP_PORT=$(grep -E '^APP_PORT=' "$SCRIPT_DIR/.env.staging" | tail -1 | cut -d'=' -f2- | tr -d '\r' || true)
-    STAGING_URL="http://localhost:${APP_PORT:-8001}"
+compose exec -T app php artisan config:clear --no-interaction
+compose exec -T app php artisan route:clear --no-interaction
+compose exec -T app php artisan view:clear --no-interaction
+
+# ------------------------------------------------------------
+# Fix Laravel permissions
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Setting Laravel permissions"
+echo "========================================"
+
+compose exec -T app \
+  chown -R www-data:www-data \
+  storage \
+  bootstrap/cache ||
+  true
+
+# ------------------------------------------------------------
+# Run migrations if enabled
+#
+# In .env.staging:
+#
+# MIGRATE=true
+#
+# Otherwise migrations are skipped.
+# ------------------------------------------------------------
+
+if [[ "$MIGRATE" == "true" ]]; then
+
+  echo ""
+  echo "========================================"
+  echo " Running Laravel migrations"
+  echo "========================================"
+
+  compose exec -T app \
+    php artisan migrate --force
+
+else
+
+  echo ""
+  echo "========================================"
+  echo " Skipping Laravel migrations"
+  echo "========================================"
+  echo "Set MIGRATE=true in .env.staging to enable."
+
 fi
-curl -sf "${STAGING_URL}/up" && echo "" || {
-    echo "❌ Health check failed"
-    compose logs --tail=50 app
-    exit 1
-}
 
-echo "✅ Staging deployment complete"
-echo "   URL: ${STAGING_URL}"
+# ------------------------------------------------------------
+# Log everyone out
+#
+# Runs last, only after a fully successful deploy. Guarded because
+# sessions:flush only exists in images built after this feature —
+# older images warn instead of failing the deploy.
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Forcing all users to log in again"
+echo "========================================"
+
+if compose exec -T app test -f /var/www/html/app/Console/Commands/FlushSessions.php; then
+  compose exec -T app php artisan sessions:flush --force --no-interaction
+else
+  echo "WARNING: this image predates sessions:flush — nobody was logged out."
+fi
+
+# ------------------------------------------------------------
+# Final status
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Staging deployment completed successfully"
+echo "========================================"
+echo ""
+
+compose ps
+
+echo ""
+echo "Docker project: $PROJECT_NAME"
+echo ""

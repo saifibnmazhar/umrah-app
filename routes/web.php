@@ -69,6 +69,17 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Session keep-alive. Any request through the 'web' group rewrites the Redis
+// session TTL, the browser cookie expiry and the XSRF-TOKEN cookie, so one
+// cheap ping per open tab stops a form from ever outliving its CSRF token.
+// Deliberately NOT behind 'auth': it must also answer from /login, which is
+// where a large share of the observed 419s came from.
+Route::get('/_session/ping', function () {
+    return response()->noContent()
+        ->header('X-CSRF-TOKEN', csrf_token())
+        ->header('Cache-Control', 'no-store');
+})->name('session.ping');
+
 // Protected routes (require authentication)
 Route::middleware('auth')->group(function () {
     // Home / Dashboard
@@ -579,6 +590,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
             ->name('bookings.passengers.ticket-edit');
+        Route::post('/bookings/{booking}/passengers/{passenger}/ticket-void', [TicketIssueController::class, 'voidTicket'])
+            ->name('bookings.passengers.ticket-void');
         Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
             ->name('passengers.confirm-group');
         Route::put('/passengers/{passenger}/revert-group', [TicketIssueController::class, 'revertGroup'])

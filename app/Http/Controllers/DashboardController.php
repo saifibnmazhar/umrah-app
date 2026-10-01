@@ -323,12 +323,14 @@ class DashboardController extends Controller
         $totalDueBdt = $invoiceRow->due_bdt ?? 0;
 
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->notSupersededByVoid()
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('inbound_date'))
             ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->notSupersededByVoid()
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('outbound_date'))
             ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))

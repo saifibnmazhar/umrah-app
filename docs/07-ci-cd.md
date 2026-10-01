@@ -91,23 +91,32 @@ Steps:
 
 ## Continuous Deployment (Production)
 
-Deployment is **not** automated in CI/CD. The process is:
+Deployment is **not** automated in CI/CD, and there is **no Watchtower on the
+production server** — nothing polls `ghcr.io` and nothing restarts the app by
+itself. The process is:
 
 1. CI builds and pushes the Docker image to `ghcr.io`
-2. **Watchtower** (running on the ISPConfig server) detects the new image
-3. Watchtower auto-updates the production container within ~5 minutes
+2. You SSH to the production server and run the deploy script
 
-**To deploy manually** (instead of relying on Watchtower):
+**To deploy** (run on the production server, in the project directory):
 
 ```bash
 ./deploy-prod.sh
 ```
 
 This script:
-1. Pulls the latest image from ghcr.io
-2. Starts MySQL 8.0 and Redis 7 first, waits for health
-3. Starts the app container
-4. Fixes storage permissions
+1. Validates `.env.production` exists and the compose file parses
+2. Pulls the latest image from ghcr.io
+3. Stops only the `app` container (`compose stop`, not `compose down`)
+4. Starts MySQL 8.0 and waits for it to report healthy, then starts Redis
+5. Starts the app container
+6. Waits for the app container's healthcheck (fails fast if the entrypoint
+   crash-loops, usually a failing migration)
+7. Fixes storage permissions
+8. Runs migrations when `MIGRATE=true`
+9. Clears the config, route and view caches
+10. Runs `sessions:flush --force` to log everyone out (skipped with a warning
+    on images that predate the command)
 
 **To pin a specific image version** (e.g., for rollback):
 
@@ -131,46 +140,50 @@ IMAGE_TAG=sha-abc123def ./deploy-prod.sh
 
 ### Required GitHub Secrets for Staging
 
-None — staging deploys the same way as production:
-
-1. CI builds and pushes the Docker image to `ghcr.io` (tagged `staging` + `staging-<sha>`)
-2. **Watchtower** (running on the staging server) detects the new image and auto-updates
-
-No SSH secrets are required.
+None. The staging workflow only tests, builds and pushes the image — it has no
+SSH or deployment step, so it needs no credentials beyond the built-in
+`GITHUB_TOKEN`.
 
 ### Staging Deployment
 
-The staging workflow automatically deploys when a commit is pushed to `staging`:
+Pushing to `staging` runs CI:
 
-1. CI runs tests (unit + feature) and npm build
-2. Docker image is built and tagged `staging` + `staging-<sha>`
-3. Image is pushed to `ghcr.io`
-4. **Watchtower** (running on the staging server) detects the new `staging` tag and auto-updates within ~5 minutes
-5. The staging entrypoint runs migrations if `MIGRATE=true` in `.env.staging`
+1. CI runs tests (unit + feature) and the npm build
+2. The Docker image is built and tagged `staging` + `staging-<sha>`
+3. The image is pushed to `ghcr.io`
 
-No SSH secrets are required — staging deploys the same way as production via Watchtower.
-
-**To deploy staging manually:**
+**That is where CI stops.** Nothing is deployed automatically: Watchtower does
+not run on the staging server and `staging.yml` has no deploy job, so an image
+only reaches staging when someone runs the deploy script on that server:
 
 ```bash
+# On the staging server, after CI has pushed
 chmod +x deploy-staging.sh
 IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 ```
 
-The staging deploy script mirrors `deploy-prod.sh` and:
-1. Validates `.env.staging` and `docker-compose.staging.yml` exist
-2. Validates Docker Compose configuration
-3. Pulls the staging image from ghcr.io
-4. Stops the app container (preserving volumes)
-5. Starts DB, Redis, and app containers in order
-6. Waits for DB health (120s timeout)
-7. Fixes Laravel storage permissions
-8. Runs migrations if `MIGRATE=true` in `.env.staging`
-9. Waits for app health (120s timeout)
-10. Prints final container status
+`deploy-staging.sh` then:
 
-Uses `source .env.staging` for env var access, and `docker compose`
-health checks (not public HTTP) for health verification.
+1. Validates the compose file parses and `.env.staging` exists, then sources
+   `.env.staging` so bash can read `$MIGRATE`
+2. Pulls the staging image from ghcr.io
+3. Stops only the `app` container (`compose stop`, not `compose down` — the
+   database is not recreated on every deploy; volumes are never removed)
+4. Starts MySQL 8.0, waits for it to report healthy, then starts Redis
+5. Starts the app container and waits for its healthcheck (fails fast on an
+   entrypoint crash-loop)
+6. Clears the config, route and view caches
+7. Fixes storage permissions
+8. Runs migrations when `MIGRATE=true` (seeders are never run)
+9. Runs `sessions:flush --force` to log everyone out (skipped with a warning
+   on images that predate the command)
+
+The script does **not** update `IMAGE_TAG`, prune images, or curl a URL —
+health comes from `docker compose` healthchecks only. To deploy a pinned
+image, pass the tag in: `IMAGE_TAG=staging-<sha> ./deploy-staging.sh`.
+
+Staging and production intentionally share this behaviour: same caches
+cleared, same forced logout, same Redis persistence.
 
 ### Staging Configuration Files
 
@@ -178,21 +191,22 @@ health checks (not public HTTP) for health verification.
 |------|---------|
 | `.env.staging.sample` | Template for staging environment variables |
 | `docker-compose.staging.yml` | Staging Docker Compose config (ports on 8001, staging DB) |
-| `deploy-staging.sh` | Local staging deployment script |
+| `deploy-staging.sh` | Staging server deployment script (mirrors the copy on that server) |
 
 ### Staging vs Production Differences
 
 | Aspect | Production | Staging |
 |--------|-----------|---------|
 | Image tag | `latest` + `sha-<short-sha>` | `staging` + `staging-<sha>` |
-| Deploy method | Watchtower (auto) | Watchtower (auto) |
+| Deploy method | Manual: `./deploy-prod.sh` on the server | Manual: `./deploy-staging.sh` on the server |
+| Watchtower | Not installed | Not installed |
 | DB name | `binmishal_umrah_live` | `umrah_staging` |
-| Port | 8000 | 8001 |
+| Port | 8000 (`APP_PORT`) | 8001 |
 | APP_ENV | `production` | `staging` |
 | APP_DEBUG | `false` | `true` |
-| Auto-deploy | Watchtower (5 min delay) | Watchtower (5 min delay) |
-| Seeders | Not run | Not run (MIGRATE=false) |
-| `MIGRATE` | `false` (entrypoint) | `false` (entrypoint) |
+| Auto-deploy | None — CI pushes, you deploy | None — CI pushes, you deploy |
+| Seeders | Never run by the deploy script | Never run by the deploy script |
+| `MIGRATE` | `true` (run in the entrypoint **and** the script) | `false` unless enabled |
 
 ---
 

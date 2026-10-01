@@ -447,7 +447,7 @@ function loadTicketFares(filters = {}) {
                 const airline = f.airline || {};
                 const cls = f.airline_class?.class || {};
                 const routeLabel = formatRoute(route);
-                return '<option value="' + f.id + '">' +
+                return '<option value="' + f.id + '"' + (f.is_active === false ? ' disabled' : '') + '>' +
                     escapeHtml(f.ticket_type || '') + ' - ' +
                     escapeHtml(routeLabel) + ' - ' +
                     escapeHtml(airline.name || '') + ' - ' +
@@ -644,6 +644,7 @@ function confirmProcess() {
         outbound_date: document.getElementById('inputDownDate').value || null,
         issued_date: document.getElementById('inputTravelDate').value || null,
         ticket_agent_id: document.getElementById('inputAgent').value || null,
+        net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
     };
 
     if (!payload.ticket_fare_id) {
