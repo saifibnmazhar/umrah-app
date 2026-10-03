@@ -100,7 +100,9 @@ class BackfillVisaSubmissionPrices extends Command
      *
      * - Booking package never changed -> keep the submission as-is (it holds
      *   the historical price for that package).
-     * - Booking package changed (swap at T) -> the price the package had at T.
+     * - Booking package changed (swap at T) -> the price the package had at T
+     *   per package_update_logs; if no logged visa_selling_price_id change
+     *   exists after T, the price never changed after the swap -> current.
      */
     private function decide(Booking $booking, Package $package): array
     {
@@ -134,8 +136,13 @@ class BackfillVisaSubmissionPrices extends Command
 
     /**
      * The visa selling price id the package held at the given moment,
-     * reconstructed from package_update_logs. Returns null when the history
-     * is insufficient to decide.
+     * reconstructed from package_update_logs rows containing
+     * visa_selling_price_id (logged edits that don't touch the price —
+     * fare_updated, renames — do not count). When no such row exists after
+     * the moment, the price was never changed after the swap
+     * (pre-log era: used packages were locked), so the current price id is
+     * returned. packages.updated_at is deliberately ignored.
+     * Returns null only when a price row after the moment lacks old_values.
      */
     private function resolvePriceAt(Package $package, Carbon $at): ?int
     {
@@ -164,18 +171,8 @@ class BackfillVisaSubmissionPrices extends Command
             return $value;
         }
 
-        if ($package->updated_at && Carbon::parse($package->updated_at)->greaterThan($at)) {
-            // The package changed after the swap but nothing was logged:
-            // the price at the swap moment cannot be verified.
-            $visibleAfter = PackageUpdateLog::where('package_id', $package->id)
-                ->where('created_at', '>', $at)
-                ->exists();
-
-            if (! $visibleAfter) {
-                return null;
-            }
-        }
-
+        // No logged visa_selling_price_id change after the swap:
+        // the package's price was never updated (price-wise) -> current price.
         return (int) $package->visa_selling_price_id;
     }
 }

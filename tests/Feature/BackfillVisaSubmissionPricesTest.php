@@ -256,7 +256,7 @@ class BackfillVisaSubmissionPricesTest extends TestCase
         );
     }
 
-    public function test_skips_when_package_updated_after_swap_without_logs(): void
+    public function test_syncs_when_package_updated_after_swap_without_logs(): void
     {
         $booking = $this->createBooking($this->deps['packageB']);
         $passenger = $this->createPassenger($booking);
@@ -264,15 +264,45 @@ class BackfillVisaSubmissionPricesTest extends TestCase
 
         $this->logPackageSwap($booking, $this->deps['packageA']->id, $this->deps['packageB']->id, now()->subDays(5));
 
-        // Package changed after the swap but no history was recorded (CLI/pre-log era edit).
+        // updated_at bumped after the swap but no price-change row in
+        // package_update_logs -> price never changed -> apply current price.
         DB::table('packages')->where('id', $this->deps['packageB']->id)->update(['updated_at' => now()]);
 
         $this->artisan('umrah:backfill-visa-submission-prices')
-            ->expectsOutputToContain('Skipped: 1')
+            ->expectsOutputToContain('Applied: 1')
             ->assertExitCode(0);
 
         $this->assertEquals(
-            $this->deps['priceA']->id,
+            $this->deps['priceB']->id,
+            $visa->fresh()->visa_selling_price_id
+        );
+    }
+
+    public function test_syncs_when_only_non_price_fields_logged_after_swap(): void
+    {
+        $booking = $this->createBooking($this->deps['packageB']);
+        $passenger = $this->createPassenger($booking);
+        $visa = $this->createVisaSubmission($passenger, $this->deps['priceA']);
+
+        $this->logPackageSwap($booking, $this->deps['packageA']->id, $this->deps['packageB']->id, now()->subDays(5));
+
+        // A logged edit that does NOT touch visa_selling_price_id (fare cascade)
+        // must not be treated as a price update.
+        $log = PackageUpdateLog::create([
+            'package_id' => $this->deps['packageB']->id,
+            'user_id' => $this->user->id,
+            'action' => 'fare_updated',
+            'old_values' => ['regular_price' => 35000.00],
+            'new_values' => ['regular_price' => 36000.00],
+        ]);
+        DB::table('package_update_logs')->where('id', $log->id)->update(['created_at' => now()]);
+
+        $this->artisan('umrah:backfill-visa-submission-prices')
+            ->expectsOutputToContain('Applied: 1')
+            ->assertExitCode(0);
+
+        $this->assertEquals(
+            $this->deps['priceB']->id,
             $visa->fresh()->visa_selling_price_id
         );
     }
