@@ -338,8 +338,8 @@ class ReportQueryOptimizationTest extends TestCase
 
         DB::enableQueryLog();
         $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
         ]));
         DB::disableQueryLog();
 
@@ -363,8 +363,8 @@ class ReportQueryOptimizationTest extends TestCase
 
         Auth::login($user);
         $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
         ]));
 
         $response->assertOk();
@@ -376,8 +376,8 @@ class ReportQueryOptimizationTest extends TestCase
         $this->assertCount(1, $data['data'], 'Should have 1 customer row');
 
         $passengerResponse = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'tab' => 'passenger',
         ]));
         $passengerResponse->assertOk();
@@ -410,8 +410,8 @@ class ReportQueryOptimizationTest extends TestCase
 
         Auth::login($user);
         $response = $this->get(route('api.reports.profit-loss.summary', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
         ]));
 
         $response->assertOk();
@@ -447,8 +447,8 @@ class ReportQueryOptimizationTest extends TestCase
         Auth::login($user);
 
         $profit = $this->get(route('api.reports.profit-loss.summary', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'profit_loss_filter' => 'profit',
         ]))->json();
 
@@ -456,8 +456,8 @@ class ReportQueryOptimizationTest extends TestCase
         $this->assertEquals(100.0, $profit['customer']['total_profit']);
 
         $loss = $this->get(route('api.reports.profit-loss.summary', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'profit_loss_filter' => 'loss',
         ]))->json();
 
@@ -478,8 +478,8 @@ class ReportQueryOptimizationTest extends TestCase
         Auth::login($user);
 
         $page1 = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'tab' => 'customer',
             'page' => 1,
             'per_page' => 200,
@@ -490,8 +490,8 @@ class ReportQueryOptimizationTest extends TestCase
 
         // With a per_page of 2, we should get 3 pages
         $small = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'tab' => 'customer',
             'page' => 1,
             'per_page' => 2,
@@ -517,8 +517,8 @@ class ReportQueryOptimizationTest extends TestCase
         Auth::login($user);
 
         $response = $this->get(route('report.profit-loss.print', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'type' => 'customer',
         ]));
 
@@ -538,8 +538,8 @@ class ReportQueryOptimizationTest extends TestCase
         Auth::login($user);
 
         $response = $this->get(route('report.profit-loss.print', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'type' => 'passenger',
         ]));
 
@@ -721,8 +721,8 @@ class ReportQueryOptimizationTest extends TestCase
 
         DB::enableQueryLog();
         $response = $this->get(route('report.profit-loss.print', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
             'type' => 'customer',
         ]));
         DB::disableQueryLog();
@@ -732,5 +732,142 @@ class ReportQueryOptimizationTest extends TestCase
         $response->assertOk();
         $this->assertLessThan(35, $queryCount,
             'Profit/Loss print should execute fewer than 35 queries for 10 bookings. Actual: '.$queryCount);
+    }
+
+    /**
+     * Part E: query count must be independent of row count — 10 bookings vs
+     * 800 bookings (shared branch), both types × both date modes.
+     */
+    /** @test */
+    public function test_profit_loss_print_query_count_is_flat_across_row_counts(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $branch = Branch::create([
+            'name' => 'Flat Branch',
+            'address' => 'Address',
+            'contacts' => '0501234567',
+            'location' => 'KSA',
+            'fingerprint_operation' => true,
+            'branch_code' => 'FLAT01',
+        ]);
+        $customer = Customer::create([
+            'name' => 'Flat Customer',
+            'passport_no' => 'FLATCP01',
+            'iqama_type' => 'none',
+            'mobile_no' => '0501234567',
+            'address' => 'Test Address',
+        ]);
+
+        // Event-free bulk seeding: observers would recalculate per row and
+        // dominate the runtime at 800 bookings.
+        $seed = function (int $fromIndex, int $count) use ($user, $deps, $branch, $customer): void {
+            Booking::withoutEvents(function () use ($fromIndex, $count, $user, $deps, $branch, $customer): void {
+                for ($i = $fromIndex; $i < $fromIndex + $count; $i++) {
+                    $booking = Booking::create([
+                        'user_id' => $user->id,
+                        'customer_id' => $customer->id,
+                        'fingerprint_branch_id' => $branch->id,
+                        'district_id' => $deps['district']->id,
+                        'package_id' => $deps['package']->id,
+                        'fingerprint_charge_id' => $deps['fingerprintCharge']->id,
+                        'booking_branch_id' => $branch->id,
+                        'invoice_id' => 'RFLAT-'.str_pad((string) $i, 5, '0', STR_PAD_LEFT),
+                        'date_gap_id' => $deps['flightDateGap']->id,
+                        'fingerprint_location' => 'office',
+                        'pax_qty' => 1,
+                        'discount_type' => 'fixed_amount',
+                        'discount_value' => 0,
+                        'discount_amount' => 0,
+                        'total_value' => 50000.00,
+                        'remarks' => '',
+                        'currency_rate_id' => $deps['currencyRate']->id,
+                        'is_cancelled' => false,
+                    ]);
+
+                    Invoice::create([
+                        'booking_id' => $booking->id,
+                        'branch_id' => $branch->id,
+                        'user_id' => $user->id,
+                        'total_amount' => 50000.00,
+                        'paid_amount' => 25000.00,
+                        'balance' => 25000.00,
+                        'status' => 'partial',
+                    ]);
+
+                    Passenger::create([
+                        'booking_id' => $booking->id,
+                        'passenger_status_id' => $deps['passengerStatusId'],
+                        'first_name' => 'Flat'.$i,
+                        'last_name' => 'Rider',
+                        'passport_no' => 'FLATP'.str_pad((string) $i, 5, '0', STR_PAD_LEFT),
+                        'mobile_no' => '0501234567',
+                        'date_of_birth' => '1990-01-01',
+                        'passenger_type' => 'adult',
+                        'passport_expiry' => '2030-12-31',
+                        'stay_duration' => 14,
+                        'service_required' => 'all',
+                        'flight_date_from' => now()->addDays(5)->toDateString(),
+                        'flight_date_to' => now()->addDays(15)->toDateString(),
+                        'ticket_status' => 'pending',
+                        'visa_status' => 'pending',
+                        'address' => 'Test Address',
+                        'ticket_fare_id' => $deps['ticketFare']->id,
+                        'package_value' => 25000.00,
+                        'ticket_profit' => 100.00,
+                        'ticket_profit_effective_at' => now()->subDay()->toDateTimeString(),
+                    ]);
+                }
+            });
+        };
+
+        $measure = function (array $params): int {
+            DB::enableQueryLog();
+            DB::flushQueryLog();
+            $response = $this->get(route('report.profit-loss.print', $params));
+            DB::disableQueryLog();
+            $response->assertOk();
+
+            return count(DB::getQueryLog());
+        };
+
+        $window = [
+            'booking_date_from' => now()->subDays(60)->toDateString(),
+            'booking_date_to' => now()->addDays(1)->toDateString(),
+        ];
+        $effective = [
+            'effective_date_from' => now()->subDays(30)->toDateString(),
+            'effective_date_to' => now()->toDateString(),
+        ];
+
+        $combos = [
+            'customer/booking' => $window + ['type' => 'customer'],
+            'passenger/booking' => $window + ['type' => 'passenger'],
+            'customer/effective' => $effective + ['type' => 'customer'],
+            'passenger/effective' => $effective + ['type' => 'passenger'],
+        ];
+
+        Auth::login($user);
+
+        $seed(0, 10);
+        $small = [];
+        foreach ($combos as $label => $params) {
+            $small[$label] = $measure($params);
+        }
+
+        $seed(10, 790);
+        $large = [];
+        foreach ($combos as $label => $params) {
+            $large[$label] = $measure($params);
+        }
+
+        foreach (array_keys($combos) as $label) {
+            $delta = abs($large[$label] - $small[$label]);
+            $this->assertLessThanOrEqual(3, $delta,
+                "Query count for {$label} must not scale with row count: 10-row={$small[$label]}, 800-row={$large[$label]}");
+            $this->assertLessThan(60, $large[$label],
+                "800-row {$label} print exceeded the flat budget: {$large[$label]}");
+        }
     }
 }

@@ -30,11 +30,15 @@ class ProfitCalculationService
 
     public function isPassengerCancelledForProfit(Passenger $passenger): bool
     {
+        $passenger->loadMissing('status');
+
         if ($passenger->relationLoaded('cancelledPassengers')) {
-            return $passenger->cancelledPassengers->contains(fn ($row) => $row->status === CancelledBookingStatus::CANCELLED);
+            return $passenger->cancelledPassengers->contains(fn ($row) => $row->status === CancelledBookingStatus::CANCELLED)
+                || $passenger->isOnCancel();
         }
 
-        return $passenger->cancelledPassengers()->where('status', CancelledBookingStatus::CANCELLED->value)->exists();
+        return $passenger->cancelledPassengers()->where('status', CancelledBookingStatus::CANCELLED->value)->exists()
+            || $passenger->isOnCancel();
     }
 
     public function recalculatePassengerProfit(Passenger $passenger): float
@@ -65,7 +69,7 @@ class ProfitCalculationService
 
     public function recalculateBookingProfit(Booking $booking): float
     {
-        $booking->loadMissing('passengers.cancelledPassengers', 'passengers.visaSubmission', 'passengers.allIssuedTickets', 'fingerprint', 'fingerprintCharge');
+        $booking->loadMissing('passengers.cancelledPassengers', 'passengers.status', 'passengers.visaSubmission', 'passengers.allIssuedTickets', 'fingerprint', 'fingerprintCharge');
 
         foreach ($booking->passengers as $passenger) {
             if ($this->isPassengerCancelledForProfit($passenger)) {
@@ -165,7 +169,7 @@ class ProfitCalculationService
 
     public function getCustomerProfitBreakdown(Booking $booking): array
     {
-        $booking->loadMissing('passengers.cancelledPassengers', 'fingerprint', 'fingerprintCharge');
+        $booking->loadMissing('passengers.cancelledPassengers', 'passengers.status', 'fingerprint', 'fingerprintCharge');
 
         $passengers = [];
         $allPassengersEffective = $booking->passengers->reject(fn ($p) => $this->isPassengerCancelledForProfit($p))->isNotEmpty();
@@ -360,6 +364,7 @@ class ProfitCalculationService
             ->whereDoesntHave('cancelledBooking', fn ($q) => $q->where('status', CancelledBookingStatus::CANCELLED->value))
             ->with([
                 'passengers.cancelledPassengers',
+                'passengers.status',
                 'passengers.visaSubmission.cancelledSubmissions',
                 'passengers.allIssuedTickets.ticketFare',
                 'passengers.allIssuedTickets.reIssuedTickets',

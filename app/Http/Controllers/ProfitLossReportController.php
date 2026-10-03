@@ -17,12 +17,12 @@ class ProfitLossReportController extends Controller
         'customer',
         'invoice',
         'fingerprint',
-        'fingerprintCharge',
         'cancelledBooking',
         'package.ticketFare',
         'package.ticketFareInbound',
         'package.ticketFareOutbound',
         'passengers.cancelledPassengers',
+        'passengers.status',
         'passengers.visaSubmission.cancelledSubmissions',
         'passengers.visaSubmission.visaSellingPrice',
         'passengers.allIssuedTickets.ticketFare',
@@ -35,7 +35,19 @@ class ProfitLossReportController extends Controller
         'invoice',
         'fingerprint',
         'fingerprintCharge',
+        'cancelledBooking',
         'passengers.cancelledPassengers',
+        'passengers.status',
+    ];
+
+    private const PRINT_EFFECTIVE_WITHS = [
+        'customer',
+        'cancelledBooking',
+        'passengers.cancelledPassengers',
+        'passengers.status',
+        'passengers.allIssuedTickets.ticketFare',
+        'passengers.allIssuedTickets.reIssuedTickets',
+        'passengers.allIssuedTickets.refundedTickets',
     ];
 
     private function excludeCancelledBookings($query, string $table = 'bookings')
@@ -51,13 +63,20 @@ class ProfitLossReportController extends Controller
 
     private function excludeCancelledPassengers($query, string $table = 'passengers')
     {
-        return $query->whereNotExists(function ($q) use ($table) {
-            $q->select(DB::raw(1))
-                ->from('cancelled_passengers as cp')
-                ->whereColumn('cp.passenger_id', $table.'.id')
-                ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
-                ->whereNull('cp.deleted_at');
-        });
+        return $query
+            ->whereNotExists(function ($q) use ($table) {
+                $q->select(DB::raw(1))
+                    ->from('cancelled_passengers as cp')
+                    ->whereColumn('cp.passenger_id', $table.'.id')
+                    ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
+                    ->whereNull('cp.deleted_at');
+            })
+            ->where(function ($q) use ($table) {
+                $q->whereNull($table.'.passenger_status_id')
+                    ->orWhere($table.'.passenger_status_id', '<>', DB::raw(
+                        "COALESCE((SELECT id FROM passenger_statuses WHERE name = 'Cancel'), -1)"
+                    ));
+            });
     }
 
     private function bookingsQuery(Request $request)
@@ -102,10 +121,7 @@ class ProfitLossReportController extends Controller
                             ->whereNull('it.deleted_at')
                             ->where('it.issue_type', 'additional')
                             ->whereIn('it.status', ['issued', 're-issued', 'refunded'])
-                            ->whereRaw(
-                                'COALESCE(it.issued_date, (SELECT itl.created_at FROM issued_ticket_logs itl WHERE itl.issued_ticket_id = it.id AND itl.new_data LIKE ? ORDER BY itl.created_at DESC LIMIT 1)) BETWEEN ? AND ?',
-                                ['%"status":"issued"%', $from, $to]
-                            );
+                            ->whereBetween('it.issued_date', [$from, $to]);
                     })
                     ->orWhereExists(function ($exists) use ($from, $to) {
                         $exists->select(DB::raw(1))
@@ -231,7 +247,7 @@ class ProfitLossReportController extends Controller
             ->leftJoin('fingerprints', 'fingerprints.booking_id', '=', 'bookings.id')
             ->leftJoin('invoices', 'invoices.booking_id', '=', 'bookings.id')
             ->leftJoin(
-                DB::raw("(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p WHERE NOT EXISTS (SELECT 1 FROM cancelled_passengers cp WHERE cp.passenger_id = p.id AND cp.status = '{$cancelled}' AND cp.deleted_at IS NULL) GROUP BY p.booking_id) AS psum"),
+                DB::raw("(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p WHERE NOT EXISTS (SELECT 1 FROM cancelled_passengers cp WHERE cp.passenger_id = p.id AND cp.status = '{$cancelled}' AND cp.deleted_at IS NULL) AND (p.passenger_status_id IS NULL OR p.passenger_status_id <> COALESCE((SELECT id FROM passenger_statuses WHERE name = 'Cancel'), -1)) GROUP BY p.booking_id) AS psum"),
                 'psum.booking_id',
                 '=',
                 'bookings.id'
@@ -380,7 +396,7 @@ class ProfitLossReportController extends Controller
 
     private function effectiveAdditionalTotal($passengerIds, string $from, string $to): float
     {
-        $tickets = IssuedTicket::with(['ticketFare', 'logs'])
+        $tickets = IssuedTicket::with(['ticketFare'])
             ->whereIn('passenger_id', $passengerIds)
             ->where('issue_type', 'additional')
             ->whereIn('status', ['issued', 're-issued', 'refunded'])
@@ -551,13 +567,13 @@ class ProfitLossReportController extends Controller
             }
             $this->applyBranchFilter($query, $request);
 
-            $paginator = $query->select('passengers.*')->paginate($perPage, ['*'], 'page', $page);
+            $paginator = $query->select('passengers.*')
+                ->orderBy('passengers.id', 'asc')
+                ->paginate($perPage, ['*'], 'page', $page);
 
             $ids = collect($paginator->items())->pluck('id');
 
-            $bookings = Booking::with(array_merge(self::BOOKING_WITHS, [
-                'passengers.allIssuedTickets.logs',
-            ]))
+            $bookings = Booking::with(self::BOOKING_WITHS)
                 ->whereHas('passengers', fn ($q) => $q->whereIn('id', $ids))
                 ->get();
 
@@ -618,19 +634,18 @@ class ProfitLossReportController extends Controller
         }
         $this->applyBranchFilter($query, $request);
 
-        $bookingIds = $query->pluck('bookings.id');
-        $total = $bookingIds->count();
+        $paginator = $query->select('bookings.*')
+            ->with(self::BOOKING_WITHS)
+            ->orderBy('bookings.id', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
 
-        $bookings = Booking::with(self::BOOKING_WITHS)->whereIn('id', $bookingIds)->get();
-        $rows = $this->mapCustomers($bookings, $profitService);
-
-        $rows = array_slice($rows, ($page - 1) * $perPage, $perPage);
+        $rows = $this->mapCustomers(collect($paginator->items()), $profitService);
 
         return response()->json([
             'data' => $rows,
-            'current_page' => $page,
-            'last_page' => max(1, (int) ceil($total / $perPage)),
-            'total' => $total,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'total' => $paginator->total(),
         ]);
     }
 
@@ -661,7 +676,7 @@ class ProfitLossReportController extends Controller
 
             $passengerIds = $passengerQuery->select('passengers.id')->pluck('id');
 
-            $bookings = Booking::with(self::PRINT_BOOKING_WITHS)
+            $bookings = Booking::with(self::PRINT_EFFECTIVE_WITHS)
                 ->whereHas('passengers', fn ($q) => $q->whereIn('passengers.id', $passengerIds))
                 ->get();
 
@@ -698,7 +713,7 @@ class ProfitLossReportController extends Controller
                 ]);
             }
 
-            $customers = collect($this->mapCustomersForPrint($bookings, $profitService));
+            $customers = collect();
         } else {
             $query = Booking::with(self::PRINT_BOOKING_WITHS)
                 ->whereHas('invoice');

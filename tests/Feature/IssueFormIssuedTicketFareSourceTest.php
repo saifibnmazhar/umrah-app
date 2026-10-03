@@ -472,6 +472,7 @@ class IssueFormIssuedTicketFareSourceTest extends TestCase
             'ticket_number' => 'TKT002',
             'pnr' => 'PNR002',
             'net_fare' => 24000,
+            'issued_date' => now()->toDateString(),
             'selling_fare' => 111111,
             'offer_price' => 222222,
         ]);

@@ -43,7 +43,7 @@ class TicketIssueController extends Controller
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'group_ticket_id' => 'nullable|exists:group_tickets,id',
-            'issued_date' => 'nullable|date',
+            'issued_date' => 'required|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
             'net_fare' => 'nullable|numeric|min:0',
@@ -180,6 +180,14 @@ class TicketIssueController extends Controller
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
 
+        // Hoisted above validate() so the issued_date rule below can depend on the
+        // ticket's status — zero added queries (the lookup already ran after
+        // validation; a null lookup keeps issued_date nullable so validation
+        // still runs first and the 404 below keeps its current precedence).
+        $issuedTicket = IssuedTicket::where('id', $request->input('issued_ticket_id'))
+            ->where('passenger_id', $passenger->id)
+            ->first();
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -187,7 +195,9 @@ class TicketIssueController extends Controller
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'group_ticket_id' => 'nullable|exists:group_tickets,id',
-            'issued_date' => 'nullable|date',
+            // Re-issue edits may omit the date (re_issue_date falls back to the
+            // existing record below); every other edit must supply it.
+            'issued_date' => ($issuedTicket && $issuedTicket->status !== 're-issued') ? 'required|date' : 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
             'net_fare' => 'nullable|numeric|min:0',
@@ -213,10 +223,6 @@ class TicketIssueController extends Controller
             'payment_option' => 'nullable|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => 'nullable|numeric|min:0',
         ]);
-
-        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
-            ->where('passenger_id', $passenger->id)
-            ->first();
 
         if (! $issuedTicket) {
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
