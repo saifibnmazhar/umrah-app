@@ -252,6 +252,7 @@ class IssuedDateRequiredTest extends TestCase
             $this->booking->id, $this->passenger->id,
         ]), [
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             'issued_date' => now()->toDateString(),
         ]);
 
@@ -319,6 +320,7 @@ class IssuedDateRequiredTest extends TestCase
             $this->booking->id, $this->passenger->id,
         ]), [
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             're_issue_charge' => 100,
             'payment_by' => 'company',
         ]);

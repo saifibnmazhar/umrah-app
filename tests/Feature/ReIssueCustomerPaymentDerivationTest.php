@@ -446,6 +446,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             're_issue_charge' => 120,
             'payment_by' => 'company',
         ]);
@@ -478,6 +479,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'payment_by' => 'customer',
             'total_customer_payment' => 180,
         ]);
@@ -513,6 +515,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'payment_by' => 'customer',
             'total_customer_payment' => 50,
         ]);

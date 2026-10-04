@@ -218,6 +218,7 @@ class TicketIssueReIssueFareSourceTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             're_issue_charge' => 100,
             'payment_by' => 'company',
         ]);

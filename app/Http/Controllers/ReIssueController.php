@@ -119,9 +119,17 @@ class ReIssueController extends Controller
                 $oldData['issued_ticket_id'] = $issuedTicket->id;
             }
 
+            $resolvedAgentId = $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id;
+
+            if (! $resolvedAgentId) {
+                DB::rollBack();
+
+                return response()->json(['message' => 'Ticket agent is required to process this re-issue.'], 422);
+            }
+
             $reIssueData = array_merge($validated, [
                 'user_id' => auth()->id(),
-                'ticket_agent_id' => $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id,
+                'ticket_agent_id' => $resolvedAgentId,
                 'fare_difference' => (float) ($validated['fare_difference'] ?? 0),
                 'other_costs' => (float) ($validated['other_costs'] ?? 0),
                 'service_charge' => 0,

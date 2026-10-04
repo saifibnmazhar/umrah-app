@@ -25,15 +25,30 @@ return new class extends Migration
                 'ticket_agent_id' => DB::raw('(SELECT ticket_agent_id FROM issued_tickets WHERE issued_tickets.id = refunded_tickets.issued_ticket_id)'),
             ]);
 
-        // Warn (not fail) if rows remain NULL: orphan issued_ticket_id or source agent also NULL.
-        $orphanReissue = DB::table('re_issued_tickets')->whereNull('ticket_agent_id')->count();
-        $orphanRefund = DB::table('refunded_tickets')->whereNull('ticket_agent_id')->count();
+        // Fail fast if rows remain NULL (orphan issued_ticket_id or source
+        // agent also NULL): running ->change() on a partial state would crash
+        // mid-migrate on MySQL. Backfill these orphans with a human-chosen
+        // agent (R0 audit) before deploying. See §12 of
+        // docs/plans/16-statement-report-plan.md.
+        $orphanReissueIds = DB::table('re_issued_tickets')->whereNull('ticket_agent_id')->pluck('id')->all();
+        $orphanRefundIds = DB::table('refunded_tickets')->whereNull('ticket_agent_id')->pluck('id')->all();
 
-        if ($orphanReissue > 0 || $orphanRefund > 0) {
-            logger()->warning('Statement report migration: rows with NULL ticket_agent_id remain after backfill', [
-                're_issued_tickets' => $orphanReissue,
-                'refunded_tickets' => $orphanRefund,
-            ]);
+        if ($orphanReissueIds !== [] || $orphanRefundIds !== []) {
+            $audit = <<<'SQL'
+                SELECT ri.id FROM re_issued_tickets ri
+                  LEFT JOIN issued_tickets it ON it.id = ri.issued_ticket_id
+                  WHERE ri.ticket_agent_id IS NULL
+                    AND (ri.issued_ticket_id IS NULL OR it.ticket_agent_id IS NULL);
+                -- same for refunded_tickets
+                SQL;
+
+            throw new RuntimeException(
+                'Migration aborted: rows with NULL ticket_agent_id remain after backfill. '.
+                'Backfill them with a human-chosen agent (R0 audit) before deploying. '.
+                're_issued_tickets: ['.implode(',', $orphanReissueIds).'] '.
+                'refunded_tickets: ['.implode(',', $orphanRefundIds).'] '.
+                'Audit query: '.$audit
+            );
         }
 
         Schema::table('re_issued_tickets', function (Blueprint $table) {
