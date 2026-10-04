@@ -390,3 +390,28 @@ docker compose -f docker-compose.prod.yml config --quiet
 | `tests/Feature/StatementReportTest.php` | **New** — feature tests |
 
 Reference only (do not modify): `docs/Sales & Customer Statement Format.xlsx`, `ui-references/statement.html`.
+
+---
+
+## 12. Follow-up: NOT NULL Impact & Resolution (post-implementation audit)
+
+### 12.1 Issues found (system-wide investigation)
+
+| # | Issue | Blast radius |
+|---|---|---|
+| I-A | Migration A (`2026_10_01_000001`) throws mid-`migrate` on MySQL if orphan rows exist (NULL `issued_ticket_id` or NULL source agent); the `logger()->warning` does not prevent the crash | Deploy blocker (production `migrate`) |
+| I-B | Reissue/refund on historically agent-less issued tickets → HTTP 500 (`SQLSTATE 23000`) on all 4 child writers (`TicketRequestController:242,463`, `ReIssueController:124`, `RefundController:98`) via NULL-inheriting fallback | Live users (reissue/refund flows) |
+| I-C | Requiring agent at `TicketIssueController issue()/edit()` (`:43,:195`) breaks ~10 test payloads in 7 files expecting success without an agent | Tests only (list: `TicketVoidTest:218,521`, `IssuedDateRequiredTest:251,318`, `BookingInactiveFareSourcesTest:403`, `IssueFormIssuedTicketFareSourceTest:467`, `TicketIssueReIssueFareSourceTest:219`, `ReIssueCustomerPaymentDerivationTest:447,479,514`, `ReIssueEditRefundedNonCustomerTest:210`, `ReIssueEditRefundPayableAdjustTest:248`) |
+| I-D | Extending NOT NULL to `issued_tickets.ticket_agent_id` would break booking creation (18 agent-less placeholder creates: `BookingController` store/add-passenger/update, `PassengerController` visa-only switch, `TicketIssueController` auto-creates, group-confirm, 2 backfill commands) | Must NOT do — `issued_tickets` stays nullable |
+
+Verified safe (no action): all issue/edit UIs already force agent selection client-side; `processAdditional` already `required` server-side; group-confirm/create-pending/revert untouched; all profit/cost readers never select the agent column; seeders set agents; no jobs/listeners/internal callers; no later migration touches these columns.
+
+### 12.2 Resolution plan
+
+- **R0 — Pre-deploy orphan audit:** count `re/refunded_tickets` rows with NULL agent whose source is NULL/missing; backfill with a real (human-chosen) agent before deploying.
+- **R1 — Harden Migration A:** fail fast with orphan IDs + audit queries instead of warn-and-crash.
+- **R2 — Require agent at issue:** `TicketIssueController:43,195` `nullable` → `required` (UI already compliant; `:261` fallback kept).
+- **R3 — 422 guard in 4 child writers** when resolved (explicit ?? source) agent is NULL (legacy-row safety net).
+- **R4 — Update the ~10 test payloads** in the 7 files (fixture-only).
+- **R5 — Non-goal:** `issued_tickets.ticket_agent_id` stays nullable.
+- **R6 — Verify:** full suite + pint + build; manual 422 checks (issue without agent; reissue of legacy NULL-agent ticket); prod orphan audit = 0.
