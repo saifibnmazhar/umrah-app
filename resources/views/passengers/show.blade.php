@@ -530,7 +530,9 @@ $visaSellingPriceValue = (float)(
 <script>
 const passengerId = {{ $passenger->id }};
 const bookingId = {{ $passenger->booking_id ?? 'null' }};
-const csrfToken = '{{ csrf_token() }}';
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
 const canDeleteDocument = {{ $canDeleteDocument ? 'true' : 'false' }};
 
 // ============================================
@@ -566,7 +568,7 @@ function handleDocumentUpload(input) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-Diag-Id': diagId,
                 },
@@ -592,7 +594,7 @@ function handleDocumentUpload(input) {
 
     fetch(`/passengers/${passengerId}/documents`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Diag-Id': diagId },
+        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'X-Diag-Id': diagId },
         body: formData
     })
     .then(response => response.json())
@@ -658,7 +660,7 @@ function deleteDocument(documentId) {
 
     fetch(`/passengers/${passengerId}/documents/${documentId}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
+        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
     })
     .then(response => response.json())
     .then(data => {
@@ -719,7 +721,7 @@ function handleCancellation(e) {
     fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-cancel`, {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': csrfToken,
+            'X-CSRF-TOKEN': getCsrfToken(),
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         },
@@ -803,7 +805,7 @@ function resubmitData() {
             fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-resubmit`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                 },

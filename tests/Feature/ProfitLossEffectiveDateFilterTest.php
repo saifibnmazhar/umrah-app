@@ -26,6 +26,7 @@ use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProfitLossEffectiveDateFilterTest extends TestCase
@@ -548,5 +549,39 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
         $this->assertStringNotContainsString('this.effective_date_to = \'\'', $html);
         $this->assertStringNotContainsString('this.booking_date_from = \'\'', $html);
         $this->assertStringNotContainsString('this.booking_date_to = \'\'', $html);
+    }
+
+    /** @test */
+    public function effective_filter_reads_issued_date_without_correlated_log_subquery(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-Q', [
+            'visa_profit' => 100.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 1000.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'profit' => 1100.00,
+        ]);
+
+        Auth::login($user);
+
+        DB::enableQueryLog();
+        $response = $this->get(route('api.reports.profit-loss.summary', [
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+        DB::disableQueryLog();
+
+        $response->assertOk();
+        $sql = collect(DB::getQueryLog())->pluck('query')->implode("\n");
+        $this->assertStringNotContainsString(
+            'issued_ticket_logs itl',
+            $sql,
+            'A4: effective-date additional-ticket filter must read issued_date directly, not the correlated log subquery.'
+        );
+        $this->assertStringContainsString('issued_date', $sql);
     }
 }

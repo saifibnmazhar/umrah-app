@@ -59,13 +59,20 @@ class BranchWiseReportController extends Controller
                 ->whereNull('cb.deleted_at');
         });
 
-        $excludeCancelledPassengers = fn ($query) => $query->whereNotExists(function ($q) {
-            $q->select(DB::raw(1))
-                ->from('cancelled_passengers as cp')
-                ->whereColumn('cp.passenger_id', 'p.id')
-                ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
-                ->whereNull('cp.deleted_at');
-        });
+        $excludeCancelledPassengers = fn ($query) => $query
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('cancelled_passengers as cp')
+                    ->whereColumn('cp.passenger_id', 'p.id')
+                    ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
+                    ->whereNull('cp.deleted_at');
+            })
+            ->where(function ($q) {
+                $q->whereNull('p.passenger_status_id')
+                    ->orWhere('p.passenger_status_id', '<>', DB::raw(
+                        "COALESCE((SELECT id FROM passenger_statuses WHERE name = 'Cancel'), -1)"
+                    ));
+            });
 
         $visaSubmitted = VisaUpdateLog::where('new_values->status', 'submitted')
             ->whereDate('created_at', '>=', $dateFrom)
@@ -120,6 +127,7 @@ class BranchWiseReportController extends Controller
         $totalDueBdt = $invoiceRow->due_bdt ?? 0;
 
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->notSupersededByVoid()
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('inbound_date'))
@@ -127,6 +135,7 @@ class BranchWiseReportController extends Controller
             ->count();
 
         $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->notSupersededByVoid()
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('outbound_date'))
@@ -325,10 +334,7 @@ class BranchWiseReportController extends Controller
                             ->whereNull('it.deleted_at')
                             ->where('it.issue_type', 'additional')
                             ->whereIn('it.status', ['issued', 're-issued', 'refunded'])
-                            ->whereRaw(
-                                'COALESCE(it.issued_date, (SELECT itl.created_at FROM issued_ticket_logs itl WHERE itl.issued_ticket_id = it.id AND itl.new_data LIKE ? ORDER BY itl.created_at DESC LIMIT 1)) BETWEEN ? AND ?',
-                                ['%"status":"issued"%', $dateFromFull, $dateToFull]
-                            );
+                            ->whereBetween('it.issued_date', [$dateFromFull, $dateToFull]);
                     })
                     ->orWhereExists(function ($exists) use ($dateFromFull, $dateToFull) {
                         $exists->select(DB::raw(1))

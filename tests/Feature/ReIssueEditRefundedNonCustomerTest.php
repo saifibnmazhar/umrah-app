@@ -88,6 +88,8 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
             $table->string('status')->default('pending');
             $table->string('issue_type')->nullable();
             $table->decimal('net_fare', 14, 6)->default(0);
+            $table->decimal('selling_fare', 14, 6)->default(0);
+            $table->decimal('offer_price', 14, 6)->default(0);
             $table->timestamps();
             $table->softDeletes();
         });

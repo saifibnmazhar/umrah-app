@@ -91,22 +91,22 @@
                     <div>
                         <div id="fieldAgentRefundSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
-                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmount" oninput="handleFieldSarInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmount" oninput="handleFieldSarInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge(); clearFieldError('inputAgentRefundAmount')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                         </div>
                         <div id="fieldAgentRefundBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
-                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmountBdt" oninput="handleFieldBdtInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmountBdt" oninput="handleFieldBdtInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge(); clearFieldError('inputAgentRefundAmount')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             <input type="number" id="inputAgentRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                         </div>
                     </div>
                     <div>
                         <div id="fieldCustomerRefundSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
-                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmount" oninput="handleFieldSarInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmount" oninput="handleFieldSarInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge(); clearFieldError('inputCustomerRefundAmount')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                         </div>
                         <div id="fieldCustomerRefundBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
-                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmountBdt" oninput="handleFieldBdtInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmountBdt" oninput="handleFieldBdtInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge(); clearFieldError('inputCustomerRefundAmount')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             <input type="number" id="inputCustomerRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                         </div>
                     </div>
@@ -404,6 +404,7 @@ function renderConfirmation(requests) {
 
 function processConfirmation(ticketRequestId) {
     currentTicketRequestId = ticketRequestId;
+    clearFieldErrors();
     const r = allRequests.find(req => req.id === ticketRequestId);
     if (!r) return;
     const p = r.passenger || {};
@@ -483,8 +484,56 @@ function updateServiceCharge() {
 //     }
 // }
 
+function refundFieldSiblings(inputId) {
+    var pairs = {
+        inputAgentRefundAmount: ['inputAgentRefundAmount', 'inputAgentRefundAmountBdt'],
+        inputCustomerRefundAmount: ['inputCustomerRefundAmount', 'inputCustomerRefundAmountBdt'],
+    };
+    return pairs[inputId] || [inputId];
+}
+
+function setFieldError(inputId, message) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var container = input.closest('div');
+    if (container && container.id && container.id.indexOf('field') === 0 && container.parentElement) {
+        container = container.parentElement;
+    }
+    if (!container) return;
+    container.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(function(el) { el.remove(); });
+    refundFieldSiblings(inputId).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('border-red-500');
+    });
+    var p = document.createElement('p');
+    p.setAttribute('data-error-for', inputId);
+    p.className = 'mt-1 text-xs text-red-500';
+    p.textContent = message;
+    container.appendChild(p);
+}
+
+function clearFieldError(inputId) {
+    refundFieldSiblings(inputId).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('border-red-500');
+    });
+    document.querySelectorAll('[data-error-for="' + inputId + '"]').forEach(function(el) { el.remove(); });
+}
+
+function clearFieldErrors() {
+    document.querySelectorAll('#processConfirmationModal [data-error-for]').forEach(function(el) { el.remove(); });
+    document.querySelectorAll('#processConfirmationModal .border-red-500').forEach(function(el) { el.classList.remove('border-red-500'); });
+}
+
+function focusFirstFieldError() {
+    var first = document.querySelector('#processConfirmationModal [data-error-for]');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function confirmProcess() {
     if (!currentTicketRequestId) return;
+
+    clearFieldErrors();
 
     const payload = {
         reason_id: document.getElementById('inputReason').value,
@@ -503,8 +552,27 @@ function confirmProcess() {
         return;
     }
 
-    if (payload.iata_refund > currentRefundNetFare || payload.customer_refund > currentRefundNetFare) {
-        showToast('Refund amounts cannot exceed the net fare.', 'error');
+    const iataRaw = (document.getElementById('inputAgentRefundAmount').value || '').trim();
+    const customerRaw = (document.getElementById('inputCustomerRefundAmount').value || '').trim();
+
+    if (iataRaw === '') {
+        setFieldError('inputAgentRefundAmount', 'IATA refund is required.');
+    } else if (parseFloat(iataRaw) < 0) {
+        setFieldError('inputAgentRefundAmount', 'IATA refund cannot be negative.');
+    } else if (parseFloat(iataRaw) > currentRefundNetFare) {
+        setFieldError('inputAgentRefundAmount', 'IATA refund cannot exceed the net fare.');
+    }
+
+    if (customerRaw === '') {
+        setFieldError('inputCustomerRefundAmount', 'Customer refund is required.');
+    } else if (parseFloat(customerRaw) < 0) {
+        setFieldError('inputCustomerRefundAmount', 'Customer refund cannot be negative.');
+    } else if (parseFloat(customerRaw) > currentRefundNetFare) {
+        setFieldError('inputCustomerRefundAmount', 'Customer refund cannot exceed the net fare.');
+    }
+
+    if (document.querySelector('#processConfirmationModal [data-error-for]')) {
+        focusFirstFieldError();
         return;
     }
 
@@ -517,14 +585,23 @@ function confirmProcess() {
         },
         body: JSON.stringify(payload),
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
+    .then(res => res.json().then(d => ({ status: res.status, d })))
+    .then(({ status, d }) => {
+        if (status === 422 && d.errors) {
+            clearFieldErrors();
+            if (d.errors.reason_id) setFieldError('inputReason', d.errors.reason_id[0]);
+            if (d.errors.iata_refund) setFieldError('inputAgentRefundAmount', d.errors.iata_refund[0]);
+            if (d.errors.customer_refund) setFieldError('inputCustomerRefundAmount', d.errors.customer_refund[0]);
+            focusFirstFieldError();
+            showToast(d.message || Object.values(d.errors).flat()[0] || 'Validation failed.', 'error');
+            return;
+        }
+        if (d.success) {
             showToast('Refund processed successfully!', 'success');
             closeProcessConfirmationModal();
             loadConfirmation();
         } else {
-            showToast(data.message || 'Failed to process', 'error');
+            showToast(d.message || 'Failed to process', 'error');
         }
     })
     .catch(err => {

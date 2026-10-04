@@ -16,7 +16,7 @@ and how requests flow through the system.
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
 | Testing            | PHPUnit 11                                  |
 | Container          | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
-| CI/CD              | GitHub Actions → ghcr.io + Watchtower       |
+| CI/CD              | GitHub Actions → ghcr.io + deploy scripts   |
 | PDF Generation     | setasign/FPDF + setasign/FPDI               |
 
 ## Domain Overview

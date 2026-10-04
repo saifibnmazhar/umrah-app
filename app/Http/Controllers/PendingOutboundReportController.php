@@ -277,6 +277,7 @@ class PendingOutboundReportController extends Controller
                     'ticket_agent_id' => $ticket->ticket_agent_id,
                     'selling_fare' => (float) $ticket->selling_fare,
                     'net_fare' => (float) $ticket->net_fare,
+                    'offer_price' => (float) ($ticket->offer_price ?? 0),
                     'is_refundable' => $ticket->is_refundable,
                     'is_exchangeable' => $ticket->is_exchangeable,
                     'baggage_outbound' => $ticket->baggage_outbound ?? '',

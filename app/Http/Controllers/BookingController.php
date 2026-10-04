@@ -1088,6 +1088,8 @@ class BookingController extends Controller
             'pnr' => $t->pnr ?? '',
             'status' => $t->status,
             'issue_type' => $t->issue_type,
+            'void_issue_date' => $t->issued_date?->toDateString()
+                ?? ($t->issue_type === 'additional' ? $t->created_at?->copy()->setTimezone('Asia/Riyadh')->toDateString() : null),
             'has_pending_request' => $t->pendingRequests->isNotEmpty(),
             'is_refundable' => $t->is_refundable ?? false,
             'is_exchangeable' => $t->is_exchangeable ?? false,
@@ -2056,6 +2058,16 @@ class BookingController extends Controller
             if ($booking->wasChanged('package_id')) {
                 $package ??= Package::with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])->find($booking->package_id);
                 if ($package) {
+                    if ($package->visa_selling_price_id) {
+                        $syncedVisaPriceId = $package->visa_selling_price_id;
+                        VisaSubmission::whereIn('passenger_id', $booking->passengers()->select('id'))
+                            ->where('visa_selling_price_id', '!=', $syncedVisaPriceId)
+                            ->get()
+                            ->each(fn (VisaSubmission $visaSubmission) => $visaSubmission->update([
+                                'visa_selling_price_id' => $syncedVisaPriceId,
+                            ]));
+                    }
+
                     if ($package->is_double_ticket) {
                         $booking->passengers()
                             ->where(function ($q) {

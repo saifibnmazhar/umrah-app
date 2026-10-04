@@ -191,6 +191,15 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $sourceFareIds = collect([
+            $issuedTicket->ticket_fare_id,
+            $issuedTicket->latestReIssuedTicket?->ticket_fare_id,
+        ])->filter();
+
+        if (! $selectedFare->is_active && ! $sourceFareIds->contains($selectedFare->id)) {
+            return response()->json(['message' => 'The selected ticket is inactive and cannot be re-issued.'], 400);
+        }
+
         $sellingFare = (float) ($issuedTicket->selling_fare ?? 0);
         $netFare = (float) ($validated['net_fare'] ?? $issuedTicket->net_fare ?? 0);
         $offerPrice = (float) ($issuedTicket->offer_price ?? 0);
@@ -516,15 +525,15 @@ class TicketRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'ticket_number' => 'nullable|string|max:100',
-            'pnr' => 'nullable|string|max:50',
-            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
+            'ticket_number' => 'required|string|max:100',
+            'pnr' => 'required|string|max:50',
+            'ticket_agent_id' => 'required|exists:ticket_agents,id',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
-            'issued_date' => 'nullable|date',
-            'inbound_date' => 'nullable|date',
-            'outbound_date' => 'nullable|date',
-            'remarks' => 'nullable|string',
-            'net_fare' => 'nullable|numeric|min:0',
+            'issued_date' => 'required|date',
+            'inbound_date' => ['nullable', 'date', Rule::requiredIf(in_array($request->route_type, ['oneway_inbound', 'round', 'multi_city'], true))],
+            'outbound_date' => ['nullable', 'date', Rule::requiredIf(in_array($request->route_type, ['oneway_outbound', 'round', 'multi_city'], true))],
+            'net_fare' => 'required|numeric|min:0',
         ]);
 
         $passenger = $ticketRequest->passenger;
@@ -533,6 +542,10 @@ class TicketRequestController extends Controller
         }
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
+
+        if (! $selectedFare->is_active) {
+            return response()->json(['message' => 'The selected ticket is inactive and cannot be issued.'], 400);
+        }
 
         $passengerType = $passenger->passenger_type?->value ?? 'adult';
         $childPct = (float) ($selectedFare->child_fare_percentage ?: 70);
