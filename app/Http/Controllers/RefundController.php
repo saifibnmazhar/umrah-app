@@ -95,6 +95,7 @@ class RefundController extends Controller
 
             $refundData = array_merge($validated, [
                 'user_id' => auth()->id(),
+                'ticket_agent_id' => $validated['ticket_agent_id'] ?? $refundSource->ticket_agent_id,
                 'selling_fare' => $refundSource->selling_fare ?? 0,
                 'net_fare' => $refundSource->net_fare ?? 0,
                 'offer_price' => $refundSource->offer_price ?? 0,

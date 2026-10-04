@@ -121,6 +121,7 @@ class ReIssueController extends Controller
 
             $reIssueData = array_merge($validated, [
                 'user_id' => auth()->id(),
+                'ticket_agent_id' => $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id,
                 'fare_difference' => (float) ($validated['fare_difference'] ?? 0),
                 'other_costs' => (float) ($validated['other_costs'] ?? 0),
                 'service_charge' => 0,
