@@ -393,7 +393,10 @@ Reference only (do not modify): `docs/Sales & Customer Statement Format.xlsx`, `
 
 ---
 
-## 12. Follow-up: NOT NULL Impact & Resolution (post-implementation audit)
+## 12. Follow-up: NOT NULL Impact & Resolution (finalized)
+
+> Status: **finalized** — R0 runs on production (pre-deploy); R1–R6 are to be
+> implemented with the feature. Nothing in this section is implemented yet.
 
 ### 12.1 Issues found (system-wide investigation)
 
@@ -404,14 +407,73 @@ Reference only (do not modify): `docs/Sales & Customer Statement Format.xlsx`, `
 | I-C | Requiring agent at `TicketIssueController issue()/edit()` (`:43,:195`) breaks ~10 test payloads in 7 files expecting success without an agent | Tests only (list: `TicketVoidTest:218,521`, `IssuedDateRequiredTest:251,318`, `BookingInactiveFareSourcesTest:403`, `IssueFormIssuedTicketFareSourceTest:467`, `TicketIssueReIssueFareSourceTest:219`, `ReIssueCustomerPaymentDerivationTest:447,479,514`, `ReIssueEditRefundedNonCustomerTest:210`, `ReIssueEditRefundPayableAdjustTest:248`) |
 | I-D | Extending NOT NULL to `issued_tickets.ticket_agent_id` would break booking creation (18 agent-less placeholder creates: `BookingController` store/add-passenger/update, `PassengerController` visa-only switch, `TicketIssueController` auto-creates, group-confirm, 2 backfill commands) | Must NOT do — `issued_tickets` stays nullable |
 
-Verified safe (no action): all issue/edit UIs already force agent selection client-side; `processAdditional` already `required` server-side; group-confirm/create-pending/revert untouched; all profit/cost readers never select the agent column; seeders set agents; no jobs/listeners/internal callers; no later migration touches these columns.
+Verified safe (no action): all issue/edit UIs already force agent selection
+client-side — **verified in source**: `bookings/index.blade.php:6221`
+(`if (!f.ticket_agent) → "Please select a ticket agent"`) and
+`reports/pending-outbound.blade.php:345` (HTML `required`) + `:769` JS guard;
+these are the **only two callers** of `/ticket-issue` and `/ticket-edit`.
+`processAdditional` already `required` server-side; group-confirm/create-pending/
+revert untouched; all profit/cost readers never select the agent column; seeders
+set agents; no jobs/listeners/internal callers; no later migration touches these
+columns.
 
-### 12.2 Resolution plan
+### 12.2 Resolution plan (finalized)
 
-- **R0 — Pre-deploy orphan audit:** count `re/refunded_tickets` rows with NULL agent whose source is NULL/missing; backfill with a real (human-chosen) agent before deploying.
-- **R1 — Harden Migration A:** fail fast with orphan IDs + audit queries instead of warn-and-crash.
-- **R2 — Require agent at issue:** `TicketIssueController:43,195` `nullable` → `required` (UI already compliant; `:261` fallback kept).
-- **R3 — 422 guard in 4 child writers** when resolved (explicit ?? source) agent is NULL (legacy-row safety net).
-- **R4 — Update the ~10 test payloads** in the 7 files (fixture-only).
-- **R5 — Non-goal:** `issued_tickets.ticket_agent_id` stays nullable.
-- **R6 — Verify:** full suite + pint + build; manual 422 checks (issue without agent; reissue of legacy NULL-agent ticket); prod orphan audit = 0.
+**Sequencing:** `R0 (prod, pre-deploy) → R1 → R2 + R4 → R3 → R6`
+
+- **R0 — Pre-deploy orphan audit (production, before `migrate`):**
+  1. Audit query for rows that would violate NOT NULL:
+     ```sql
+     SELECT ri.id FROM re_issued_tickets ri
+       LEFT JOIN issued_tickets it ON it.id = ri.issued_ticket_id
+       WHERE ri.ticket_agent_id IS NULL
+         AND (ri.issued_ticket_id IS NULL OR it.ticket_agent_id IS NULL);
+     -- same for refunded_tickets
+     ```
+  2. Backfill orphans with a human-chosen agent (per-agent review, no bulk default).
+  3. Rows with NULL agent but valid source → handled by Migration A's backfill.
+  4. **Exit criterion:** audit count = 0 before deploying.
+- **R1 — Harden Migration A:** keep the source-ticket backfill; replace
+  warn-and-continue with **fail fast** — if violating rows remain, `throw`
+  listing table, row IDs and the R0 audit query; never run `->change()` on a
+  partial state.
+- **R2 — Require agent at issue:** `TicketIssueController:43` (`issue()`) and
+  `:195` (`edit()`): `nullable|exists:ticket_agents,id` →
+  **`required|exists:ticket_agents,id`**.
+  - `:261` fallback (`$validated['ticket_agent_id'] ?? $latestRe->ticket_agent_id`)
+    **kept** — preserve-on-edit pattern like its sibling fields (`:259-266`);
+    becomes dead code once required (harmless safety net). Not a default value.
+  - `issue()` has no fallback (`$validated` merged directly, `:74-79`).
+  - No UI changes needed (client-side required already verified above).
+- **R3 — 422 guard in the 4 child writers:** when resolved agent
+  (`$validated['ticket_agent_id'] ?? $sourceTicket->ticket_agent_id`) is NULL →
+  `422` JSON ("Ticket agent is required…") instead of SQL 23000 → 500:
+  `TicketRequestController:242` (reissue), `:463` (refund),
+  `ReIssueController:124`, `RefundController:98`.
+- **R4 — Update ~10 test payloads in 7 files** (fixture-only: add a valid
+  `ticket_agent_id`): `TicketVoidTest:218,521`, `IssuedDateRequiredTest:251,318`,
+  `BookingInactiveFareSourcesTest:403`, `IssueFormIssuedTicketFareSourceTest:467`,
+  `TicketIssueReIssueFareSourceTest:219`, `ReIssueCustomerPaymentDerivationTest:447,479,514`,
+  `ReIssueEditRefundedNonCustomerTest:210`, `ReIssueEditRefundPayableAdjustTest:248`.
+  Plus 2 new tests: issue/edit without agent → 422; reissue/refund of legacy
+  NULL-agent source ticket → 422 (not 500).
+- **R5 — Non-goal:** `issued_tickets.ticket_agent_id` stays **nullable**
+  (I-D: 18 agent-less placeholder creates would break).
+- **R6 — Verify:** `php artisan test` (full suite incl. R4 + 2 new tests),
+  `vendor/bin/pint`, `npm run build`; manual checks: (a) issue without agent →
+  422, (b) reissue of legacy NULL-agent ticket → 422, (c) prod R0 audit = 0
+  post-deploy.
+
+### 12.3 Files touched by the resolve plan
+
+| File | Change |
+|---|---|
+| `database/migrations/2026_10_01_000001_backfill_and_not_null_ticket_agent_id.php` | R1 fail-fast |
+| `app/Http/Controllers/TicketIssueController.php` | R2 `:43,:195` → required |
+| `app/Http/Controllers/TicketRequestController.php` | R3 `:242,:463` 422 guard |
+| `app/Http/Controllers/ReIssueController.php` | R3 `:124` 422 guard (+ §6.3 agent fallback) |
+| `app/Http/Controllers/RefundController.php` | R3 `:98` 422 guard (+ §6.3 agent fallback) |
+| 7 test files listed in R4 | payload updates + 2 new tests |
+| `tests/Feature/StatementReportTest.php` | test 12 (`test_agent_fallback_on_write`) extended with the 422 cases |
+
+Out of scope: R0 runbook execution (production SQL), R5 (explicitly not done).
