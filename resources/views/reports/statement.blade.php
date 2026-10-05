@@ -166,98 +166,56 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left">Ticket Staff</th>
                     </tr>
                 </thead>
+                <!-- One <tbody>; x-if only on <template>, x-for has a single
+                     <tr> root, kind-switching via x-show on the <td>s (x-show
+                     works on any element; bare <td> under <template> does not
+                     survive table parsing). Hidden cells take no layout space. -->
                 <tbody>
                     <template x-if="loading">
                         <tr><td colspan="14" class="px-4 py-8 text-sm text-center text-slate-500">Loading...</td></tr>
                     </template>
-                    <template x-if="!loading && flatRows.length === 0">
+                    <template x-if="!loading && blocks.length === 0">
                         <tr><td colspan="14" class="px-4 py-8 text-sm text-center text-gray-500">No records found for the selected filters.</td></tr>
                     </template>
-                    <!-- Agent-grouped sections (Agent = All) -->
-                    <template x-if="!loading && sections.length > 0">
-                        <template x-for="section in sections" :key="'sec-' + section.agent_id">
-                            <tr class="section-row">
-                                <td colspan="14" class="px-4 py-2 text-sm font-bold text-gray-800">
-                                    <span x-text="section.agent_name"></span>
-                                    <span class="font-medium text-gray-600"> — Opening B/L: <span x-text="fmt(section.opening_balance)"></span></span>
+                    <template x-if="!loading && blocks.length > 0">
+                        <template x-for="b in blocks" :key="b.key">
+                            <tr :class="b.trClass">
+                                <td colspan="14" x-show="b.kind === 'section-header'" class="px-4 py-2 text-sm font-bold text-gray-800">
+                                    <span x-text="b.agent_name"></span>
+                                    <span class="font-medium text-gray-600"> — Opening B/L: <span x-text="fmt(b.opening_balance)"></span></span>
                                 </td>
-                            </tr>
-                            <template x-for="(row, idx) in section.rows" :key="'sec-' + section.agent_id + '-' + idx">
-                                <tr :class="rowClass(row)">
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.date"></td>
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.ticket_no"></td>
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.pax_name"></td>
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.pnr"></td>
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.sector"></td>
-                                    <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.flight_date"></td>
-                                    <td x-show="showCustomerAmount" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.customer_amount)"></td>
-                                    <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.agent_fare)"></td>
-                                    <td x-show="showMarkup" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.markup)"></td>
-                                    <td x-show="showCustomerRefund" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.customer_refund)"></td>
-                                    <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.iata_refund)"></td>
-                                    <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.payment_to_iata)"></td>
-                                    <td class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="fmt(row.balance)"></td>
-                                    <td class="px-2 py-1 text-xs" x-text="row.agent_name"></td>
-                                </tr>
-                                <tr :class="rowClass(row)">
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.category"></td>
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.reference_id"></td>
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.customer_name"></td>
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.passport"></td>
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.carrier_class_pay"></td>
-                                    <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.return_date"></td>
-                                    <td x-show="showCustomerAmount" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td x-show="showMarkup" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td x-show="showCustomerRefund" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                    <td class="px-2 py-1 text-xs text-gray-600" x-text="row.staff_name"></td>
-                                </tr>
-                            </template>
-                            <tr class="section-row">
-                                <td colspan="14" class="px-4 py-2 text-sm font-bold text-gray-800 text-right">
-                                    <span x-text="section.agent_name"></span>
-                                    <span class="font-medium text-gray-600"> — Closing B/L: <span x-text="fmt(section.closing_balance)"></span></span>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.date"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.ticket_no"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.pax_name"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.pnr"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.sector"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.flight_date"></td>
+                                <td x-show="b.kind === 'primary' && showCustomerAmount" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.customer_amount)"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.agent_fare)"></td>
+                                <td x-show="b.kind === 'primary' && showMarkup" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.markup)"></td>
+                                <td x-show="b.kind === 'primary' && showCustomerRefund" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.customer_refund)"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.iata_refund)"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.payment_to_iata)"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="fmt(b.row?.balance)"></td>
+                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs" x-text="b.row?.agent_name"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.category"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.reference_id"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.customer_name"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.passport"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.carrier_class_pay"></td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.return_date"></td>
+                                <td x-show="b.kind === 'secondary' && showCustomerAmount" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary' && showMarkup" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary' && showCustomerRefund" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
+                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600" x-text="b.row?.staff_name"></td>
+                                <td colspan="14" x-show="b.kind === 'section-total'" class="px-4 py-2 text-sm font-bold text-gray-800 text-right">
+                                    <span x-text="b.agent_name"></span>
+                                    <span class="font-medium text-gray-600"> — Closing B/L: <span x-text="fmt(b.closing_balance)"></span></span>
                                 </td>
-                            </tr>
-                        </template>
-                    </template>
-                    <!-- Flat rows (single agent selected) -->
-                    <template x-if="!loading && sections.length === 0">
-                        <template x-for="(row, idx) in flatRows" :key="'row-' + idx">
-                            <tr :class="rowClass(row)">
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.date"></td>
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.ticket_no"></td>
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.pax_name"></td>
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.pnr"></td>
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.sector"></td>
-                                <td class="px-2 py-1 text-xs border-r border-gray-200" x-text="row.flight_date"></td>
-                                <td x-show="showCustomerAmount" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.customer_amount)"></td>
-                                <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.agent_fare)"></td>
-                                <td x-show="showMarkup" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.markup)"></td>
-                                <td x-show="showCustomerRefund" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.customer_refund)"></td>
-                                <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.iata_refund)"></td>
-                                <td class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(row.payment_to_iata)"></td>
-                                <td class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="fmt(row.balance)"></td>
-                                <td class="px-2 py-1 text-xs" x-text="row.agent_name"></td>
-                            </tr>
-                            <tr :class="rowClass(row)">
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.category"></td>
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.reference_id"></td>
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.customer_name"></td>
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.passport"></td>
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.carrier_class_pay"></td>
-                                <td class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="row.return_date"></td>
-                                <td x-show="showCustomerAmount" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="showMarkup" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="showCustomerRefund" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td class="px-2 py-1 text-xs text-gray-600" x-text="row.staff_name"></td>
                             </tr>
                         </template>
                     </template>
@@ -300,6 +258,7 @@ function statementReport() {
         },
         flatRows: [],
         sections: [],
+        blocks: [],
         summary: {
             opening_balance: 0, closing_balance: 0, total_tickets: 0,
             total_sale_amount: 0, total_customer_refund: 0, total_agent_fare: 0,
@@ -338,13 +297,33 @@ function statementReport() {
                 this.flatRows = result.rows || [];
                 this.sections = result.sections || [];
                 if (result.summary) this.summary = result.summary;
+                this.buildBlocks();
             } catch (error) {
                 console.error('Failed to load ticket statement:', error);
                 this.flatRows = [];
                 this.sections = [];
+                this.blocks = [];
             } finally {
                 this.loading = false;
             }
+        },
+        buildBlocks() {
+            const blocks = [];
+            const pushRecord = (row, keyBase) => {
+                const trClass = this.rowClass(row);
+                blocks.push({ kind: 'primary', key: keyBase + '-p', trClass, row });
+                blocks.push({ kind: 'secondary', key: keyBase + '-s', trClass, row });
+            };
+            if (this.sections.length > 0) {
+                this.sections.forEach((section) => {
+                    blocks.push({ kind: 'section-header', key: 'sec-' + section.agent_id + '-open', trClass: 'section-row', agent_name: section.agent_name, opening_balance: section.opening_balance });
+                    section.rows.forEach((row, idx) => pushRecord(row, 'sec-' + section.agent_id + '-' + idx));
+                    blocks.push({ kind: 'section-total', key: 'sec-' + section.agent_id + '-close', trClass: 'section-row', agent_name: section.agent_name, closing_balance: section.closing_balance });
+                });
+            } else {
+                this.flatRows.forEach((row, idx) => pushRecord(row, 'row-' + idx));
+            }
+            this.blocks = blocks;
         },
     };
 }
