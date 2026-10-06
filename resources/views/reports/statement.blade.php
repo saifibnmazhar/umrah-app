@@ -280,14 +280,38 @@ function statementReport() {
             const val = bdt ? (Number(v) || 0) * store.rate : v;
             return this.fmt(val) + (bdt ? ' BDT' : ' SAR');
         },
+        resetState() {
+            this.flatRows = [];
+            this.sections = [];
+            this.blocks = [];
+            this.summary = {
+                opening_balance: 0, closing_balance: 0, total_tickets: 0,
+                total_sale_amount: 0, total_customer_refund: 0, total_agent_fare: 0,
+                total_markup: 0, total_agent_refund: 0, total_reissue_cost: 0, total_paid: 0,
+            };
+        },
+        rangeDaysExceeded() {
+            const { date_from, date_to } = this.filters;
+            if (!date_from || !date_to) return false;
+            return (new Date(date_to) - new Date(date_from)) / (1000 * 60 * 60 * 24) > 92;
+        },
         async loadData() {
             this.loading = true;
             try {
+                if (this.rangeDaysExceeded()) {
+                    this.resetState();
+                    window.showToast('Date filter exceeds date range cap (92 days)', 'error');
+                    return;
+                }
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([key, value]) => {
                     if (value) params.set(key, value);
                 });
                 const response = await fetch(`/api/reports/statement?${params}`);
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.message || 'Failed to load ticket statement');
+                }
                 const result = await response.json();
                 this.flatRows = result.rows || [];
                 this.sections = result.sections || [];
@@ -295,9 +319,8 @@ function statementReport() {
                 this.buildBlocks();
             } catch (error) {
                 console.error('Failed to load ticket statement:', error);
-                this.flatRows = [];
-                this.sections = [];
-                this.blocks = [];
+                this.resetState();
+                window.showToast(error.message || 'Failed to load ticket statement', 'error');
             } finally {
                 this.loading = false;
             }

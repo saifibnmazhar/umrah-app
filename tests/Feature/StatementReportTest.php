@@ -393,6 +393,20 @@ class StatementReportTest extends TestCase
             'date_from' => '2026-01-01', 'date_to' => '2026-05-01',
         ])));
         $response->assertStatus(422);
+        $response->assertJsonPath('message', 'Date range must not exceed 92 days.');
+    }
+
+    public function test_view_shows_toast_and_resets_summary_on_range_cap(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        // Over-cap ranges toast instead of leaving a stale summary behind.
+        $this->assertStringContainsString('Date filter exceeds date range cap (92 days)', $html);
+        $this->assertStringContainsString('window.showToast', $html);
+        $this->assertStringContainsString('!response.ok', $html, 'server errors must reset state too');
+        $this->assertStringContainsString('resetState()', $html, 'table + summary must reset together');
     }
 
     public function test_search_filter(): void
@@ -692,5 +706,80 @@ class StatementReportTest extends TestCase
         // Headers stay plain — no currency suffix in header text.
         $this->assertStringNotContainsString('(SAR)', $html, 'headers must stay plain');
         $this->assertStringNotContainsString('(BDT)', $html, 'headers must stay plain');
+    }
+
+    public function test_opening_only_agent_gets_visible_section_matching_summary(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+
+        // Agent A: one in-range ticket (net 2700).
+        $bookingA = $this->makeBooking($user, $deps, 'INV-SECA');
+        $passengerA = $this->makePassenger($user, $deps, $bookingA);
+        $this->makeTicket($user, $deps, $bookingA, $passengerA);
+
+        // Agent B: pre-range ticket only (net 2700) — opening, no March rows.
+        $bookingB = $this->makeBooking($user, $deps, 'INV-SECB');
+        $passengerB = $this->makePassenger($user, $deps, $bookingB);
+        $this->makeTicket($user, $deps, $bookingB, $passengerB, [
+            'ticket_agent_id' => $deps['agentB']->id,
+            'issued_date' => '2026-02-10',
+        ]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $sections = collect($r->json('sections'));
+        $summary = $r->json('summary');
+
+        // Every counted agent is visible: B gets an empty-rows section, opening == closing.
+        $this->assertEquals(2, $sections->count());
+        $sectionB = $sections->firstWhere('agent_id', $deps['agentB']->id);
+        $this->assertNotNull($sectionB, 'opening-only agent must have a section');
+        $this->assertEquals([], $sectionB['rows']);
+        $this->assertEquals(-2700.00, (float) $sectionB['opening_balance']);
+        $this->assertEquals(-2700.00, (float) $sectionB['closing_balance']);
+
+        // Summary is exactly the sum of the visible sections.
+        $this->assertEquals($sections->sum('opening_balance'), (float) $summary['opening_balance']);
+        $this->assertEquals($sections->sum('closing_balance'), (float) $summary['closing_balance']);
+        $this->assertEquals(-2700.00, (float) $summary['opening_balance']);
+    }
+
+    public function test_rows_and_summary_strictly_follow_date_range(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-STRICT');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+
+        // In-range: ticket (Mar 5, net 2700 / pay 2820) + payment (Mar 6, 1000).
+        $this->makeTicket($user, $deps, $booking, $passenger, ['ticket_number' => '779-INRANGE']);
+        $this->makePayment($user, $deps, $booking);
+        // Out-of-range ticket (Apr 10) — must not appear anywhere.
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_number' => '779-OUTRANGE', 'issued_date' => '2026-04-10',
+        ]);
+        // Pending-status ticket in range — must not appear anywhere.
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_number' => '779-PENDING', 'issued_date' => '2026-03-08', 'status' => 'pending',
+        ]);
+        // Pre-range payment (Feb, 500) — opening only, no row.
+        $this->makePayment($user, $deps, $booking, ['payment_date' => '2026-02-20', 'amount' => 500.00]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $rows = $r->json('rows');
+        $summary = $r->json('summary');
+
+        $this->assertEquals(['Payment', 'Ticket'], collect($rows)->pluck('category')->sort()->values()->all());
+        $this->assertEquals(['779-INRANGE'], collect($rows)->pluck('ticket_no')->filter(fn ($t) => $t !== '-')->values()->all());
+
+        // Summary reflects exactly the displayed rows + opening.
+        $this->assertEquals(1, $summary['total_tickets']);
+        $this->assertEquals(2820.00, (float) $summary['total_sale_amount']);
+        $this->assertEquals(2700.00, (float) $summary['total_agent_fare']);
+        $this->assertEquals(1000.00, (float) $summary['total_paid']);
+        $this->assertEquals(500.00, (float) $summary['opening_balance']);
+        $this->assertEquals(-1200.00, (float) $summary['closing_balance']);
     }
 }

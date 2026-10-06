@@ -83,12 +83,16 @@ class StatementController extends Controller
             return $row;
         }, $periodRows);
 
-        $summary = $this->buildSummary($periodRows, $opening, $running);
+        // Per-agent balances shared by sections and summary, so both always agree.
+        // Covers every counted agent: row agents plus opening-only agents.
+        $balances = $this->perAgentBalances($periodRows, $opening, $running);
+
+        $summary = $this->buildSummary($periodRows, $balances);
 
         $payload = ['rows' => array_values($rows), 'summary' => $summary];
 
         if (! $agentId) {
-            $payload['sections'] = $this->buildSections($periodRows, $opening, $running);
+            $payload['sections'] = $this->buildSections($periodRows, $balances);
         }
 
         return response()->json($payload);
@@ -351,10 +355,38 @@ class StatementController extends Controller
         ];
     }
 
-    private function buildSummary(array $periodRows, array $opening, array $running): array
+    /**
+     * Rounded opening/closing per agent over the union of row agents and
+     * opening agents, so sections and summary always cover the same agents.
+     */
+    private function perAgentBalances(array $periodRows, array $opening, array $running): array
     {
-        $openingBalance = round(array_sum($opening), 2);
-        $closingBalance = round(array_sum($running), 2);
+        $ids = [];
+        foreach ($periodRows as $row) {
+            $ids[$row['agent_id']] = true;
+        }
+        foreach ($opening as $id => $delta) {
+            $ids[$id] = true;
+        }
+        foreach ($running as $id => $delta) {
+            $ids[$id] = true;
+        }
+
+        $balances = [];
+        foreach (array_keys($ids) as $id) {
+            $balances[$id] = [
+                'opening' => round($opening[$id] ?? 0, 2),
+                'closing' => round($running[$id] ?? 0, 2),
+            ];
+        }
+
+        return $balances;
+    }
+
+    private function buildSummary(array $periodRows, array $balances): array
+    {
+        $openingBalance = round(array_sum(array_column($balances, 'opening')), 2);
+        $closingBalance = round(array_sum(array_column($balances, 'closing')), 2);
 
         $ticketRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Ticket');
         $refundRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Refund');
@@ -391,17 +423,18 @@ class StatementController extends Controller
         ];
     }
 
-    private function buildSections(array $periodRows, array $opening, array $running): array
+    private function buildSections(array $periodRows, array $balances): array
     {
         $grouped = [];
         foreach ($periodRows as $row) {
             $grouped[$row['agent_id']][] = $row;
         }
 
-        $agents = TicketAgent::whereIn('id', array_keys($grouped))->orderBy('name')->get()->keyBy('id');
+        $ids = array_unique(array_merge(array_keys($grouped), array_keys($balances)));
+        $names = TicketAgent::whereIn('id', $ids)->pluck('name', 'id');
 
         $sections = [];
-        foreach ($agents as $id => $agent) {
+        foreach ($ids as $id) {
             $agentRows = array_map(function ($row) {
                 unset($row['sort_date'], $row['sort_id'], $row['delta'], $row['agent_id']);
 
@@ -410,12 +443,14 @@ class StatementController extends Controller
 
             $sections[] = [
                 'agent_id' => $id,
-                'agent_name' => $agent->name,
-                'opening_balance' => round($opening[$id] ?? 0, 2),
-                'closing_balance' => round($running[$id] ?? 0, 2),
+                'agent_name' => $names[$id] ?? 'Unknown agent',
+                'opening_balance' => $balances[$id]['opening'] ?? 0,
+                'closing_balance' => $balances[$id]['closing'] ?? 0,
                 'rows' => array_values($agentRows),
             ];
         }
+
+        usort($sections, fn ($a, $b) => strcmp($a['agent_name'], $b['agent_name']));
 
         return $sections;
     }
