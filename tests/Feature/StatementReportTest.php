@@ -674,4 +674,23 @@ class StatementReportTest extends TestCase
             $this->assertStringContainsString($label, $html, "missing sub-header: {$label}");
         }
     }
+
+    public function test_view_money_values_follow_navbar_currency_toggle(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        // Amount formatter reads the navbar currency store (SAR/BDT + rate).
+        $this->assertStringContainsString("Alpine.store('currency')", $html, 'sar() must read the currency store');
+        $this->assertStringContainsString('currency-toggled', $html, 'must repaint on navbar currency toggle');
+        // Section balances + footer money totals toggle too (not plain fmt()).
+        $this->assertStringContainsString('sar(b.opening_balance)', $html, 'section opening must toggle');
+        $this->assertStringContainsString('sar(b.closing_balance)', $html, 'section closing must toggle');
+        $this->assertStringContainsString('sar(summary.opening_balance)', $html, 'footer opening must toggle');
+        $this->assertStringContainsString('sar(summary.total_sale_amount)', $html, 'footer totals must toggle');
+        // Headers stay plain — no currency suffix in header text.
+        $this->assertStringNotContainsString('(SAR)', $html, 'headers must stay plain');
+        $this->assertStringNotContainsString('(BDT)', $html, 'headers must stay plain');
+    }
 }

@@ -178,7 +178,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             <tr :class="b.trClass">
                                 <td colspan="14" x-show="b.kind === 'section-header'" class="px-4 py-2 text-sm font-bold text-gray-800">
                                     <span x-text="b.agent_name"></span>
-                                    <span class="font-medium text-gray-600"> — Opening B/L: <span x-text="fmt(b.opening_balance)"></span></span>
+                                    <span class="font-medium text-gray-600"> — Opening B/L: <span x-text="sar(b.opening_balance)"></span></span>
                                 </td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.date"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.ticket_no"></td>
@@ -203,7 +203,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600" x-text="b.row?.staff_name"></td>
                                 <td colspan="14" x-show="b.kind === 'section-total'" class="px-4 py-2 text-sm font-bold text-gray-800 text-right">
                                     <span x-text="b.agent_name"></span>
-                                    <span class="font-medium text-gray-600"> — Closing B/L: <span x-text="fmt(b.closing_balance)"></span></span>
+                                    <span class="font-medium text-gray-600"> — Closing B/L: <span x-text="sar(b.closing_balance)"></span></span>
                                 </td>
                             </tr>
                         </template>
@@ -217,16 +217,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         <div class="footer-box rounded-lg overflow-hidden w-full max-w-md">
             <div class="footer-box-header px-4 py-2 text-sm font-bold text-gray-800">Ticket Statement Summary</div>
             <div class="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                <div class="text-gray-600">Opening Balance</div><div class="text-right font-semibold" x-text="fmt(summary.opening_balance)"></div>
-                <div class="text-gray-600">Closing Balance</div><div class="text-right font-semibold" x-text="fmt(summary.closing_balance)"></div>
+                <div class="text-gray-600">Opening Balance</div><div class="text-right font-semibold" x-text="sar(summary.opening_balance)"></div>
+                <div class="text-gray-600">Closing Balance</div><div class="text-right font-semibold" x-text="sar(summary.closing_balance)"></div>
                 <div class="text-gray-600">Total Tickets</div><div class="text-right font-semibold" x-text="summary.total_tickets ?? 0"></div>
-                <div class="text-gray-600">Total Sale Amount</div><div class="text-right font-semibold" x-text="fmt(summary.total_sale_amount)"></div>
-                <div class="text-gray-600">Total Customer Refund</div><div class="text-right font-semibold" x-text="fmt(summary.total_customer_refund)"></div>
-                <div class="text-gray-600">Total Agent Fare</div><div class="text-right font-semibold" x-text="fmt(summary.total_agent_fare)"></div>
-                <div class="text-gray-600">Total Markup</div><div class="text-right font-semibold" x-text="fmt(summary.total_markup)"></div>
-                <div class="text-gray-600">Total Agent Refund</div><div class="text-right font-semibold" x-text="fmt(summary.total_agent_refund)"></div>
-                <div class="text-gray-600">Total Re-Issue Cost</div><div class="text-right font-semibold" x-text="fmt(summary.total_reissue_cost)"></div>
-                <div class="text-gray-600">Total Paid</div><div class="text-right font-semibold" x-text="fmt(summary.total_paid)"></div>
+                <div class="text-gray-600">Total Sale Amount</div><div class="text-right font-semibold" x-text="sar(summary.total_sale_amount)"></div>
+                <div class="text-gray-600">Total Customer Refund</div><div class="text-right font-semibold" x-text="sar(summary.total_customer_refund)"></div>
+                <div class="text-gray-600">Total Agent Fare</div><div class="text-right font-semibold" x-text="sar(summary.total_agent_fare)"></div>
+                <div class="text-gray-600">Total Markup</div><div class="text-right font-semibold" x-text="sar(summary.total_markup)"></div>
+                <div class="text-gray-600">Total Agent Refund</div><div class="text-right font-semibold" x-text="sar(summary.total_agent_refund)"></div>
+                <div class="text-gray-600">Total Re-Issue Cost</div><div class="text-right font-semibold" x-text="sar(summary.total_reissue_cost)"></div>
+                <div class="text-gray-600">Total Paid</div><div class="text-right font-semibold" x-text="sar(summary.total_paid)"></div>
             </div>
         </div>
     </div>
@@ -257,7 +257,10 @@ function statementReport() {
         showCustomerAmount: true,
         showMarkup: true,
         showCustomerRefund: true,
-        init() { this.loadData(); },
+        init() {
+            this.loadData();
+            window.addEventListener('currency-toggled', () => { this.blocks = [...this.blocks]; });
+        },
         rowClass(row) {
             return {
                 'Ticket': 'table-row-ticket',
@@ -270,13 +273,12 @@ function statementReport() {
             const n = Number(v ?? 0);
             return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
-        money(v) {
-            if (v === null || v === undefined) return '-';
-            return this.fmt(v);
-        },
         sar(v) {
             if (v === null || v === undefined) return '-';
-            return this.fmt(v) + ' SAR';
+            const store = Alpine.store('currency');
+            const bdt = store && store.mode === 'BDT' && store.rate > 0;
+            const val = bdt ? (Number(v) || 0) * store.rate : v;
+            return this.fmt(val) + (bdt ? ' BDT' : ' SAR');
         },
         async loadData() {
             this.loading = true;

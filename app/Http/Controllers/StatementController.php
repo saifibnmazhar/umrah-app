@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\TicketAgent;
+use App\Services\TicketAgentLedger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -102,7 +103,7 @@ class StatementController extends Controller
         $rows = [];
 
         foreach ($this->fetchTickets($dateType, $from, $to, $mode, $search, $agentId) as $ticket) {
-            $delta = -1 * (float) $ticket->net_fare;
+            $delta = TicketAgentLedger::ticketDelta($ticket);
             if ($deltasOnly) {
                 $rows[] = ['agent_id' => $ticket->ticket_agent_id, 'delta' => $delta];
 
@@ -112,7 +113,7 @@ class StatementController extends Controller
         }
 
         foreach ($this->fetchReissues($dateType, $from, $to, $mode, $search, $agentId) as $reissue) {
-            $delta = -1 * (float) $reissue->total_cost;
+            $delta = TicketAgentLedger::reissueDelta($reissue);
             if ($deltasOnly) {
                 $rows[] = ['agent_id' => $reissue->ticket_agent_id, 'delta' => $delta];
 
@@ -122,7 +123,7 @@ class StatementController extends Controller
         }
 
         foreach ($this->fetchRefunds($dateType, $from, $to, $mode, $search, $agentId) as $refund) {
-            $delta = (float) $refund->iata_refunded_amount;
+            $delta = TicketAgentLedger::refundDelta($refund);
             if ($deltasOnly) {
                 $rows[] = ['agent_id' => $refund->ticket_agent_id, 'delta' => $delta];
 
@@ -134,7 +135,7 @@ class StatementController extends Controller
         // Payment rows only under Issue Date type.
         if ($dateType === 'issue') {
             foreach ($this->fetchPayments($from, $to, $mode, $search, $agentId) as $payment) {
-                $delta = (float) $payment->amount;
+                $delta = TicketAgentLedger::paymentDelta($payment);
                 if ($deltasOnly) {
                     $rows[] = ['agent_id' => $payment->ticket_agent_id, 'delta' => $delta];
 
@@ -147,167 +148,36 @@ class StatementController extends Controller
         return $rows;
     }
 
-    private function dateBounding(string $column, string $from, string $to, string $mode, $query)
-    {
-        if ($mode === 'opening') {
-            return $query->whereDate($column, '<', $from);
-        }
-
-        return $query->whereDate($column, '>=', $from)->whereDate($column, '<=', $to);
-    }
-
-    private function applyAgentFilter($query, $agentId)
-    {
-        return $query->when($agentId, fn ($q) => $q->where('ticket_agent_id', $agentId));
-    }
-
     private function fetchTickets(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
     {
-        $query = IssuedTicket::with([
+        return TicketAgentLedger::tickets($dateType, $from, $to, $mode, $search, $agentId)->with([
             'passenger.booking.customer', 'booking.customer',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketAgent', 'issuer',
-        ])->whereIn('status', ['issued', 're-issued', 'refunded']);
-
-        $query = $this->applyAgentFilter($query, $agentId);
-
-        if ($dateType === 'issue') {
-            $query = $this->dateBounding('issued_date', $from, $to, $mode, $query);
-        } elseif ($dateType === 'flight') {
-            $query = $this->dateBounding('inbound_date', $from, $to, $mode, $query);
-        } else {
-            $query = $this->dateBounding('outbound_date', $from, $to, $mode, $query);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                    ->orWhere('pnr', 'like', "%{$search}%")
-                    ->orWhereHas('passenger', function ($qq) use ($search) {
-                        $qq->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('passport_no', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('booking', function ($qq) use ($search) {
-                        $qq->where('invoice_id', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('booking.customer', function ($qq) use ($search) {
-                        $qq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        return $query->get();
+        ])->get();
     }
 
     private function fetchReissues(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
     {
-        $query = ReIssuedTicket::with([
+        return TicketAgentLedger::reissues($dateType, $from, $to, $mode, $search, $agentId)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketAgent', 'user',
-        ]);
-
-        $query = $this->applyAgentFilter($query, $agentId);
-
-        if ($dateType === 'issue') {
-            if ($mode === 'opening') {
-                $query->whereRaw('COALESCE(re_issue_date, DATE(created_at)) < ?', [$from]);
-            } else {
-                $query->whereRaw('COALESCE(re_issue_date, DATE(created_at)) >= ?', [$from])
-                    ->whereRaw('COALESCE(re_issue_date, DATE(created_at)) <= ?', [$to]);
-            }
-        } elseif ($dateType === 'flight') {
-            $query = $this->dateBounding('inbound_date', $from, $to, $mode, $query);
-        } else {
-            $query = $this->dateBounding('outbound_date', $from, $to, $mode, $query);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                    ->orWhere('pnr', 'like', "%{$search}%")
-                    ->orWhereHas('issuedTicket.passenger', function ($qq) use ($search) {
-                        $qq->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('passport_no', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('issuedTicket.booking', function ($qq) use ($search) {
-                        $qq->where('invoice_id', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('issuedTicket.booking.customer', function ($qq) use ($search) {
-                        $qq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        return $query->get();
+        ])->get();
     }
 
     private function fetchRefunds(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
     {
-        $query = RefundedTicket::with([
+        return TicketAgentLedger::refunds($dateType, $from, $to, $mode, $search, $agentId)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketAgent', 'user',
-        ]);
-
-        $query = $this->applyAgentFilter($query, $agentId);
-
-        if ($dateType === 'issue') {
-            if ($mode === 'opening') {
-                $query->whereRaw('COALESCE(refund_date, DATE(created_at)) < ?', [$from]);
-            } else {
-                $query->whereRaw('COALESCE(refund_date, DATE(created_at)) >= ?', [$from])
-                    ->whereRaw('COALESCE(refund_date, DATE(created_at)) <= ?', [$to]);
-            }
-        } elseif ($dateType === 'flight') {
-            $query = $this->dateBounding('inbound_date', $from, $to, $mode, $query);
-        } else {
-            $query = $this->dateBounding('outbound_date', $from, $to, $mode, $query);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                    ->orWhere('pnr', 'like', "%{$search}%")
-                    ->orWhereHas('issuedTicket.passenger', function ($qq) use ($search) {
-                        $qq->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('passport_no', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('issuedTicket.booking', function ($qq) use ($search) {
-                        $qq->where('invoice_id', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('issuedTicket.booking.customer', function ($qq) use ($search) {
-                        $qq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        return $query->get();
+        ])->get();
     }
 
     private function fetchPayments(string $from, string $to, string $mode, ?string $search, $agentId)
     {
-        $query = Payment::with(['voucher', 'vouchers', 'ticketAgent', 'booking'])
-            ->whereNotNull('ticket_agent_id');
-
-        $query = $this->applyAgentFilter($query, $agentId);
-        $query = $this->dateBounding('payment_date', $from, $to, $mode, $query);
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('vouchers', function ($qq) use ($search) {
-                    $qq->where('voucher_id', 'like', "%{$search}%");
-                })
-                    ->orWhereHas('booking', function ($qq) use ($search) {
-                        $qq->where('invoice_id', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        return $query->get();
+        return TicketAgentLedger::payments($from, $to, $mode, $search, $agentId)->with(['voucher', 'vouchers', 'ticketAgent', 'booking'])->get();
     }
 
     private function offerAwarePay($row): float
