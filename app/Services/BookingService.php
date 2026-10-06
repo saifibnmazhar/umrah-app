@@ -123,7 +123,7 @@ class BookingService
             $serviceChargeAmount = (float) ($package->service_charge ?? 0);
         }
 
-        return $ticketAmount + $visaAmount + $serviceChargeAmount;
+        return $ticketAmount + $visaAmount + $serviceChargeAmount + (float) ($passenger->extra_charge ?? 0);
     }
 
     public function recalculateBookingTotal(Booking $booking): float
