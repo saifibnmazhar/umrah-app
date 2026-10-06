@@ -654,4 +654,24 @@ class StatementReportTest extends TestCase
             $this->assertStringContainsString($key, $html, "footer missing key: {$key}");
         }
     }
+
+    public function test_view_merges_money_columns_with_rowspan(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        // Money headers are single tall cells with plain labels (no SAR in header).
+        foreach (['Customer Amount', 'Agent Fare (Net)', 'MARKUP', 'Customer Refund', 'IATA Refund', 'Payment to IATA', 'Balance Agent'] as $label) {
+            $this->assertStringContainsString($label, $html, "missing header: {$label}");
+            $this->assertStringNotContainsString("{$label} (SAR)", $html, "header must not include SAR: {$label}");
+        }
+        $this->assertStringContainsString('rowspan="2"', $html, 'money cells must span both rows');
+        $this->assertStringNotContainsString('>SAR</th>', $html, 'no bare SAR header cells');
+        $this->assertStringNotContainsString('>SAR</td>', $html, 'no bare SAR body cells');
+        // Non-money two-row headers stay.
+        foreach (['Category', 'Reference ID', 'Customer Name', 'Passport', 'Carrier | Class | Pay', 'Return Date', 'Ticket Staff'] as $label) {
+            $this->assertStringContainsString($label, $html, "missing sub-header: {$label}");
+        }
+    }
 }

@@ -140,13 +140,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">PNR</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Sector</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Flight Date</th>
-                        <th x-show="showCustomerAmount" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
-                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Agent Fare (Net)</th>
-                        <th x-show="showMarkup" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
-                        <th x-show="showCustomerRefund" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
-                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">IATA Refund</th>
-                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payment to IATA</th>
-                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance Agent</th>
+                        <th x-show="showCustomerAmount" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
+                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Agent Fare (Net)</th>
+                        <th x-show="showMarkup" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
+                        <th x-show="showCustomerRefund" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
+                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">IATA Refund</th>
+                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payment to IATA</th>
+                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance Agent</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left">IATA Agent</th>
                     </tr>
                     <tr class="table-header">
@@ -156,20 +156,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Passport</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Carrier | Class | Pay</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Return Date</th>
-                        <th x-show="showCustomerAmount" class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th x-show="showMarkup" class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th x-show="showCustomerRefund" class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
-                        <th class="px-2 py-2 text-[10px] text-gray-500 text-right border-r border-gray-300">SAR</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left">Ticket Staff</th>
                     </tr>
                 </thead>
                 <!-- One <tbody>; x-if only on <template>, x-for has a single
                      <tr> root, kind-switching via x-show on the <td>s (x-show
                      works on any element; bare <td> under <template> does not
-                     survive table parsing). Hidden cells take no layout space. -->
+                     survive table parsing). Hidden cells take no layout space.
+                     Money cells use rowspan="2": the primary row's tall cell
+                     spans into the secondary row, so secondary rows carry no
+                     money <td>s. Same for the 7 money header <th>s. -->
                 <tbody>
                     <template x-if="loading">
                         <tr><td colspan="14" class="px-4 py-8 text-sm text-center text-slate-500">Loading...</td></tr>
@@ -190,13 +186,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.pnr"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.sector"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.flight_date"></td>
-                                <td x-show="b.kind === 'primary' && showCustomerAmount" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.customer_amount)"></td>
-                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.agent_fare)"></td>
-                                <td x-show="b.kind === 'primary' && showMarkup" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.markup)"></td>
-                                <td x-show="b.kind === 'primary' && showCustomerRefund" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.customer_refund)"></td>
-                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.iata_refund)"></td>
-                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="money(b.row?.payment_to_iata)"></td>
-                                <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="fmt(b.row?.balance)"></td>
+                                <td x-show="b.kind === 'primary' && showCustomerAmount" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_amount)"></td>
+                                <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.agent_fare)"></td>
+                                <td x-show="b.kind === 'primary' && showMarkup" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.markup)"></td>
+                                <td x-show="b.kind === 'primary' && showCustomerRefund" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_refund)"></td>
+                                <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.iata_refund)"></td>
+                                <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.payment_to_iata)"></td>
+                                <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="sar(b.row?.balance)"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs" x-text="b.row?.agent_name"></td>
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.category"></td>
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.reference_id"></td>
@@ -204,13 +200,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.passport"></td>
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.carrier_class_pay"></td>
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600 border-r border-gray-200" x-text="b.row?.return_date"></td>
-                                <td x-show="b.kind === 'secondary' && showCustomerAmount" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary' && showMarkup" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary' && showCustomerRefund" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
-                                <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-[10px] text-gray-400 text-right border-r border-gray-200">SAR</td>
                                 <td x-show="b.kind === 'secondary'" class="px-2 py-1 text-xs text-gray-600" x-text="b.row?.staff_name"></td>
                                 <td colspan="14" x-show="b.kind === 'section-total'" class="px-4 py-2 text-sm font-bold text-gray-800 text-right">
                                     <span x-text="b.agent_name"></span>
@@ -284,6 +273,10 @@ function statementReport() {
         money(v) {
             if (v === null || v === undefined) return '-';
             return this.fmt(v);
+        },
+        sar(v) {
+            if (v === null || v === undefined) return '-';
+            return this.fmt(v) + ' SAR';
         },
         async loadData() {
             this.loading = true;
