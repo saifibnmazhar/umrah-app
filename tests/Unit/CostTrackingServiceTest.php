@@ -24,6 +24,7 @@ use App\Models\ReIssuedTicket;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TransactionType;
 use App\Models\TravelClass;
@@ -134,7 +135,9 @@ class CostTrackingServiceTest extends TestCase
         $visaAgent = VisaAgent::create(['name' => 'Test Visa Agent', 'address' => 'Test', 'contacts' => '0123456789']);
         VisaAgentCost::create(['visa_agent_id' => $visaAgent->id, 'user_id' => $user->id, 'visa_agent_cost' => 500.00]);
 
-        return compact('district', 'flightDateGap', 'currencyRate', 'visaPrice', 'ticketFare', 'package', 'fingerprintCharge', 'visaAgent', 'passengerStatusId');
+        $ticketAgent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'flightDateGap', 'currencyRate', 'visaPrice', 'ticketFare', 'package', 'fingerprintCharge', 'visaAgent', 'passengerStatusId', 'ticketAgent');
     }
 
     private function createBookingWithPassengers(User $user, array $deps, int $index, int $passengerCount): Booking
@@ -235,6 +238,7 @@ class CostTrackingServiceTest extends TestCase
                 'passenger_id' => $passenger->id,
                 'booking_id' => $booking->id,
                 'user_id' => $user->id,
+                'ticket_agent_id' => $deps['ticketAgent']->id,
                 'ticket_fare_id' => $deps['ticketFare']->id,
                 'selling_fare' => 28000.00,
                 'net_fare' => 28000.00,
@@ -335,6 +339,7 @@ class CostTrackingServiceTest extends TestCase
 
         ReIssuedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['ticketFare']->id,
             'issued_ticket_id' => $issuedTicket->id,
             'ticket_number' => 'RE-001',
@@ -378,6 +383,7 @@ class CostTrackingServiceTest extends TestCase
 
         ReIssuedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['ticketFare']->id,
             'issued_ticket_id' => $issuedTicket->id,
             'ticket_number' => 'RE-002',
@@ -420,6 +426,7 @@ class CostTrackingServiceTest extends TestCase
 
         RefundedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['ticketFare']->id,
             'issued_ticket_id' => $issuedTicket->id,
             'ticket_number' => 'RF-001',

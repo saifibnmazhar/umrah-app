@@ -234,12 +234,20 @@ class TicketRequestController extends Controller
                 $oldData['issued_ticket_id'] = $issuedTicket->id;
             }
 
+            $resolvedAgentId = $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id;
+
+            if (! $resolvedAgentId) {
+                DB::rollBack();
+
+                return response()->json(['message' => 'Ticket agent is required to process this re-issue.'], 422);
+            }
+
             $reIssueData = [
                 'user_id' => auth()->id(),
                 'issued_ticket_id' => $issuedTicket->id,
                 'ticket_number' => $issuedTicket->ticket_number,
                 'pnr' => $issuedTicket->pnr,
-                'ticket_agent_id' => $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id,
+                'ticket_agent_id' => $resolvedAgentId,
                 'ticket_fare_id' => $selectedFare->id,
                 'route_id' => $validated['route_id'] ?? null,
                 'group_ticket_id' => $selectedFare->groupTicket?->id ?? $issuedTicket->group_ticket_id,
@@ -453,6 +461,12 @@ class TicketRequestController extends Controller
                 $oldData = $issuedTicket->toArray();
                 $oldData['log_source'] = 'issued_tickets';
                 $oldData['issued_ticket_id'] = $issuedTicket->id;
+            }
+
+            if (! $refundSource->ticket_agent_id) {
+                DB::rollBack();
+
+                return response()->json(['message' => 'Ticket agent is required to process this refund.'], 422);
             }
 
             $refundData = [

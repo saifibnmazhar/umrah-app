@@ -22,6 +22,7 @@ use App\Models\ReIssueRefundReason;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TransactionType;
@@ -138,8 +139,9 @@ class IssuedDateRequiredTest extends TestCase
             'name' => 'Date Change',
             'default_payment_by' => 'customer',
         ]);
+        $agent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
 
-        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'reason');
+        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'reason', 'agent');
     }
 
     private function createBooking(array $deps): Booking
@@ -212,6 +214,7 @@ class IssuedDateRequiredTest extends TestCase
             'passenger_id' => $this->passenger->id,
             'booking_id' => $this->booking->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             'ticket_fare_id' => $this->deps['fare']->id,
             'selling_fare' => 30000.00,
             'offer_price' => 26000.00,
@@ -249,6 +252,7 @@ class IssuedDateRequiredTest extends TestCase
             $this->booking->id, $this->passenger->id,
         ]), [
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             'issued_date' => now()->toDateString(),
         ]);
 
@@ -296,6 +300,7 @@ class IssuedDateRequiredTest extends TestCase
         $reIssued = ReIssuedTicket::create([
             'issued_ticket_id' => $ticket->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             're_issue_date' => '2026-01-15',
             'selling_fare' => 30000,
             'net_fare' => 24000,
@@ -315,6 +320,7 @@ class IssuedDateRequiredTest extends TestCase
             $this->booking->id, $this->passenger->id,
         ]), [
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             're_issue_charge' => 100,
             'payment_by' => 'company',
         ]);

@@ -22,6 +22,7 @@ use App\Models\ReIssueRefundReason;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TransactionType;
@@ -143,7 +144,9 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
             'default_payment_by' => 'customer',
         ]);
 
-        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'airline', 'airlineClass', 'route', 'reason');
+        $ticketAgent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'airline', 'airlineClass', 'route', 'reason', 'ticketAgent');
     }
 
     private function createBookingWithIssuedTicket(): array
@@ -182,7 +185,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $passenger = Passenger::latest('id')->first();
         $issuedTicket = IssuedTicket::where('passenger_id', $passenger->id)->latest('id')->first();
-        $issuedTicket->update(['status' => 'issued', 'net_fare' => 25000, 'selling_fare' => 28000]);
+        $issuedTicket->update(['status' => 'issued', 'net_fare' => 25000, 'selling_fare' => 28000, 'ticket_agent_id' => $this->deps['ticketAgent']->id]);
 
         return [$passenger->booking, $passenger->fresh(), $issuedTicket->fresh()];
     }
@@ -288,6 +291,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
         RefundedTicket::create([
             'issued_ticket_id' => $issuedTicket->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'net_fare' => 1000,
         ]);
         $issuedTicket->update(['status' => 'refunded']);
@@ -428,6 +432,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
         $reIssued = ReIssuedTicket::create([
             'issued_ticket_id' => $issuedTicket->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             're_issue_charge' => 100,
             'fare_difference' => 50,
             'other_costs' => 25,
@@ -441,6 +446,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             're_issue_charge' => 120,
             'payment_by' => 'company',
         ]);
@@ -473,6 +479,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'payment_by' => 'customer',
             'total_customer_payment' => 180,
         ]);
@@ -508,6 +515,7 @@ class ReIssueCustomerPaymentDerivationTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'payment_by' => 'customer',
             'total_customer_payment' => 50,
         ]);

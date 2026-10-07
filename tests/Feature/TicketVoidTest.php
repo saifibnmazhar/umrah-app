@@ -20,6 +20,7 @@ use App\Models\Passenger;
 use App\Models\PassengerStatus;
 use App\Models\Role;
 use App\Models\Route;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TravelClass;
@@ -125,7 +126,9 @@ class TicketVoidTest extends TestCase
             'fingerprint_charge' => 300,
         ]);
 
-        return compact('district', 'package', 'fpCharge', 'visaPrice', 'fare');
+        $agent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'package', 'fpCharge', 'visaPrice', 'fare', 'agent');
     }
 
     private function makeBooking(): Booking
@@ -204,6 +207,7 @@ class TicketVoidTest extends TestCase
             'ticket_number' => '176-'.substr(uniqid(), -9),
             'pnr' => strtoupper(substr(uniqid(), -6)),
             'ticket_fare_id' => $this->deps['fare']->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
             'net_fare' => 24000,
             'issued_date' => now()->toDateString(),
             'inbound_date' => now()->addDays(5)->toDateString(),
@@ -522,6 +526,7 @@ class TicketVoidTest extends TestCase
             'issued_ticket_id' => $ticket->id,
             'ticket_number' => 'TN-EDITED',
             'pnr' => 'PNR-EDITED',
+            'ticket_agent_id' => $this->deps['agent']->id,
             'net_fare' => 5000,
             'issued_date' => now()->toDateString(),
         ])->assertOk();

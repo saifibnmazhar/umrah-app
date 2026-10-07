@@ -23,6 +23,7 @@ use App\Models\ReIssuedTicket;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TravelClass;
 use App\Models\User;
@@ -110,8 +111,9 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'user_id' => $user->id,
             'fingerprint_charge' => 300.00,
         ]);
+        $ticketAgent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
 
-        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge');
+        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'ticketAgent');
     }
 
     private function createBooking(User $user, array $deps): Booking
@@ -197,6 +199,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 27000.00,
@@ -223,6 +226,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 24000.00,
@@ -246,6 +250,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 24000.00,
@@ -268,6 +273,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 24000.00,
@@ -296,6 +302,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
         $ticket = $passenger->allIssuedTickets->first();
         $reissue = ReIssuedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $ticket->ticket_agent_id,
             'issued_ticket_id' => $ticket->id,
             're_issue_date' => '2020-03-01',
             'service_charge' => 200.00,
@@ -318,6 +325,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
         $ticket = $passenger->allIssuedTickets->first();
         $reissue = ReIssuedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $ticket->ticket_agent_id,
             'issued_ticket_id' => $ticket->id,
             're_issue_date' => '2020-03-01',
             'total_cost' => 500.00,
@@ -343,6 +351,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
         $ticket = $passenger->allIssuedTickets->first();
         $refund = RefundedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $ticket->ticket_agent_id,
             'issued_ticket_id' => $ticket->id,
             'refund_date' => '2020-04-01',
             'service_charge' => 75.00,
@@ -365,6 +374,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 24000.00,
@@ -375,6 +385,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
         $ticket = $passenger->allIssuedTickets->first();
         $reissue = ReIssuedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $ticket->ticket_agent_id,
             'issued_ticket_id' => $ticket->id,
             're_issue_date' => '2020-03-01',
             'service_charge' => 200.00,
@@ -385,6 +396,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
         $reissue->saveQuietly();
         $refund = RefundedTicket::create([
             'user_id' => $user->id,
+            'ticket_agent_id' => $ticket->ticket_agent_id,
             'issued_ticket_id' => $ticket->id,
             'refund_date' => '2020-04-01',
             'service_charge' => 75.00,
@@ -413,6 +425,7 @@ class ProfitEffectiveDateComponentsTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $booking->id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['ticketAgent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 24000.00,

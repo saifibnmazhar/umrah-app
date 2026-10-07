@@ -21,6 +21,7 @@ use App\Models\ReIssueRefundReason;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TicketRequest;
 use App\Models\TransactionType;
@@ -143,8 +144,9 @@ class RefundAmountValidationTest extends TestCase
             'name' => 'Cancelled Flight',
             'default_payment_by' => 'customer',
         ]);
+        $ticketAgent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
 
-        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'reason');
+        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'reason', 'ticketAgent');
     }
 
     private function createBooking(array $deps): Booking
@@ -217,6 +219,7 @@ class RefundAmountValidationTest extends TestCase
             'passenger_id' => $this->passenger->id,
             'booking_id' => $this->booking->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'ticket_fare_id' => $this->deps['fare']->id,
             'selling_fare' => 30000.00,
             'offer_price' => 26000.00,

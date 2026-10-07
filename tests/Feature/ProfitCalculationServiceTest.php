@@ -22,6 +22,7 @@ use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TravelClass;
 use App\Models\User;
@@ -131,7 +132,9 @@ class ProfitCalculationServiceTest extends TestCase
             'fingerprint_charge' => 300.00,
         ]);
 
-        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'route');
+        $agent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'route', 'agent');
     }
 
     private function createBooking(User $user, array $deps, string $suffix = 'A', float $discountAmount = 0): Booking
@@ -243,6 +246,7 @@ class ProfitCalculationServiceTest extends TestCase
             'passenger_id' => $passenger->id,
             'booking_id' => $passenger->booking_id,
             'user_id' => $user->id,
+            'ticket_agent_id' => $deps['agent']->id,
             'ticket_fare_id' => $deps['fare']->id,
             'selling_fare' => 30000.00,
             'net_fare' => 27000.00,
@@ -429,6 +433,7 @@ class ProfitCalculationServiceTest extends TestCase
         ReIssuedTicket::create([
             'user_id' => $user->id,
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $deps['agent']->id,
             're_issue_date' => now(),
             'service_charge' => 200.00,
             'payment_by' => 'customer',
@@ -453,6 +458,7 @@ class ProfitCalculationServiceTest extends TestCase
         ReIssuedTicket::create([
             'user_id' => $user->id,
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $deps['agent']->id,
             're_issue_date' => now(),
             'service_charge' => 0,
             're_issue_charge' => 100.00,
@@ -486,6 +492,7 @@ class ProfitCalculationServiceTest extends TestCase
         $reissue = ReIssuedTicket::create([
             'user_id' => $user->id,
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $deps['agent']->id,
             're_issue_date' => now(),
             'service_charge' => 0,
             're_issue_charge' => 100.00,
@@ -519,6 +526,7 @@ class ProfitCalculationServiceTest extends TestCase
         RefundedTicket::create([
             'user_id' => $user->id,
             'issued_ticket_id' => $ticket->id,
+            'ticket_agent_id' => $deps['agent']->id,
             'refund_date' => now(),
             'service_charge' => 75.00,
         ]);
