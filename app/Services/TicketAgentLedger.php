@@ -495,6 +495,12 @@ final class TicketAgentLedger
     private const AGENT_LABEL = "COALESCE(ta.name, 'Unknown agent')";
 
     /**
+     * Same order for use inside window definitions, where SELECT aliases are
+     * invisible to MySQL — the label expression is inlined instead.
+     */
+    private const ORDER_WINDOW = "COALESCE(ta.name, 'Unknown agent'), agent_id, sort_date, cat_order, sort_id";
+
+    /**
      * One page of events with per-agent running balances and global neighbour
      * flags. Windows evaluate over the full filtered set before the page
      * filter applies, so balances and flags stay exact on every page — even
@@ -507,8 +513,8 @@ final class TicketAgentLedger
             ->selectRaw('u.*')
             ->selectRaw(self::AGENT_LABEL.' AS agent_name')
             ->selectRaw('SUM(delta) OVER (PARTITION BY agent_id ORDER BY sort_date, cat_order, sort_id ROWS UNBOUNDED PRECEDING) AS running')
-            ->selectRaw('LAG(agent_id) OVER (ORDER BY '.self::ORDER.') AS prev_agent')
-            ->selectRaw('LEAD(agent_id) OVER (ORDER BY '.self::ORDER.') AS next_agent');
+            ->selectRaw('LAG(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS prev_agent')
+            ->selectRaw('LEAD(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS next_agent');
 
         return DB::query()->fromSub($inner, 'w')
             ->whereIn('agent_id', $agentIds)
