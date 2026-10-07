@@ -203,13 +203,13 @@ class StatementController extends Controller
         return (float) ($row->selling_fare ?? 0);
     }
 
-    private function carrierClassPay($row, float $pay): string
+    private function carrierClassPay($row): string
     {
         $fare = $row->ticketFare;
         $carrier = $fare?->airline?->code ?? $fare?->airline?->name ?? '-';
         $class = $fare?->airlineClass?->travelClass?->name ?? $fare?->airlineClass?->class?->name ?? '-';
 
-        return trim("{$carrier} | {$class} | ".rtrim(rtrim(number_format($pay, 2, '.', ''), '0'), '.'));
+        return trim("{$carrier} | {$class}");
     }
 
     /**
@@ -253,7 +253,7 @@ class StatementController extends Controller
             'pnr' => $ticket->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
             'sector' => $this->sectorFor($ticket, $passenger),
-            'carrier_class_pay' => $this->carrierClassPay($ticket, $pay),
+            'carrier_class_pay' => $this->carrierClassPay($ticket),
             'flight_date' => $this->formatDay($ticket->inbound_date),
             'return_date' => $this->formatDay($ticket->outbound_date),
             'customer_amount' => $pay,
@@ -290,7 +290,7 @@ class StatementController extends Controller
             'pnr' => $reissue->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
             'sector' => $this->sectorFor($reissue, $passenger),
-            'carrier_class_pay' => $this->carrierClassPay($reissue, $pay),
+            'carrier_class_pay' => $this->carrierClassPay($reissue),
             'flight_date' => $this->formatDay($reissue->inbound_date),
             'return_date' => $this->formatDay($reissue->outbound_date),
             'customer_amount' => $pay,
@@ -327,7 +327,7 @@ class StatementController extends Controller
             'pnr' => $refund->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
             'sector' => $this->sectorFor($refund, $passenger),
-            'carrier_class_pay' => $this->carrierClassPay($refund, $pay),
+            'carrier_class_pay' => $this->carrierClassPay($refund),
             'flight_date' => $this->formatDay($refund->inbound_date),
             'return_date' => $this->formatDay($refund->outbound_date),
             'customer_amount' => null,

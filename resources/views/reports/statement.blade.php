@@ -154,7 +154,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Reference ID</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Customer Name</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Passport</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Carrier | Class | Pay</th>
+                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Carrier | Class</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Return Date</th>
                         <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left">Ticket Staff</th>
                     </tr>

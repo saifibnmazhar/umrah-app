@@ -313,6 +313,8 @@ class StatementReportTest extends TestCase
         foreach (['date', 'category', 'ticket_no', 'reference_id', 'pax_name', 'customer_name', 'pnr', 'passport', 'sector', 'carrier_class_pay', 'flight_date', 'return_date', 'customer_amount', 'agent_fare', 'markup', 'customer_refund', 'iata_refund', 'payment_to_iata', 'balance', 'agent_name', 'staff_name'] as $key) {
             $this->assertArrayHasKey($key, $row, "missing payload key: {$key}");
         }
+        // Carrier | Class only — no pay segment in frontend.
+        $this->assertEquals(1, substr_count($row['carrier_class_pay'], '|'), 'carrier_class_pay must have exactly two segments');
     }
 
     public function test_running_balance_paid_minus_payable(): void
@@ -684,9 +686,10 @@ class StatementReportTest extends TestCase
         $this->assertStringNotContainsString('>SAR</th>', $html, 'no bare SAR header cells');
         $this->assertStringNotContainsString('>SAR</td>', $html, 'no bare SAR body cells');
         // Non-money two-row headers stay.
-        foreach (['Category', 'Reference ID', 'Customer Name', 'Passport', 'Carrier | Class | Pay', 'Return Date', 'Ticket Staff'] as $label) {
+        foreach (['Category', 'Reference ID', 'Customer Name', 'Passport', 'Carrier | Class', 'Return Date', 'Ticket Staff'] as $label) {
             $this->assertStringContainsString($label, $html, "missing sub-header: {$label}");
         }
+        $this->assertStringNotContainsString('Carrier | Class | Pay', $html, 'pay segment must not show in frontend');
     }
 
     public function test_view_money_values_follow_navbar_currency_toggle(): void
