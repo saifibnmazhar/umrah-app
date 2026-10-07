@@ -103,7 +103,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">Date Type</label>
-                <select x-model="filters.date_type" @change="loadData()" class="search-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.date_type" @change="resetAndLoad()" class="search-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="issue">Issue Date</option>
                     <option value="flight">Flight Date (Inbound Date)</option>
                     <option value="return">Return Date (Outbound Date)</option>
@@ -111,13 +111,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="filters.date_from" @change="loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.date_from" @change="resetAndLoad()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="filters.date_to" @change="loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.date_to" @change="resetAndLoad()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">Agents</label>
-                <select x-model="filters.agent_id" @change="loadData()" class="search-input w-48 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.agent_id" @change="resetAndLoad()" class="search-input w-48 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Agents</option>
                     @foreach($agents as $agent)
                     <option value="{{ $agent->id }}">{{ $agent->name }}</option>
@@ -126,11 +126,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
-                <input type="text" x-model="filters.search" @input.debounce.300ms="loadData()" placeholder="PNR / Ticket No / Passport / Invoice"
+                <input type="text" x-model="filters.search" @input.debounce.300ms="resetAndLoad()" placeholder="PNR / Ticket No / Passport / Invoice"
                        class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div class="flex items-center gap-2">
-                <button @click="loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700">Search</button>
+                <button @click="resetAndLoad()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700">Search</button>
             </div>
             {{-- Column-hide checkboxes commented out — all money columns always visible.
             <div class="flex items-center gap-3 ml-auto text-xs text-gray-600">
@@ -226,6 +226,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         </div>
     </div>
 
+    <nav x-show="meta.last_page > 1" class="flex justify-end mt-2" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="goToPage(page - 1)" :disabled="page <= 1"
+                    :class="page <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="meta.page"></span>/<span x-text="meta.last_page"></span>
+                (<span x-text="meta.total"></span> rows)
+            </span>
+            <button @click="goToPage(page + 1)" :disabled="page >= meta.last_page"
+                    :class="page >= meta.last_page ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
+
     <div class="flex justify-start mt-4">
         <div class="footer-box rounded-lg overflow-hidden w-full max-w-md">
             <div class="footer-box-header px-4 py-2 text-sm font-bold text-gray-800">Ticket Statement Summary</div>
@@ -248,18 +265,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <script>
 function statementReport() {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const thirtyDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
     const iso = (d) => d.toISOString().slice(0, 10);
     return {
         filters: {
             date_type: 'issue',
-            date_from: iso(firstDay),
+            date_from: iso(thirtyDaysAgo),
             date_to: iso(today),
             agent_id: '',
             search: '',
         },
         flatRows: [],
-        sections: [],
+        agents: {},
+        page: 1,
+        meta: { page: 1, per_page: 50, total: 0, last_page: 1 },
         blocks: [],
         summary: {
             opening_balance: 0, closing_balance: 0, total_tickets: 0,
@@ -297,8 +316,10 @@ function statementReport() {
         },
         resetState() {
             this.flatRows = [];
-            this.sections = [];
+            this.agents = {};
             this.blocks = [];
+            this.page = 1;
+            this.meta = { page: 1, per_page: 50, total: 0, last_page: 1 };
             this.summary = {
                 opening_balance: 0, closing_balance: 0, total_tickets: 0,
                 total_sale_amount: 0, total_customer_refund: 0, total_agent_fare: 0,
@@ -308,20 +329,21 @@ function statementReport() {
         rangeDaysExceeded() {
             const { date_from, date_to } = this.filters;
             if (!date_from || !date_to) return false;
-            return (new Date(date_to) - new Date(date_from)) / (1000 * 60 * 60 * 24) > 92;
+            return (new Date(date_to) - new Date(date_from)) / (1000 * 60 * 60 * 24) > 366;
         },
         async loadData() {
             this.loading = true;
             try {
                 if (this.rangeDaysExceeded()) {
                     this.resetState();
-                    window.showToast('Date filter exceeds date range cap (92 days)', 'error');
+                    window.showToast('Date filter exceeds date range cap (366 days)', 'error');
                     return;
                 }
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([key, value]) => {
                     if (value) params.set(key, value);
                 });
+                params.set('page', this.page);
                 const response = await fetch(`/api/reports/statement?${params}`);
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
@@ -329,7 +351,8 @@ function statementReport() {
                 }
                 const result = await response.json();
                 this.flatRows = result.rows || [];
-                this.sections = result.sections || [];
+                this.agents = result.agents || {};
+                if (result.meta) this.meta = result.meta;
                 if (result.summary) this.summary = result.summary;
                 this.buildBlocks();
             } catch (error) {
@@ -347,16 +370,36 @@ function statementReport() {
                 blocks.push({ kind: 'primary', key: keyBase + '-p', trClass, row });
                 blocks.push({ kind: 'secondary', key: keyBase + '-s', trClass, row });
             };
-            if (this.sections.length > 0) {
-                this.sections.forEach((section) => {
-                    blocks.push({ kind: 'section-header', key: 'sec-' + section.agent_id + '-open', trClass: 'section-opening', agent_name: section.agent_name, opening_balance: section.opening_balance });
-                    section.rows.forEach((row, idx) => pushRecord(row, 'sec-' + section.agent_id + '-' + idx));
-                    blocks.push({ kind: 'section-total', key: 'sec-' + section.agent_id + '-close', trClass: 'section-row', agent_name: section.agent_name, closing_balance: section.closing_balance });
-                });
-            } else {
-                this.flatRows.forEach((row, idx) => pushRecord(row, 'row-' + idx));
+            const pushSectionHeader = (agent, keyBase) => {
+                blocks.push({ kind: 'section-header', key: keyBase + '-open', trClass: 'section-opening', agent_name: agent.agent_name, opening_balance: agent.opening_balance });
+            };
+            const pushSectionTotal = (agent, keyBase) => {
+                blocks.push({ kind: 'section-total', key: keyBase + '-close', trClass: 'section-row', agent_name: agent.agent_name, closing_balance: agent.closing_balance });
+            };
+            if (this.page === 1) {
+                // Agents counted in the totals but with no rows anywhere in range.
+                Object.values(this.agents)
+                    .filter((agent) => !agent.has_rows)
+                    .forEach((agent) => {
+                        pushSectionHeader(agent, 'sec-' + agent.agent_id);
+                        pushSectionTotal(agent, 'sec-' + agent.agent_id);
+                    });
             }
+            this.flatRows.forEach((row, idx) => {
+                if (row.agent_changed) pushSectionHeader(this.agents[row.agent_id], 'row-' + idx);
+                pushRecord(row, 'row-' + idx);
+                if (row.agent_ends) pushSectionTotal(this.agents[row.agent_id], 'row-' + idx);
+            });
             this.blocks = blocks;
+        },
+        resetAndLoad() {
+            this.page = 1;
+            this.loadData();
+        },
+        goToPage(page) {
+            if (page < 1 || page > this.meta.last_page || this.loading) return;
+            this.page = page;
+            this.loadData();
         },
     };
 }

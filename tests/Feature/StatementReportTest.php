@@ -32,6 +32,7 @@ use App\Models\User;
 use App\Models\VisaSellingPrice;
 use App\Models\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class StatementReportTest extends TestCase
@@ -392,10 +393,51 @@ class StatementReportTest extends TestCase
     {
         $user = $this->makeUser('Super Admin');
         $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams([
-            'date_from' => '2026-01-01', 'date_to' => '2026-05-01',
+            'date_from' => '2025-01-01', 'date_to' => '2026-06-01',
         ])));
         $response->assertStatus(422);
-        $response->assertJsonPath('message', 'Date range must not exceed 92 days.');
+        $response->assertJsonPath('message', 'Date range must not exceed 366 days.');
+    }
+
+    public function test_mid_range_within_cap_loads(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-MID');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $this->makeTicket($user, $deps, $booking, $passenger, ['issued_date' => '2026-01-15']);
+
+        // ~200 days: rejected under the old 92-day cap, valid now.
+        $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams([
+            'date_from' => '2025-11-01', 'date_to' => '2026-05-20',
+        ])));
+        $response->assertOk();
+        $this->assertCount(1, $response->json('rows'));
+    }
+
+    public function test_default_range_is_last_30_days(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $oldBooking = $this->makeBooking($user, $deps, 'INV-DOLD');
+        $oldPassenger = $this->makePassenger($user, $deps, $oldBooking);
+        $this->makeTicket($user, $deps, $oldBooking, $oldPassenger, ['issued_date' => '2026-07-01']);
+        $newBooking = $this->makeBooking($user, $deps, 'INV-DNEW');
+        $newPassenger = $this->makePassenger($user, $deps, $newBooking);
+        $this->makeTicket($user, $deps, $newBooking, $newPassenger, ['issued_date' => '2026-10-01']);
+
+        // No dates sent: defaults to today minus 30 days through today.
+        $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query(['date_type' => 'issue']));
+        $response->assertOk();
+        $rows = $response->json('rows');
+        $this->assertCount(1, $rows);
+        $this->assertEquals('INV-DNEW', $rows[0]['reference_id']);
+        // The older ticket falls outside the window: opening only.
+        $this->assertEquals(-2700.00, (float) $response->json('summary.opening_balance'));
+
+        $agents = TicketAgent::orderBy('name')->get();
+        $html = view('reports.statement', ['agents' => $agents])->render();
+        $this->assertStringContainsString('getDate() - 30', $html, 'page must default to last 30 days');
     }
 
     public function test_view_shows_toast_and_resets_summary_on_range_cap(): void
@@ -405,7 +447,7 @@ class StatementReportTest extends TestCase
         $html = view('reports.statement', ['agents' => $agents])->render();
 
         // Over-cap ranges toast instead of leaving a stale summary behind.
-        $this->assertStringContainsString('Date filter exceeds date range cap (92 days)', $html);
+        $this->assertStringContainsString('Date filter exceeds date range cap (366 days)', $html);
         $this->assertStringContainsString('window.showToast', $html);
         $this->assertStringContainsString('!response.ok', $html, 'server errors must reset state too');
         $this->assertStringContainsString('resetState()', $html, 'table + summary must reset together');
@@ -457,11 +499,22 @@ class StatementReportTest extends TestCase
 
         $all = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
         $all->assertOk();
-        $this->assertArrayHasKey('sections', $all->json());
-        $this->assertCount(2, $all->json('sections'));
+        $this->assertArrayHasKey('agents', $all->json());
+        $this->assertArrayHasKey('meta', $all->json());
+        $agents = $all->json('agents');
+        $this->assertCount(2, $agents);
         // per-agent isolation: agentB balance should be -1000, not mixed with A
-        $sectionB = collect($all->json('sections'))->firstWhere('agent_name', 'AGENTB');
-        $this->assertEquals(-1000.00, (float) $sectionB['closing_balance']);
+        $agentB = collect($agents)->firstWhere('agent_name', 'AGENTB');
+        $this->assertEquals(-1000.00, (float) $agentB['closing_balance']);
+        // single-row agents start and end their own block on the page
+        foreach ($all->json('rows') as $row) {
+            $this->assertTrue($row['agent_changed']);
+            $this->assertTrue($row['agent_ends']);
+        }
+        $this->assertEquals(1, $all->json('meta.page'));
+        $this->assertEquals(50, $all->json('meta.per_page'));
+        $this->assertEquals(2, $all->json('meta.total'));
+        $this->assertEquals(1, $all->json('meta.last_page'));
 
         $single = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['agent_id' => $deps['agentA']->id])));
         $single->assertOk();
@@ -731,20 +784,21 @@ class StatementReportTest extends TestCase
 
         $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
         $r->assertOk();
-        $sections = collect($r->json('sections'));
+        $agents = $r->json('agents');
         $summary = $r->json('summary');
 
-        // Every counted agent is visible: B gets an empty-rows section, opening == closing.
-        $this->assertEquals(2, $sections->count());
-        $sectionB = $sections->firstWhere('agent_id', $deps['agentB']->id);
-        $this->assertNotNull($sectionB, 'opening-only agent must have a section');
-        $this->assertEquals([], $sectionB['rows']);
-        $this->assertEquals(-2700.00, (float) $sectionB['opening_balance']);
-        $this->assertEquals(-2700.00, (float) $sectionB['closing_balance']);
+        // Every counted agent is visible in the agents map, including the
+        // opening-only one (flagged via has_rows for the page renderer).
+        $this->assertCount(2, $agents);
+        $agentB = collect($agents)->firstWhere('agent_id', $deps['agentB']->id);
+        $this->assertNotNull($agentB, 'opening-only agent must be visible');
+        $this->assertFalse((bool) $agentB['has_rows']);
+        $this->assertEquals(-2700.00, (float) $agentB['opening_balance']);
+        $this->assertEquals(-2700.00, (float) $agentB['closing_balance']);
 
-        // Summary is exactly the sum of the visible sections.
-        $this->assertEquals($sections->sum('opening_balance'), (float) $summary['opening_balance']);
-        $this->assertEquals($sections->sum('closing_balance'), (float) $summary['closing_balance']);
+        // Summary is exactly the sum of the visible agents map.
+        $this->assertEquals(collect($agents)->sum('opening_balance'), (float) $summary['opening_balance']);
+        $this->assertEquals(collect($agents)->sum('closing_balance'), (float) $summary['closing_balance']);
         $this->assertEquals(-2700.00, (float) $summary['opening_balance']);
     }
 
@@ -902,5 +956,204 @@ class StatementReportTest extends TestCase
         foreach (['Customer Amount', 'MARKUP', 'Customer Refund'] as $label) {
             $this->assertStringContainsString($label, $html, "column must always render: {$label}");
         }
+    }
+
+    public function test_pagination_meta_and_empty_second_page(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        for ($i = 0; $i < 3; $i++) {
+            $booking = $this->makeBooking($user, $deps, 'INV-PG'.$i);
+            $passenger = $this->makePassenger($user, $deps, $booking);
+            $this->makeTicket($user, $deps, $booking, $passenger);
+        }
+
+        $p1 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $p1->assertOk();
+        $this->assertCount(3, $p1->json('rows'));
+        $this->assertEquals(['page' => 1, 'per_page' => 50, 'total' => 3, 'last_page' => 1], $p1->json('meta'));
+
+        $p2 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['page' => 2])));
+        $p2->assertOk();
+        $this->assertEquals([], $p2->json('rows'));
+        $this->assertEquals(2, $p2->json('meta.page'));
+        // Summary still reflects the whole range, not the empty page.
+        $this->assertEquals($p1->json('summary'), $p2->json('summary'));
+    }
+
+    public function test_pagination_preserves_running_balances_across_pages(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        for ($i = 0; $i < 55; $i++) {
+            $booking = $this->makeBooking($user, $deps, 'INV-BIG'.$i);
+            $passenger = $this->makePassenger($user, $deps, $booking);
+            $this->makeTicket($user, $deps, $booking, $passenger);
+        }
+
+        $p1 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $p1->assertOk();
+        $this->assertCount(50, $p1->json('rows'));
+        $this->assertEquals(['page' => 1, 'per_page' => 50, 'total' => 55, 'last_page' => 2], $p1->json('meta'));
+        $rows1 = $p1->json('rows');
+        $this->assertEquals(-2700.00 * 50, (float) end($rows1)['balance']);
+
+        $p2 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['page' => 2])));
+        $p2->assertOk();
+        $rows2 = $p2->json('rows');
+        $this->assertCount(5, $rows2);
+        // Running balance continues seamlessly onto page 2.
+        $this->assertEquals(-2700.00 * 51, (float) $rows2[0]['balance']);
+        $this->assertEquals(-2700.00 * 55, (float) end($rows2)['balance']);
+
+        // Single agent spanning both pages: opening header exactly once, closing exactly once.
+        $changed = 0;
+        $ends = 0;
+        foreach (array_merge($rows1, $rows2) as $row) {
+            $changed += $row['agent_changed'] ? 1 : 0;
+            $ends += $row['agent_ends'] ? 1 : 0;
+        }
+        $this->assertEquals(1, $changed);
+        $this->assertEquals(1, $ends);
+
+        $agents = $p1->json('agents');
+        $agent = $agents[$deps['agentA']->id] ?? reset($agents);
+        $this->assertEquals(0.0, (float) $agent['opening_balance']);
+        $this->assertEquals(-2700.00 * 55, (float) $agent['closing_balance']);
+    }
+
+    public function test_category_byte_order_for_same_date_events(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-ORD');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $ticket = $this->makeTicket($user, $deps, $booking, $passenger, ['issued_date' => '2026-03-10']);
+        ReIssuedTicket::create([
+            'user_id' => $user->id, 'ticket_agent_id' => $deps['agentA']->id,
+            'ticket_fare_id' => $deps['fareRegular']->id, 'issued_ticket_id' => $ticket->id,
+            'ticket_number' => '779-ORD-RE', 'pnr' => $ticket->pnr,
+            're_issue_date' => '2026-03-10', 'selling_fare' => 2820.00, 'net_fare' => 2700.00,
+            'service_charge' => 100.00, 'total_cost' => 500.00,
+        ]);
+        RefundedTicket::create([
+            'user_id' => $user->id, 'ticket_agent_id' => $deps['agentA']->id,
+            'ticket_fare_id' => $deps['fareRegular']->id, 'issued_ticket_id' => $ticket->id,
+            'ticket_number' => '779-ORD-RF', 'pnr' => $ticket->pnr,
+            'refund_date' => '2026-03-10', 'selling_fare' => 2820.00, 'net_fare' => 2700.00,
+            'iata_refunded_amount' => 2500.00, 'refund_to_customer' => 2600.00, 'service_charge' => 50.00,
+        ]);
+        $this->makePayment($user, $deps, $booking, ['payment_date' => '2026-03-10', 'amount' => 1000.00]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $rows = $r->json('rows');
+        $this->assertEquals(['Payment', 'Re-issue', 'Refund', 'Ticket'], array_column($rows, 'category'));
+        // +1000 payment, −500 re-issue, +2500 refund, −2700 ticket.
+        $this->assertEquals([1000.00, 500.00, 3000.00, 300.00], array_map(fn ($row) => (float) $row['balance'], $rows));
+    }
+
+    public function test_agent_blocks_stay_together_across_pages(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        foreach (['agentA' => 30, 'agentB' => 30] as $key => $n) {
+            for ($i = 0; $i < $n; $i++) {
+                $booking = $this->makeBooking($user, $deps);
+                $passenger = $this->makePassenger($user, $deps, $booking);
+                $this->makeTicket($user, $deps, $booking, $passenger, ['ticket_agent_id' => $deps[$key]->id]);
+            }
+        }
+
+        $p1 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $p1->assertOk();
+        $rows1 = $p1->json('rows');
+        $this->assertCount(30, $rows1);
+        $this->assertEquals(1, count(array_unique(array_column($rows1, 'agent_id'))), 'page 1 must hold one whole agent');
+
+        $p2 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['page' => 2])));
+        $p2->assertOk();
+        $rows2 = $p2->json('rows');
+        $this->assertCount(30, $rows2);
+        $this->assertEquals(1, count(array_unique(array_column($rows2, 'agent_id'))));
+        $this->assertNotEquals($rows1[0]['agent_id'], $rows2[0]['agent_id']);
+
+        $this->assertEquals(['page' => 1, 'per_page' => 50, 'total' => 60, 'last_page' => 2], $p1->json('meta'));
+        // Each page carries exactly one opening header and one closing row.
+        foreach ([$rows1, $rows2] as $rows) {
+            $this->assertEquals(1, count(array_filter($rows, fn ($r) => $r['agent_changed'])));
+            $this->assertEquals(1, count(array_filter($rows, fn ($r) => $r['agent_ends'])));
+        }
+    }
+
+    public function test_oversized_agent_slices_keep_single_header(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        // AGENTB sorts before FLYBURJ: 55-row agent first, then 5-row agent.
+        for ($i = 0; $i < 55; $i++) {
+            $booking = $this->makeBooking($user, $deps);
+            $passenger = $this->makePassenger($user, $deps, $booking);
+            $this->makeTicket($user, $deps, $booking, $passenger, ['ticket_agent_id' => $deps['agentB']->id]);
+        }
+        for ($i = 0; $i < 5; $i++) {
+            $booking = $this->makeBooking($user, $deps);
+            $passenger = $this->makePassenger($user, $deps, $booking);
+            $this->makeTicket($user, $deps, $booking, $passenger, ['ticket_agent_id' => $deps['agentA']->id]);
+        }
+
+        $p1 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $p2 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['page' => 2])));
+        $p3 = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams(['page' => 3])));
+        $this->assertEquals(['page' => 1, 'per_page' => 50, 'total' => 60, 'last_page' => 3], $p1->json('meta'));
+        $this->assertCount(50, $p1->json('rows'));
+        $this->assertCount(5, $p2->json('rows'));
+        $this->assertCount(5, $p3->json('rows'));
+
+        // Middle slice continues the agent: no repeated opening header, closing at its end.
+        $rows2 = $p2->json('rows');
+        $this->assertFalse((bool) $rows2[0]['agent_changed']);
+        $this->assertTrue((bool) end($rows2)['agent_ends']);
+        // Balances continue seamlessly across the slice boundary.
+        $rows1 = $p1->json('rows');
+        $this->assertEquals((float) end($rows1)['balance'] - 2700.00, (float) $rows2[0]['balance']);
+
+        // Final page holds the whole small agent with its own header and total.
+        $rows3 = $p3->json('rows');
+        $this->assertEquals(1, count(array_unique(array_column($rows3, 'agent_id'))));
+        $this->assertTrue((bool) $rows3[0]['agent_changed']);
+        $this->assertTrue((bool) end($rows3)['agent_ends']);
+    }
+
+    public function test_view_has_pager_wired_to_flags(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        $this->assertStringContainsString('goToPage', $html, 'pager controls must exist');
+        $this->assertStringContainsString('resetAndLoad', $html, 'filters must reset to page 1');
+        $this->assertStringContainsString('meta.last_page', $html, 'pager must read page meta');
+        $this->assertStringContainsString('agent_changed', $html, 'section headers must follow flags');
+        $this->assertStringContainsString('agent_ends', $html, 'section totals must follow flags');
+    }
+
+    public function test_statement_endpoint_stays_bounded_query_count(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        for ($i = 0; $i < 60; $i++) {
+            $booking = $this->makeBooking($user, $deps, 'INV-VOL'.$i);
+            $passenger = $this->makePassenger($user, $deps, $booking);
+            $this->makeTicket($user, $deps, $booking, $passenger);
+        }
+
+        DB::enableQueryLog();
+        $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        DB::disableQueryLog();
+
+        $response->assertOk();
+        $this->assertLessThan(40, count(DB::getQueryLog()),
+            'Statement page must stay bounded regardless of row volume. Actual: '.count(DB::getQueryLog()));
     }
 }

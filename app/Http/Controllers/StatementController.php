@@ -28,166 +28,208 @@ class StatementController extends Controller
             'date_to' => 'nullable|date',
             'search' => 'nullable|string|max:255',
             'agent_id' => 'nullable|exists:ticket_agents,id',
+            'page' => 'nullable|integer|min:1',
         ]);
 
         $dateType = $validated['date_type'] ?? 'issue';
-        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->startOfMonth()->startOfDay();
+        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->subDays(30)->startOfDay();
         $dateTo = isset($validated['date_to']) ? Carbon::parse($validated['date_to'])->endOfDay() : now()->endOfDay();
         $search = isset($validated['search']) ? trim($validated['search']) : null;
         $search = $search === '' ? null : $search;
         $agentId = $validated['agent_id'] ?? null;
 
-        if ($dateFrom->diffInDays($dateTo) > 92) {
-            return response()->json(['message' => 'Date range must not exceed 92 days.'], 422);
+        if ($dateFrom->diffInDays($dateTo) > 366) {
+            return response()->json(['message' => 'Date range must not exceed 366 days.'], 422);
         }
 
         $fromStr = $dateFrom->toDateString();
         $toStr = $dateTo->toDateString();
 
-        $periodRows = $this->collectRows($dateType, $fromStr, $toStr, 'period', $search, $agentId);
-        $openingDeltas = $this->collectRows($dateType, $fromStr, $toStr, 'opening', $search, $agentId, true);
+        // Agent-block pages over the SQL-ordered event union: each page holds
+        // whole agents up to the row budget, so an agent's records stay
+        // together like the old sections. Only an agent bigger than the
+        // budget is sliced across consecutive pages (flags stay exact).
+        // Summary and per-agent balances always cover the whole range.
+        $perPage = TicketAgentLedger::STATEMENT_PER_PAGE;
+        $total = TicketAgentLedger::statementCount($dateType, $fromStr, $toStr, $search, $agentId);
+        $blockPages = $this->blockPages($dateType, $fromStr, $toStr, $search, $agentId, $perPage);
+        $lastPage = max(1, count($blockPages));
+        $page = max(1, (int) ($validated['page'] ?? 1));
 
-        // Per-agent opening keyed by ticket_agent_id.
-        $opening = [];
-        foreach ($openingDeltas as $item) {
-            $opening[$item['agent_id']] = ($opening[$item['agent_id']] ?? 0) + $item['delta'];
+        $pageEvents = collect();
+        if ($page <= count($blockPages)) {
+            $block = $blockPages[$page - 1];
+            $blockAgents = array_unique(array_column($block, 'agent'));
+            $offset = min(array_column($block, 'offset'));
+            $limit = array_sum(array_column($block, 'limit'));
+            $pageEvents = TicketAgentLedger::statementPage($dateType, $fromStr, $toStr, $search, $agentId, $blockAgents, $offset, $limit);
         }
 
-        // Sort date asc → category asc → id asc (stable tie-break).
-        usort($periodRows, function ($a, $b) {
-            $cmp = strcmp($a['sort_date'], $b['sort_date']);
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $cmp = strcmp($a['category'], $b['category']);
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-
-            return $a['sort_id'] <=> $b['sort_id'];
-        });
-
-        // Per-agent running balances.
-        $running = $opening;
-        foreach ($periodRows as &$row) {
-            $agentId_key = $row['agent_id'];
-            $running[$agentId_key] = ($running[$agentId_key] ?? 0) + $row['delta'];
-            $row['balance'] = round($running[$agentId_key], 2);
+        $ids = ['Ticket' => [], 'Re-issue' => [], 'Refund' => [], 'Payment' => []];
+        foreach ($pageEvents as $event) {
+            $ids[$event->kind][] = $event->row_id;
         }
-        unset($row);
+        $tickets = $this->fetchTicketsByIds($ids['Ticket']);
+        $reissues = $this->fetchReissuesByIds($ids['Re-issue']);
+        $refunds = $this->fetchRefundsByIds($ids['Refund']);
+        $payments = $this->fetchPaymentsByIds($ids['Payment']);
 
-        // Strip internal keys.
-        $rows = array_map(function ($row) {
-            unset($row['sort_date'], $row['sort_id'], $row['delta'], $row['agent_id']);
+        $openings = TicketAgentLedger::statementAgentOpening($dateType, $fromStr, $toStr, $search, $agentId);
+        $periods = TicketAgentLedger::statementAgentPeriod($dateType, $fromStr, $toStr, $search, $agentId);
 
-            return $row;
-        }, $periodRows);
-
-        // Per-agent balances shared by sections and summary, so both always agree.
-        // Covers every counted agent: row agents plus opening-only agents.
-        $balances = $this->perAgentBalances($periodRows, $opening, $running);
-
-        $summary = $this->buildSummary($periodRows, $balances);
-
-        $payload = ['rows' => array_values($rows), 'summary' => $summary];
-
-        if (! $agentId) {
-            $payload['sections'] = $this->buildSections($periodRows, $balances);
+        $rows = [];
+        foreach ($pageEvents as $event) {
+            $agent = (int) $event->agent_id;
+            $mapped = match ($event->kind) {
+                'Ticket' => $this->mapTicketRow($tickets[$event->row_id], (float) $event->delta),
+                'Re-issue' => $this->mapReissueRow($reissues[$event->row_id], (float) $event->delta),
+                'Refund' => $this->mapRefundRow($refunds[$event->row_id], (float) $event->delta),
+                default => $this->mapPaymentRow($payments[$event->row_id], (float) $event->delta),
+            };
+            $mapped['balance'] = round((float) ($openings[$agent] ?? 0) + (float) $event->running, 2);
+            unset($mapped['sort_date'], $mapped['sort_id'], $mapped['delta']);
+            $mapped['agent_changed'] = $event->prev_agent === null || (int) $event->prev_agent !== $agent;
+            $mapped['agent_ends'] = $event->next_agent === null || (int) $event->next_agent !== $agent;
+            $rows[] = $mapped;
         }
 
-        return response()->json($payload);
+        // Every counted agent stays visible: row agents plus opening-only agents.
+        $agentIds = array_unique(array_merge(array_keys($openings), array_keys($periods)));
+        $names = TicketAgent::whereIn('id', $agentIds)->pluck('name', 'id');
+        $agents = [];
+        foreach ($agentIds as $id) {
+            $opening = round((float) ($openings[$id] ?? 0), 2);
+            $charges = (float) ($periods[$id]->charges ?? 0);
+            $credits = (float) ($periods[$id]->credits ?? 0);
+            $agents[$id] = [
+                'agent_id' => $id,
+                'agent_name' => $names[$id] ?? 'Unknown agent',
+                'opening_balance' => $opening,
+                'closing_balance' => round($opening + $credits - $charges, 2),
+                'has_rows' => ((int) ($periods[$id]->row_count ?? 0)) > 0,
+            ];
+        }
+        uasort($agents, fn ($a, $b) => strcmp($a['agent_name'], $b['agent_name']));
+
+        $totals = TicketAgentLedger::statementSummary($dateType, $fromStr, $toStr, $search, $agentId);
+        $summary = [
+            'opening_balance' => round(array_sum(array_column($agents, 'opening_balance')), 2),
+            'closing_balance' => round(array_sum(array_column($agents, 'closing_balance')), 2),
+            'total_tickets' => (int) ($totals->total_tickets ?? 0),
+            'total_sale_amount' => round((float) ($totals->total_sale_amount ?? 0), 2),
+            'total_customer_refund' => round((float) ($totals->total_customer_refund ?? 0), 2),
+            'total_agent_fare' => round((float) ($totals->total_agent_fare ?? 0), 2),
+            'total_markup' => round((float) ($totals->total_markup ?? 0), 2),
+            'total_agent_refund' => round((float) ($totals->total_agent_refund ?? 0), 2),
+            'total_reissue_cost' => round((float) ($totals->total_reissue_cost ?? 0), 2),
+            'total_paid' => round((float) ($totals->total_paid ?? 0), 2),
+        ];
+
+        return response()->json([
+            'rows' => $rows,
+            'agents' => $agents,
+            'summary' => $summary,
+            'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $total, 'last_page' => $lastPage],
+        ]);
     }
 
     /**
-     * Collect row payloads for period (date between) or opening (date < from).
-     * When $deltasOnly is true, returns lightweight agent_id+delta pairs.
+     * Greedy whole-agent page plan in report order. Each entry is a list of
+     * ['agent', 'offset', 'limit'] slices; multi-agent pages use offset 0.
+     *
+     * @return array<int, array<int, array{agent: int, offset: int, limit: int}>>
      */
-    private function collectRows(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId, bool $deltasOnly = false): array
+    private function blockPages(string $dateType, string $fromStr, string $toStr, ?string $search, $agentId, int $perPage): array
     {
-        $rows = [];
-
-        foreach ($this->fetchTickets($dateType, $from, $to, $mode, $search, $agentId) as $ticket) {
-            $delta = TicketAgentLedger::ticketDelta($ticket);
-            if ($deltasOnly) {
-                $rows[] = ['agent_id' => $ticket->ticket_agent_id, 'delta' => $delta];
-
-                continue;
+        $pages = [];
+        $current = [];
+        $used = 0;
+        $flush = function () use (&$pages, &$current, &$used): void {
+            if ($current !== []) {
+                $pages[] = $current;
+                $current = [];
+                $used = 0;
             }
-            $rows[] = $this->mapTicketRow($ticket, $delta);
-        }
+        };
 
-        foreach ($this->fetchReissues($dateType, $from, $to, $mode, $search, $agentId) as $reissue) {
-            $delta = TicketAgentLedger::reissueDelta($reissue);
-            if ($deltasOnly) {
-                $rows[] = ['agent_id' => $reissue->ticket_agent_id, 'delta' => $delta];
-
-                continue;
-            }
-            $rows[] = $this->mapReissueRow($reissue, $delta);
-        }
-
-        foreach ($this->fetchRefunds($dateType, $from, $to, $mode, $search, $agentId) as $refund) {
-            $delta = TicketAgentLedger::refundDelta($refund);
-            if ($deltasOnly) {
-                $rows[] = ['agent_id' => $refund->ticket_agent_id, 'delta' => $delta];
-
-                continue;
-            }
-            $rows[] = $this->mapRefundRow($refund, $delta);
-        }
-
-        // Payment rows only under Issue Date type.
-        if ($dateType === 'issue') {
-            foreach ($this->fetchPayments($from, $to, $mode, $search, $agentId) as $payment) {
-                $delta = TicketAgentLedger::paymentDelta($payment);
-                if ($deltasOnly) {
-                    $rows[] = ['agent_id' => $payment->ticket_agent_id, 'delta' => $delta];
-
-                    continue;
+        foreach (TicketAgentLedger::statementAgentRowCounts($dateType, $fromStr, $toStr, $search, $agentId) as $count) {
+            $n = (int) $count->n;
+            if ($n > $perPage) {
+                $flush();
+                for ($off = 0; $off < $n; $off += $perPage) {
+                    $pages[] = [['agent' => (int) $count->agent_id, 'offset' => $off, 'limit' => min($perPage, $n - $off)]];
                 }
-                $rows[] = $this->mapPaymentRow($payment, $delta);
-            }
-        }
 
-        return $rows;
+                continue;
+            }
+            if ($used + $n > $perPage) {
+                $flush();
+            }
+            $current[] = ['agent' => (int) $count->agent_id, 'offset' => 0, 'limit' => $n];
+            $used += $n;
+        }
+        $flush();
+
+        return $pages;
     }
 
-    private function fetchTickets(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
+    /**
+     * Page-scoped model fetches keyed by id. The SQL union decides *which*
+     * rows belong on the page; these hydrate just those rows with the same
+     * relations the row mappers need.
+     */
+    private function fetchTicketsByIds(array $ids)
     {
-        return TicketAgentLedger::tickets($dateType, $from, $to, $mode, $search, $agentId)->with([
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return IssuedTicket::whereIn('id', $ids)->with([
             'passenger.booking.customer', 'booking.customer',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
             'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'issuer',
-        ])->get();
+        ])->get()->keyBy('id');
     }
 
-    private function fetchReissues(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
+    private function fetchReissuesByIds(array $ids)
     {
-        return TicketAgentLedger::reissues($dateType, $from, $to, $mode, $search, $agentId)->with([
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return ReIssuedTicket::whereIn('id', $ids)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
             'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'user',
-        ])->get();
+        ])->get()->keyBy('id');
     }
 
-    private function fetchRefunds(string $dateType, string $from, string $to, string $mode, ?string $search, $agentId)
+    private function fetchRefundsByIds(array $ids)
     {
-        return TicketAgentLedger::refunds($dateType, $from, $to, $mode, $search, $agentId)->with([
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return RefundedTicket::whereIn('id', $ids)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
             'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
             'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'user',
-        ])->get();
+        ])->get()->keyBy('id');
     }
 
-    private function fetchPayments(string $from, string $to, string $mode, ?string $search, $agentId)
+    private function fetchPaymentsByIds(array $ids)
     {
-        return TicketAgentLedger::payments($from, $to, $mode, $search, $agentId)->with(['voucher', 'vouchers', 'ticketAgent', 'booking'])->get();
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return Payment::whereIn('id', $ids)->with(['voucher', 'vouchers', 'ticketAgent', 'booking'])->get()->keyBy('id');
     }
 
     private function offerAwarePay($row): float
@@ -373,105 +415,5 @@ class StatementController extends Controller
             'agent_name' => $payment->ticketAgent?->name ?? '-',
             'staff_name' => '',
         ];
-    }
-
-    /**
-     * Rounded opening/closing per agent over the union of row agents and
-     * opening agents, so sections and summary always cover the same agents.
-     */
-    private function perAgentBalances(array $periodRows, array $opening, array $running): array
-    {
-        $ids = [];
-        foreach ($periodRows as $row) {
-            $ids[$row['agent_id']] = true;
-        }
-        foreach ($opening as $id => $delta) {
-            $ids[$id] = true;
-        }
-        foreach ($running as $id => $delta) {
-            $ids[$id] = true;
-        }
-
-        $balances = [];
-        foreach (array_keys($ids) as $id) {
-            $balances[$id] = [
-                'opening' => round($opening[$id] ?? 0, 2),
-                'closing' => round($running[$id] ?? 0, 2),
-            ];
-        }
-
-        return $balances;
-    }
-
-    private function buildSummary(array $periodRows, array $balances): array
-    {
-        $openingBalance = round(array_sum(array_column($balances, 'opening')), 2);
-        $closingBalance = round(array_sum(array_column($balances, 'closing')), 2);
-
-        $ticketRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Ticket');
-        $refundRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Refund');
-        $reissueRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Re-issue');
-        $paymentRows = array_filter($periodRows, fn ($r) => $r['category'] === 'Payment');
-
-        // Re-fetch lightweight sums from mapped rows to keep formulas explicit.
-        $totalSale = 0;
-        $totalAgentFare = 0;
-        $totalMarkup = 0;
-        foreach ($ticketRows as $r) {
-            $totalSale += (float) ($r['customer_amount'] ?? 0);
-            $totalAgentFare += (float) ($r['agent_fare'] ?? 0);
-            $totalMarkup += (float) ($r['markup'] ?? 0);
-        }
-        foreach ($reissueRows as $r) {
-            $totalMarkup += (float) ($r['markup'] ?? 0);
-        }
-        foreach ($refundRows as $r) {
-            $totalMarkup += (float) ($r['markup'] ?? 0);
-        }
-
-        return [
-            'opening_balance' => $openingBalance,
-            'closing_balance' => $closingBalance,
-            'total_tickets' => count($ticketRows),
-            'total_sale_amount' => round($totalSale, 2),
-            'total_customer_refund' => round(array_sum(array_map(fn ($r) => (float) ($r['customer_refund'] ?? 0), $refundRows)), 2),
-            'total_agent_fare' => round($totalAgentFare, 2),
-            'total_markup' => round($totalMarkup, 2),
-            'total_agent_refund' => round(array_sum(array_map(fn ($r) => (float) ($r['iata_refund'] ?? 0), $refundRows)), 2),
-            'total_reissue_cost' => round(array_sum(array_map(fn ($r) => (float) ($r['agent_fare'] ?? 0), $reissueRows)), 2),
-            'total_paid' => round(array_sum(array_map(fn ($r) => (float) ($r['payment_to_iata'] ?? 0), $paymentRows)), 2),
-        ];
-    }
-
-    private function buildSections(array $periodRows, array $balances): array
-    {
-        $grouped = [];
-        foreach ($periodRows as $row) {
-            $grouped[$row['agent_id']][] = $row;
-        }
-
-        $ids = array_unique(array_merge(array_keys($grouped), array_keys($balances)));
-        $names = TicketAgent::whereIn('id', $ids)->pluck('name', 'id');
-
-        $sections = [];
-        foreach ($ids as $id) {
-            $agentRows = array_map(function ($row) {
-                unset($row['sort_date'], $row['sort_id'], $row['delta'], $row['agent_id']);
-
-                return $row;
-            }, $grouped[$id] ?? []);
-
-            $sections[] = [
-                'agent_id' => $id,
-                'agent_name' => $names[$id] ?? 'Unknown agent',
-                'opening_balance' => $balances[$id]['opening'] ?? 0,
-                'closing_balance' => $balances[$id]['closing'] ?? 0,
-                'rows' => array_values($agentRows),
-            ];
-        }
-
-        usort($sections, fn ($a, $b) => strcmp($a['agent_name'], $b['agent_name']));
-
-        return $sections;
     }
 }
