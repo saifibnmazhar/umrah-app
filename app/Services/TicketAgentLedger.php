@@ -520,6 +520,9 @@ final class TicketAgentLedger
 
     /**
      * Per-agent row counts in report order, driving whole-agent page assembly.
+     * Ordered by grouped expressions only — MySQL ONLY_FULL_GROUP_BY rejects
+     * ordering grouped rows by non-aggregated event columns. Intra-agent row
+     * order comes from statementPage(), which keeps the full ordering.
      *
      * @return array<int, object> with agent_id and n, ordered as displayed.
      */
@@ -532,7 +535,7 @@ final class TicketAgentLedger
             ->selectRaw('COUNT(*) AS n')
             ->groupBy('u.agent_id')
             ->groupByRaw(self::AGENT_LABEL)
-            ->orderByRaw(self::ORDER)
+            ->orderByRaw('agent_name, agent_id')
             ->get()
             ->all();
     }
