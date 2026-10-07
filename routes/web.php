@@ -37,6 +37,7 @@ use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReIssueController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StatementController;
 use App\Http\Controllers\TicketAgentController;
 use App\Http\Controllers\TicketAgentReportController;
 use App\Http\Controllers\TicketFareController;
@@ -340,7 +341,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/stay-duration-limit', [SettingsController::class, 'updateStayDurationLimit'])->name('settings.stay-duration-limit.update')->middleware('role:Super Admin,Co Admin');
 
     // Reports
-    Route::get('/reports/statement', fn () => view('reports.statement'))->name('report.statement');
+    Route::get('/reports/statement', [StatementController::class, 'index'])->name('report.statement')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/api/reports/statement', [StatementController::class, 'data'])->name('api.reports.statement')->middleware(['role:Super Admin,Co Admin,Ticket Admin', 'throttle:30,1']);
     Route::get('/reports/profit-loss', fn () => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss/summary', [ProfitLossReportController::class, 'summary'])->name('api.reports.profit-loss.summary')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss', [ProfitLossReportController::class, 'data'])->name('api.reports.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');

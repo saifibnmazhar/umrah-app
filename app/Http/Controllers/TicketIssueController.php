@@ -40,7 +40,7 @@ class TicketIssueController extends Controller
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
-            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'ticket_agent_id' => 'required|exists:ticket_agents,id',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'group_ticket_id' => 'nullable|exists:group_tickets,id',
             'issued_date' => 'required|date',
@@ -192,7 +192,7 @@ class TicketIssueController extends Controller
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
-            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'ticket_agent_id' => 'required|exists:ticket_agents,id',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'group_ticket_id' => 'nullable|exists:group_tickets,id',
             // Re-issue edits may omit the date (re_issue_date falls back to the

@@ -8,6 +8,7 @@ use App\Models\Passenger;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\Role;
+use App\Models\TicketAgent;
 use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -206,10 +207,13 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
             'total_customer_payment' => 0,
         ]);
 
+        $agent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
         $response = $this->actingAs($staff)->putJson(
             route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]),
             [
                 'issued_ticket_id' => $issuedTicket->id,
+                'ticket_agent_id' => $agent->id,
                 'payment_by' => 'airline',
                 'payment_option' => 'refund_adjustment',
                 'refund_adjustment_amount' => 100,

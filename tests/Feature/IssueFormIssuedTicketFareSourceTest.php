@@ -463,6 +463,7 @@ class IssueFormIssuedTicketFareSourceTest extends TestCase
     {
         [, $passenger, $ticket] = $this->createBookingWithPendingTicket();
         $ticket->update(['status' => 'issued']);
+        $ticketAgent = TicketAgent::create(['name' => 'Agent2', 'phone' => '0500', 'address' => 'Riyadh', 'contacts' => '0500']);
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [
             'booking' => $passenger->booking_id,
@@ -471,6 +472,7 @@ class IssueFormIssuedTicketFareSourceTest extends TestCase
             'issued_ticket_id' => $ticket->id,
             'ticket_number' => 'TKT002',
             'pnr' => 'PNR002',
+            'ticket_agent_id' => $ticketAgent->id,
             'net_fare' => 24000,
             'issued_date' => now()->toDateString(),
             'selling_fare' => 111111,
