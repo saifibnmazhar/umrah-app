@@ -81,7 +81,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
 </style>
 
-<div class="max-w-[1600px] mx-auto p-4" x-data="statementReport()">
+<div class="max-w-[1920px] mx-auto p-4" x-data="statementReport()">
     <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>

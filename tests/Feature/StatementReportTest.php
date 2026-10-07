@@ -852,4 +852,13 @@ class StatementReportTest extends TestCase
         $this->assertNotNull($row, 'ticket row missing from statement');
         $this->assertEquals($passenger->fresh()->route_display, $row['sector']);
     }
+
+    public function test_view_uses_wide_container(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        $this->assertStringContainsString('max-w-[1920px]', $html, 'statement container must be 1920px wide');
+    }
 }
