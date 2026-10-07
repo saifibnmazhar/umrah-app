@@ -20,8 +20,16 @@
     border: 1px solid #d4d4d4;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
 }
-.table-header {
-    background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+.table-header-row1 {
+    background: linear-gradient(to bottom, #a9c2de 0%, #93b4d6 100%);
+    border: 1px solid #d4d4d4;
+}
+.table-header-row2 {
+    background: linear-gradient(to bottom, #e9eff6 0%, #dbe4ef 100%);
+    border: 1px solid #d4d4d4;
+}
+.table-header-money {
+    background: linear-gradient(to bottom, #d8ebdb 0%, #c2dfc7 100%);
     border: 1px solid #d4d4d4;
 }
 .table-row-ticket {
@@ -62,6 +70,9 @@
 }
 .section-row {
     background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+}
+.section-opening {
+    background: linear-gradient(to bottom, #e3e7fb 0%, #d2d8f6 100%);
 }
 select {
     appearance: none;
@@ -133,30 +144,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1600px] table-fixed">
                 <thead class="sticky top-0 z-10">
-                    <tr class="table-header">
+                    <tr class="table-header-row1">
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Issue Date</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Ticket No</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">PAX Name</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">PNR</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Sector</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Flight Date</th>
-                        <th x-show="showCustomerAmount" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
-                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Agent Fare (Net)</th>
-                        <th x-show="showMarkup" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
-                        <th x-show="showCustomerRefund" rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
-                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">IATA Refund</th>
-                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payment to IATA</th>
-                        <th rowspan="2" class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance Agent</th>
+                        <th x-show="showCustomerAmount" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
+                        <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Agent Fare (Net)</th>
+                        <th x-show="showMarkup" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
+                        <th x-show="showCustomerRefund" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
+                        <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">IATA Refund</th>
+                        <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payment to IATA</th>
+                        <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance Agent</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left">IATA Agent</th>
                     </tr>
-                    <tr class="table-header">
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Category</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Reference ID</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Customer Name</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Passport</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Carrier | Class</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left border-r border-gray-300">Return Date</th>
-                        <th class="px-2 py-2 text-xs font-semibold text-gray-600 text-left">Ticket Staff</th>
+                    <tr class="table-header-row2">
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Category</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Reference ID</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Customer Name</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Passport</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Carrier | Class</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left border-r border-gray-300">Return Date</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-600 text-left">Ticket Staff</th>
                     </tr>
                 </thead>
                 <!-- One <tbody>; x-if only on <template>, x-for has a single
@@ -334,7 +345,7 @@ function statementReport() {
             };
             if (this.sections.length > 0) {
                 this.sections.forEach((section) => {
-                    blocks.push({ kind: 'section-header', key: 'sec-' + section.agent_id + '-open', trClass: 'section-row', agent_name: section.agent_name, opening_balance: section.opening_balance });
+                    blocks.push({ kind: 'section-header', key: 'sec-' + section.agent_id + '-open', trClass: 'section-opening', agent_name: section.agent_name, opening_balance: section.opening_balance });
                     section.rows.forEach((row, idx) => pushRecord(row, 'sec-' + section.agent_id + '-' + idx));
                     blocks.push({ kind: 'section-total', key: 'sec-' + section.agent_id + '-close', trClass: 'section-row', agent_name: section.agent_name, closing_balance: section.closing_balance });
                 });

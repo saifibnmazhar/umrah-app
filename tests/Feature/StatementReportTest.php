@@ -861,4 +861,30 @@ class StatementReportTest extends TestCase
 
         $this->assertStringContainsString('max-w-[1920px]', $html, 'statement container must be 1920px wide');
     }
+
+    public function test_view_uses_distinct_header_and_section_colors(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        $this->assertStringContainsString('table-header-row1', $html, 'header row 1 needs its own bg');
+        $this->assertStringContainsString('table-header-row2', $html, 'header row 2 needs its own bg');
+        $this->assertStringContainsString('table-header-money', $html, 'merged money cells need their own bg');
+        $this->assertStringContainsString('section-opening', $html, 'opening rows need their own bg');
+        $this->assertStringContainsString("'section-row'", $html, 'closing rows keep the gray');
+        $this->assertStringNotContainsString('class="table-header"', $html, 'old shared header class must be gone');
+        // 7 money <th>s + 1 CSS definition.
+        $this->assertEquals(8, substr_count($html, 'table-header-money'), 'all 7 merged money cells tinted');
+    }
+
+    public function test_view_second_header_row_is_bold(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        // All 7 second-row headers bold (that exact pairing is unique to them).
+        $this->assertEquals(7, substr_count($html, 'font-bold text-gray-600'), 'all 7 second-row headers must be bold');
+    }
 }
