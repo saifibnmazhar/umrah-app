@@ -887,4 +887,20 @@ class StatementReportTest extends TestCase
         // All 7 second-row headers bold (that exact pairing is unique to them).
         $this->assertEquals(7, substr_count($html, 'font-bold text-gray-600'), 'all 7 second-row headers must be bold');
     }
+
+    public function test_view_column_hide_feature_is_commented_out(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        // Column-hide toggles are commented out (Blade comments never render),
+        // so no live toggle code may remain and all money columns always show.
+        foreach (['showCustomerAmount', 'showMarkup', 'showCustomerRefund'] as $toggle) {
+            $this->assertStringNotContainsString($toggle, $html, "toggle must be commented out: {$toggle}");
+        }
+        foreach (['Customer Amount', 'MARKUP', 'Customer Refund'] as $label) {
+            $this->assertStringContainsString($label, $html, "column must always render: {$label}");
+        }
+    }
 }

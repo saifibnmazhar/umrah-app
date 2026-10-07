@@ -132,11 +132,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div class="flex items-center gap-2">
                 <button @click="loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700">Search</button>
             </div>
+            {{-- Column-hide checkboxes commented out — all money columns always visible.
             <div class="flex items-center gap-3 ml-auto text-xs text-gray-600">
                 <label class="flex items-center gap-1"><input type="checkbox" x-model="showCustomerAmount"> Customer Amount</label>
                 <label class="flex items-center gap-1"><input type="checkbox" x-model="showMarkup"> MARKUP</label>
                 <label class="flex items-center gap-1"><input type="checkbox" x-model="showCustomerRefund"> Customer Refund</label>
             </div>
+            --}}
         </div>
     </div>
 
@@ -151,10 +153,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">PNR</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Sector</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Flight Date</th>
-                        <th x-show="showCustomerAmount" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
+                        <th {{-- x-show="showCustomerAmount" --}} rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Amount</th>
                         <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Agent Fare (Net)</th>
-                        <th x-show="showMarkup" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
-                        <th x-show="showCustomerRefund" rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
+                        <th {{-- x-show="showMarkup" --}} rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">MARKUP</th>
+                        <th {{-- x-show="showCustomerRefund" --}} rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Customer Refund</th>
                         <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">IATA Refund</th>
                         <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payment to IATA</th>
                         <th rowspan="2" class="table-header-money px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance Agent</th>
@@ -197,10 +199,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.pnr"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.sector"></td>
                                 <td x-show="b.kind === 'primary'" class="px-2 py-1 text-xs border-r border-gray-200" x-text="b.row?.flight_date"></td>
-                                <td x-show="b.kind === 'primary' && showCustomerAmount" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_amount)"></td>
+                                <td x-show="b.kind === 'primary' {{-- && showCustomerAmount --}}" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_amount)"></td>
                                 <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.agent_fare)"></td>
-                                <td x-show="b.kind === 'primary' && showMarkup" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.markup)"></td>
-                                <td x-show="b.kind === 'primary' && showCustomerRefund" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_refund)"></td>
+                                <td x-show="b.kind === 'primary' {{-- && showMarkup --}}" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.markup)"></td>
+                                <td x-show="b.kind === 'primary' {{-- && showCustomerRefund --}}" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.customer_refund)"></td>
                                 <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.iata_refund)"></td>
                                 <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right border-r border-gray-200" x-text="sar(b.row?.payment_to_iata)"></td>
                                 <td x-show="b.kind === 'primary'" rowspan="2" class="px-2 py-1 text-xs text-right font-semibold border-r border-gray-200" x-text="sar(b.row?.balance)"></td>
@@ -265,9 +267,11 @@ function statementReport() {
             total_markup: 0, total_agent_refund: 0, total_reissue_cost: 0, total_paid: 0,
         },
         loading: false,
+        {{-- Column-hide toggles commented out — all money columns always visible.
         showCustomerAmount: true,
         showMarkup: true,
         showCustomerRefund: true,
+        --}}
         init() {
             this.loadData();
             window.addEventListener('currency-toggled', () => { this.blocks = [...this.blocks]; });
