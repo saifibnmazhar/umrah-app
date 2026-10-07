@@ -782,4 +782,71 @@ class StatementReportTest extends TestCase
         $this->assertEquals(500.00, (float) $summary['opening_balance']);
         $this->assertEquals(-1200.00, (float) $summary['closing_balance']);
     }
+
+    public function test_sector_comes_from_row_ticket_fare_route(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-SECTOR');
+        // Passenger stays on fareRegular; the ticket is issued on a different fare.
+        $passenger = $this->makePassenger($user, $deps, $booking);
+
+        $codeFrom = 'Q'.strtoupper(substr(uniqid(), -4));
+        $codeTo = 'W'.strtoupper(substr(uniqid(), -4));
+        $cityFrom = CityCode::create(['city_name' => 'FromCity', 'code' => $codeFrom, 'country' => 'X']);
+        $cityTo = CityCode::create(['city_name' => 'ToCity', 'code' => $codeTo, 'country' => 'Y']);
+        $routeB = Route::create([
+            'airline_id' => $deps['airline']->id,
+            'route_type' => 'round',
+            'flight_type' => 'direct',
+            'from_city_id' => $cityFrom->id,
+            'to_city_id' => $cityTo->id,
+            'return_city_id' => $cityFrom->id,
+            'additional_gap' => null,
+        ]);
+        $fareB = TicketFare::create([
+            'airline_id' => $deps['airline']->id,
+            'airline_classes_id' => $deps['airlineClass']->id,
+            'route_id' => $routeB->id,
+            'ticket_type' => 'regular',
+            'effective_from' => now()->subDays(60),
+            'effective_to' => now()->addDays(60),
+            'net_fare' => 2700.00,
+            'selling_fare' => 2820.00,
+            'offer_price' => null,
+            'child_fare_percentage' => 50.00,
+            'infant_fare_percentage' => 20.00,
+            'with_meal' => true,
+            'user_id' => $user->id,
+            'is_active' => true,
+        ]);
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_fare_id' => $fareB->id, 'ticket_number' => '779-SECTOR',
+        ]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $row = collect($r->json('rows'))->firstWhere('ticket_no', '779-SECTOR');
+        $this->assertNotNull($row, 'ticket row missing from statement');
+        $this->assertEquals("{$codeFrom}-{$codeTo}-{$codeFrom}", $row['sector']);
+        // Passenger's own fare route differs — proves the source is the row fare.
+        $this->assertNotEquals($passenger->fresh()->route_display, $row['sector']);
+    }
+
+    public function test_sector_falls_back_to_passenger_route_display(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-SECFB');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_fare_id' => null, 'ticket_number' => '779-SECFB',
+        ]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $row = collect($r->json('rows'))->firstWhere('ticket_no', '779-SECFB');
+        $this->assertNotNull($row, 'ticket row missing from statement');
+        $this->assertEquals($passenger->fresh()->route_display, $row['sector']);
+    }
 }

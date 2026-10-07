@@ -157,6 +157,8 @@ class StatementController extends Controller
         return TicketAgentLedger::tickets($dateType, $from, $to, $mode, $search, $agentId)->with([
             'passenger.booking.customer', 'booking.customer',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
+            'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'issuer',
         ])->get();
     }
@@ -166,6 +168,8 @@ class StatementController extends Controller
         return TicketAgentLedger::reissues($dateType, $from, $to, $mode, $search, $agentId)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
+            'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'user',
         ])->get();
     }
@@ -175,6 +179,8 @@ class StatementController extends Controller
         return TicketAgentLedger::refunds($dateType, $from, $to, $mode, $search, $agentId)->with([
             'issuedTicket.passenger.booking.customer', 'issuedTicket.booking.customer', 'issuedTicket.passenger',
             'ticketFare.airline', 'ticketFare.airlineClass.travelClass',
+            'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity',
             'ticketAgent', 'user',
         ])->get();
     }
@@ -206,6 +212,20 @@ class StatementController extends Controller
         return trim("{$carrier} | {$class} | ".rtrim(rtrim(number_format($pay, 2, '.', ''), '0'), '.'));
     }
 
+    /**
+     * Sector from the row's own ticket fare route, falling back to the
+     * passenger route display (today's behaviour) when fare/route is missing.
+     */
+    private function sectorFor($row, $passenger): string
+    {
+        $route = $row->ticketFare?->route;
+        if ($route) {
+            return TicketAgentLedger::routeDisplay($route);
+        }
+
+        return $passenger?->route_display ?? '-';
+    }
+
     private function formatDay($date): string
     {
         if (! $date) {
@@ -232,7 +252,7 @@ class StatementController extends Controller
             'customer_name' => $booking?->customer?->name ?? '-',
             'pnr' => $ticket->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
-            'sector' => $passenger?->route_display ?? '-',
+            'sector' => $this->sectorFor($ticket, $passenger),
             'carrier_class_pay' => $this->carrierClassPay($ticket, $pay),
             'flight_date' => $this->formatDay($ticket->inbound_date),
             'return_date' => $this->formatDay($ticket->outbound_date),
@@ -269,7 +289,7 @@ class StatementController extends Controller
             'customer_name' => $booking?->customer?->name ?? '-',
             'pnr' => $reissue->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
-            'sector' => $passenger?->route_display ?? '-',
+            'sector' => $this->sectorFor($reissue, $passenger),
             'carrier_class_pay' => $this->carrierClassPay($reissue, $pay),
             'flight_date' => $this->formatDay($reissue->inbound_date),
             'return_date' => $this->formatDay($reissue->outbound_date),
@@ -306,7 +326,7 @@ class StatementController extends Controller
             'customer_name' => $booking?->customer?->name ?? '-',
             'pnr' => $refund->pnr ?? '-',
             'passport' => $passenger?->passport_no ?? '-',
-            'sector' => $passenger?->route_display ?? '-',
+            'sector' => $this->sectorFor($refund, $passenger),
             'carrier_class_pay' => $this->carrierClassPay($refund, $pay),
             'flight_date' => $this->formatDay($refund->inbound_date),
             'return_date' => $this->formatDay($refund->outbound_date),

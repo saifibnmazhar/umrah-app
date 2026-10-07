@@ -6,6 +6,7 @@ use App\Models\IssuedTicket;
 use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
+use App\Models\Route;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -230,6 +231,41 @@ final class TicketAgentLedger
                     $qq->where('invoice_id', 'like', "%{$search}%");
                 });
         });
+    }
+
+    // ---------------- display helpers ----------------
+
+    /**
+     * Sector text for a fare route, using the same convention as
+     * Passenger::formatRouteDisplay so fare-based and fallback values match.
+     */
+    public static function routeDisplay(?Route $route): string
+    {
+        if (! $route) {
+            return '-';
+        }
+
+        $routeType = $route->route_type instanceof \BackedEnum ? $route->route_type->value : (string) $route->route_type;
+
+        if ($routeType === 'multi_city') {
+            if ($route->multiSegments && $route->multiSegments->count() > 0) {
+                return $route->multiSegments
+                    ->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))
+                    ->implode(', ');
+            }
+
+            return '-';
+        }
+
+        $from = $route->fromCity?->code ?? '-';
+        $to = $route->toCity?->code ?? '-';
+        $return = $route->returnCity?->code ?? '';
+
+        if ($routeType === 'round' && $return) {
+            return "{$from}-{$to}-{$return}";
+        }
+
+        return "{$from}-{$to}";
     }
 
     // ---------------- aggregates ----------------
