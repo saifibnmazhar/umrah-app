@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\TicketAgent;
+use App\Services\CurrencyRateService;
 use App\Services\TicketAgentLedger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -18,6 +19,111 @@ class StatementController extends Controller
         $agents = TicketAgent::orderBy('name')->get();
 
         return view('reports.statement', compact('agents'));
+    }
+
+    /**
+     * Print view: the whole filtered range, no pagination, no summary box.
+     * Rows stream through chunked hydration (500 models at a time) reusing
+     * the screen mappers, so print output matches screen rows exactly while
+     * memory stays bounded. Currency converts once, server-side.
+     */
+    public function print(Request $request)
+    {
+        $validated = $request->validate([
+            'date_type' => 'nullable|in:issue,flight,return',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'search' => 'nullable|string|max:255',
+            'agent_id' => 'nullable|exists:ticket_agents,id',
+            'currency' => 'nullable|in:SAR,BDT',
+        ]);
+
+        $dateType = $validated['date_type'] ?? 'issue';
+        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->subDays(30)->startOfDay();
+        $dateTo = isset($validated['date_to']) ? Carbon::parse($validated['date_to'])->endOfDay() : now()->endOfDay();
+        $search = isset($validated['search']) ? trim($validated['search']) : null;
+        $search = $search === '' ? null : $search;
+        $agentId = $validated['agent_id'] ?? null;
+        $currency = $validated['currency'] ?? 'SAR';
+
+        if ($dateFrom->diffInDays($dateTo) > 366) {
+            return response()->json(['message' => 'Date range must not exceed 366 days.'], 422);
+        }
+
+        $fromStr = $dateFrom->toDateString();
+        $toStr = $dateTo->toDateString();
+
+        $openings = TicketAgentLedger::statementAgentOpening($dateType, $fromStr, $toStr, $search, $agentId);
+        $periods = TicketAgentLedger::statementAgentPeriod($dateType, $fromStr, $toStr, $search, $agentId);
+
+        $agentIds = array_unique(array_merge(array_keys($openings), array_keys($periods)));
+        $names = TicketAgent::whereIn('id', $agentIds)->pluck('name', 'id');
+        $agents = [];
+        foreach ($agentIds as $id) {
+            $opening = round((float) ($openings[$id] ?? 0), 2);
+            $charges = (float) ($periods[$id]->charges ?? 0);
+            $credits = (float) ($periods[$id]->credits ?? 0);
+            $agents[$id] = [
+                'agent_id' => $id,
+                'agent_name' => $names[$id] ?? 'Unknown agent',
+                'opening_balance' => $opening,
+                'closing_balance' => round($opening + $credits - $charges, 2),
+                'has_rows' => ((int) ($periods[$id]->row_count ?? 0)) > 0,
+            ];
+        }
+        uasort($agents, fn ($a, $b) => strcmp($a['agent_name'], $b['agent_name']));
+
+        $rows = [];
+        foreach (TicketAgentLedger::statementPrintEvents($dateType, $fromStr, $toStr, $search, $agentId) as $event) {
+            $rows[] = $event;
+        }
+
+        // Hydrate in chunks so a year-long range never holds all models at once.
+        $mapped = [];
+        foreach (array_chunk($rows, 500) as $chunk) {
+            $ids = ['Ticket' => [], 'Re-issue' => [], 'Refund' => [], 'Payment' => []];
+            foreach ($chunk as $event) {
+                $ids[$event->kind][] = $event->row_id;
+            }
+            $tickets = $this->fetchTicketsByIds($ids['Ticket']);
+            $reissues = $this->fetchReissuesByIds($ids['Re-issue']);
+            $refunds = $this->fetchRefundsByIds($ids['Refund']);
+            $payments = $this->fetchPaymentsByIds($ids['Payment']);
+
+            foreach ($chunk as $event) {
+                $agent = (int) $event->agent_id;
+                $row = match ($event->kind) {
+                    'Ticket' => $this->mapTicketRow($tickets[$event->row_id], (float) $event->delta),
+                    'Re-issue' => $this->mapReissueRow($reissues[$event->row_id], (float) $event->delta),
+                    'Refund' => $this->mapRefundRow($refunds[$event->row_id], (float) $event->delta),
+                    default => $this->mapPaymentRow($payments[$event->row_id], (float) $event->delta),
+                };
+                $row['balance'] = round((float) ($openings[$agent] ?? 0) + (float) $event->running, 2);
+                // Normalize to the SQL-coalesced id (0 for unknown agents) so the
+                // row always keys into the agents map, even for NULL model ids.
+                $row['agent_id'] = $agent;
+                unset($row['sort_date'], $row['sort_id'], $row['delta']);
+                $row['agent_changed'] = $event->prev_agent === null || (int) $event->prev_agent !== $agent;
+                $row['agent_ends'] = $event->next_agent === null || (int) $event->next_agent !== $agent;
+                $mapped[] = $row;
+            }
+            unset($tickets, $reissues, $refunds, $payments);
+        }
+
+        $rate = app(CurrencyRateService::class)->getCurrentRateValue();
+        $agentName = $agentId ? TicketAgent::find($agentId)?->name : null;
+
+        return view('reports.statement-print', [
+            'rows' => $mapped,
+            'agents' => $agents,
+            'currency' => $currency,
+            'rate' => (float) $rate,
+            'dateType' => $dateType,
+            'dateFrom' => $fromStr,
+            'dateTo' => $toStr,
+            'agentName' => $agentName,
+            'search' => $search,
+        ]);
     }
 
     public function data(Request $request)
@@ -87,6 +193,9 @@ class StatementController extends Controller
                 default => $this->mapPaymentRow($payments[$event->row_id], (float) $event->delta),
             };
             $mapped['balance'] = round((float) ($openings[$agent] ?? 0) + (float) $event->running, 2);
+            // Normalize to the SQL-coalesced id (0 for unknown agents) so the
+            // row always keys into the agents map, even for NULL model ids.
+            $mapped['agent_id'] = $agent;
             unset($mapped['sort_date'], $mapped['sort_id'], $mapped['delta']);
             $mapped['agent_changed'] = $event->prev_agent === null || (int) $event->prev_agent !== $agent;
             $mapped['agent_ends'] = $event->next_agent === null || (int) $event->next_agent !== $agent;

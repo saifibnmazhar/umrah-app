@@ -131,6 +131,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
             <div class="flex items-center gap-2">
                 <button @click="resetAndLoad()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700">Search</button>
+                <button @click="printView()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    Print
+                </button>
             </div>
             {{-- Column-hide checkboxes commented out — all money columns always visible.
             <div class="flex items-center gap-3 ml-auto text-xs text-gray-600">
@@ -400,6 +406,18 @@ function statementReport() {
             if (page < 1 || page > this.meta.last_page || this.loading) return;
             this.page = page;
             this.loadData();
+        },
+        printView() {
+            if (this.rangeDaysExceeded()) {
+                window.showToast('Date filter exceeds date range cap (366 days)', 'error');
+                return;
+            }
+            const params = new URLSearchParams();
+            Object.entries(this.filters).forEach(([key, value]) => {
+                if (value) params.set(key, value);
+            });
+            params.set('currency', this.$store.currency.mode);
+            window.open(`/reports/statement/print?${params}`, '_blank');
         },
     };
 }

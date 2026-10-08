@@ -342,6 +342,7 @@ Route::middleware('auth')->group(function () {
 
     // Reports
     Route::get('/reports/statement', [StatementController::class, 'index'])->name('report.statement')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/reports/statement/print', [StatementController::class, 'print'])->name('report.statement.print')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/api/reports/statement', [StatementController::class, 'data'])->name('api.reports.statement')->middleware(['role:Super Admin,Co Admin,Ticket Admin', 'throttle:30,1']);
     Route::get('/reports/profit-loss', fn () => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss/summary', [ProfitLossReportController::class, 'summary'])->name('api.reports.profit-loss.summary')->middleware('role:Super Admin,Co Admin,Auditor');

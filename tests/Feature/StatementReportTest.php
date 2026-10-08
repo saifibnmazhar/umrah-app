@@ -1138,6 +1138,47 @@ class StatementReportTest extends TestCase
         $this->assertStringContainsString('agent_ends', $html, 'section totals must follow flags');
     }
 
+    public function test_null_agent_rows_normalize_to_unknown_agent(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-NULLAG');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_agent_id' => null, 'ticket_number' => '779-NULLAG',
+        ]);
+
+        $r = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $rows = $r->json('rows');
+        $this->assertCount(1, $rows);
+        // Raw NULL model ids normalize to the coalesced unknown-agent key.
+        $this->assertSame(0, $rows[0]['agent_id']);
+        $this->assertTrue($rows[0]['agent_changed']);
+        $this->assertTrue($rows[0]['agent_ends']);
+
+        $unknown = collect($r->json('agents'))->firstWhere('agent_name', 'Unknown agent');
+        $this->assertNotNull($unknown, 'unknown agent must stay visible in the agents map');
+        $this->assertEquals(0.0, (float) $unknown['opening_balance']);
+        $this->assertEquals(-2700.00, (float) $unknown['closing_balance']);
+    }
+
+    public function test_print_handles_null_agent_rows(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-PNULL');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $this->makeTicket($user, $deps, $booking, $passenger, [
+            'ticket_agent_id' => null, 'ticket_number' => '779-PNULL',
+        ]);
+
+        $r = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($this->apiParams()));
+        $r->assertOk();
+        $r->assertSee('779-PNULL', false);
+        $r->assertSee('Unknown agent', false);
+    }
+
     public function test_statement_endpoint_stays_bounded_query_count(): void
     {
         $user = $this->makeUser('Super Admin');
@@ -1155,5 +1196,86 @@ class StatementReportTest extends TestCase
         $response->assertOk();
         $this->assertLessThan(40, count(DB::getQueryLog()),
             'Statement page must stay bounded regardless of row volume. Actual: '.count(DB::getQueryLog()));
+    }
+
+    public function test_print_returns_filtered_rows_with_all_columns(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $bookingA = $this->makeBooking($user, $deps, 'INV-PA');
+        $passengerA = $this->makePassenger($user, $deps, $bookingA);
+        $this->makeTicket($user, $deps, $bookingA, $passengerA, ['ticket_number' => '779-PRINTA']);
+        $bookingB = $this->makeBooking($user, $deps, 'INV-PB');
+        $passengerB = $this->makePassenger($user, $deps, $bookingB);
+        $this->makeTicket($user, $deps, $bookingB, $passengerB, [
+            'ticket_agent_id' => $deps['agentB']->id, 'ticket_number' => '779-PRINTB',
+        ]);
+
+        $params = $this->apiParams();
+        $r = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($params));
+        $r->assertOk();
+        foreach (['Issue Date', 'Ticket No', 'PAX Name', 'PNR', 'Sector', 'Flight Date', 'Customer Amount', 'Agent Fare (Net)', 'MARKUP', 'Customer Refund', 'IATA Refund', 'Payment to IATA', 'Balance Agent', 'IATA Agent'] as $header) {
+            $r->assertSee($header, false);
+        }
+        $r->assertSee('779-PRINTA', false);
+        $r->assertSee('779-PRINTB', false);
+        // No summary box, no pager on the print page.
+        $r->assertDontSee('Ticket Statement Summary');
+        $r->assertDontSee('goToPage');
+
+        // Agent filter respected.
+        $filtered = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($params + ['agent_id' => $deps['agentA']->id]));
+        $filtered->assertOk();
+        $filtered->assertSee('779-PRINTA', false);
+        $filtered->assertDontSee('779-PRINTB', false);
+
+        // Search filter respected.
+        $searched = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($params + ['search' => '779-PRINTB']));
+        $searched->assertOk();
+        $searched->assertSee('779-PRINTB', false);
+        $searched->assertDontSee('779-PRINTA', false);
+    }
+
+    public function test_print_currency_bdt_converts(): void
+    {
+        $user = $this->makeUser('Super Admin');
+        $deps = $this->baseDeps($user);
+        $booking = $this->makeBooking($user, $deps, 'INV-PCUR');
+        $passenger = $this->makePassenger($user, $deps, $booking);
+        $this->makeTicket($user, $deps, $booking, $passenger, ['net_fare' => 2700.00]);
+
+        $sar = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($this->apiParams()));
+        $sar->assertOk();
+        $sar->assertSee('SAR', false);
+        $sar->assertSee('2,700.00', false);
+
+        // Seeded rate is 28.0: 2700 SAR -> 75,600 BDT.
+        $bdt = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($this->apiParams() + ['currency' => 'BDT']));
+        $bdt->assertOk();
+        $bdt->assertSee('BDT', false);
+        $bdt->assertSee('75,600.00', false);
+    }
+
+    public function test_print_forbidden_for_staff_and_rejects_over_cap(): void
+    {
+        $staff = $this->makeUser('Ticket Staff');
+        $this->actingAs($staff)->get('/reports/statement/print?'.http_build_query($this->apiParams()))->assertForbidden();
+
+        $user = $this->makeUser('Super Admin');
+        $over = $this->actingAs($user)->get('/reports/statement/print?'.http_build_query($this->apiParams([
+            'date_from' => '2025-01-01', 'date_to' => '2026-06-01',
+        ])));
+        $over->assertStatus(422);
+    }
+
+    public function test_view_has_print_button_with_live_currency(): void
+    {
+        $agents = TicketAgent::orderBy('name')->get();
+
+        $html = view('reports.statement', ['agents' => $agents])->render();
+
+        $this->assertStringContainsString('/reports/statement/print', $html, 'print button must target the print view');
+        $this->assertStringContainsString('printView', $html, 'print button must build the filtered URL');
+        $this->assertStringContainsString('$store.currency.mode', $html, 'print must carry the live currency mode');
     }
 }

@@ -501,6 +501,22 @@ final class TicketAgentLedger
     private const ORDER_WINDOW = "COALESCE(ta.name, 'Unknown agent'), agent_id, sort_date, cat_order, sort_id";
 
     /**
+     * Windowed event stream shared by paging and print: per-agent running
+     * balances plus global neighbour flags, evaluated over the full filtered
+     * set. Callers slice it (page filter + limit) or consume it whole (print).
+     */
+    private static function statementWindowed(string $dateType, string $from, string $to, ?string $search, $agentId)
+    {
+        return DB::query()->fromSub(self::statementEvents($dateType, $from, $to, 'period', $search, $agentId), 'u')
+            ->leftJoin('ticket_agents AS ta', 'ta.id', '=', 'u.agent_id')
+            ->selectRaw('u.*')
+            ->selectRaw(self::AGENT_LABEL.' AS agent_name')
+            ->selectRaw('SUM(delta) OVER (PARTITION BY agent_id ORDER BY sort_date, cat_order, sort_id ROWS UNBOUNDED PRECEDING) AS running')
+            ->selectRaw('LAG(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS prev_agent')
+            ->selectRaw('LEAD(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS next_agent');
+    }
+
+    /**
      * One page of events with per-agent running balances and global neighbour
      * flags. Windows evaluate over the full filtered set before the page
      * filter applies, so balances and flags stay exact on every page — even
@@ -508,19 +524,22 @@ final class TicketAgentLedger
      */
     public static function statementPage(string $dateType, string $from, string $to, ?string $search, $agentId, array $agentIds, int $offset, int $limit)
     {
-        $inner = DB::query()->fromSub(self::statementEvents($dateType, $from, $to, 'period', $search, $agentId), 'u')
-            ->leftJoin('ticket_agents AS ta', 'ta.id', '=', 'u.agent_id')
-            ->selectRaw('u.*')
-            ->selectRaw(self::AGENT_LABEL.' AS agent_name')
-            ->selectRaw('SUM(delta) OVER (PARTITION BY agent_id ORDER BY sort_date, cat_order, sort_id ROWS UNBOUNDED PRECEDING) AS running')
-            ->selectRaw('LAG(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS prev_agent')
-            ->selectRaw('LEAD(agent_id) OVER (ORDER BY '.self::ORDER_WINDOW.') AS next_agent');
-
-        return DB::query()->fromSub($inner, 'w')
+        return DB::query()->fromSub(self::statementWindowed($dateType, $from, $to, $search, $agentId), 'w')
             ->whereIn('agent_id', $agentIds)
             ->orderByRaw(self::ORDER)
             ->offset(max(0, $offset))
             ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Whole-range windowed events for print: same balances and flags as the
+     * screen, no pagination. Callers hydrate models in chunks.
+     */
+    public static function statementPrintEvents(string $dateType, string $from, string $to, ?string $search, $agentId)
+    {
+        return DB::query()->fromSub(self::statementWindowed($dateType, $from, $to, $search, $agentId), 'w')
+            ->orderByRaw(self::ORDER)
             ->get();
     }
 
