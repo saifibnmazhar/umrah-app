@@ -633,13 +633,8 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking = $booking->fresh();
 
-                $extraOnly = $passenger->wasChanged('extra_charge')
-                    && ! $passenger->wasChanged(['passenger_type', 'service_required', 'stay_duration', 'flight_date_from', 'flight_date_to', 'ticket_fare_id', 'ticket_fare_inbound_id', 'ticket_fare_outbound_id']);
-
-                if (! $extraOnly) {
-                    $this->bookingService->syncFinancials($booking, 'passenger_updated');
-                    $booking = $booking->fresh();
-                }
+                $this->bookingService->syncFinancials($booking, 'passenger_updated');
+                $booking = $booking->fresh();
 
                 if ($passenger->wasChanged('extra_charge')) {
                     app(ProfitCalculationService::class)->recalculateBookingProfit($booking);

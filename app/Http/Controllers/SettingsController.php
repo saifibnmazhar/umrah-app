@@ -134,7 +134,9 @@ class SettingsController extends Controller
                 'ticket_type' => $fare->ticket_type?->value ?? 'regular',
             ]);
 
-        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+        $usedFareIds = Package::whereNotNull('ticket_fare_id')->pluck('ticket_fare_id')->toArray();
+        $usedInboundFareIds = Package::whereNotNull('ticket_fare_inbound_id')->pluck('ticket_fare_inbound_id')->toArray();
+        $usedOutboundFareIds = Package::whereNotNull('ticket_fare_outbound_id')->pluck('ticket_fare_outbound_id')->toArray();
 
         $latestVisa = VisaSellingPrice::latest()->first();
 
@@ -151,6 +153,8 @@ class SettingsController extends Controller
             'outboundFares',
             'latestVisa',
             'usedFareIds',
+            'usedInboundFareIds',
+            'usedOutboundFareIds',
             'stayDurationLimit'
         ));
     }

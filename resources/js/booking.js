@@ -1328,7 +1328,7 @@ Alpine.data('createBookingApp', () => ({
             scAmount = serviceCharge;
         }
 
-        return ticketAmount + visaAmount + scAmount;
+        return ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
     },
 
     recalculateAllPassengerValues() {
@@ -1805,7 +1805,7 @@ Alpine.data('createBookingApp', () => ({
             scAmount = serviceCharge;
         }
 
-        const total = ticketAmount + visaAmount + scAmount;
+        const total = ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
         return total > 0 ? Alpine.store('currency').format(total) : '-';
     },
 
@@ -3276,7 +3276,7 @@ Alpine.data('editBookingApp', () => ({
             scAmount = serviceCharge;
         }
 
-        return ticketAmount + visaAmount + scAmount;
+        return ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
     },
 
     recalculateAllPassengerValues() {
@@ -3902,7 +3902,7 @@ Alpine.data('editBookingApp', () => ({
             scAmount = serviceCharge;
         }
 
-        const total = ticketAmount + visaAmount + scAmount;
+        const total = ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
         return total > 0 ? Alpine.store('currency').format(total) : '-';
     },
 
@@ -4890,7 +4890,7 @@ Alpine.data('showBookingApp', () => ({
         } else if (serviceRequired === 'ticket_only') {
             total = ticketAmount + serviceCharge;
         }
-        return total;
+        return total + (parseFloat(passenger.extra_charge) || 0);
     },
 
     openPaymentModal() {
