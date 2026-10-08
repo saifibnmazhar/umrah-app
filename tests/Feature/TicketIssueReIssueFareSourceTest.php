@@ -21,6 +21,7 @@ use App\Models\ReIssueRefundReason;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
+use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\TransactionType;
 use App\Models\TravelClass;
@@ -141,7 +142,9 @@ class TicketIssueReIssueFareSourceTest extends TestCase
             'default_payment_by' => 'customer',
         ]);
 
-        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'airline', 'airlineClass', 'route', 'reason');
+        $ticketAgent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
+        return compact('district', 'customer', 'package', 'fpCharge', 'fare', 'airline', 'airlineClass', 'route', 'reason', 'ticketAgent');
     }
 
     private function createBookingWithIssuedTicket(): array
@@ -185,6 +188,7 @@ class TicketIssueReIssueFareSourceTest extends TestCase
             'net_fare' => 25000,
             'selling_fare' => 28000,
             'offer_price' => 26000,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
         ]);
 
         return [$passenger->booking, $passenger->fresh(), $issuedTicket->fresh()];
@@ -197,6 +201,7 @@ class TicketIssueReIssueFareSourceTest extends TestCase
         $reIssued = ReIssuedTicket::create([
             'issued_ticket_id' => $issuedTicket->id,
             'user_id' => $this->user->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             'selling_fare' => 11111,
             'net_fare' => 24000,
             'offer_price' => 22222,
@@ -213,6 +218,7 @@ class TicketIssueReIssueFareSourceTest extends TestCase
 
         $response = $this->putJson(route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]), [
             'issued_ticket_id' => $issuedTicket->id,
+            'ticket_agent_id' => $this->deps['ticketAgent']->id,
             're_issue_charge' => 100,
             'payment_by' => 'company',
         ]);

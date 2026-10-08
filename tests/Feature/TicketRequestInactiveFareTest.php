@@ -201,7 +201,7 @@ class TicketRequestInactiveFareTest extends TestCase
 
         $passenger = Passenger::latest('id')->first();
         $issuedTicket = IssuedTicket::where('passenger_id', $passenger->id)->latest('id')->first();
-        $issuedTicket->update(['status' => 'issued', 'net_fare' => 25000, 'selling_fare' => 28000]);
+        $issuedTicket->update(['status' => 'issued', 'net_fare' => 25000, 'selling_fare' => 28000, 'ticket_agent_id' => $this->deps['agent']->id]);
 
         return [$passenger->booking, $passenger->fresh(), $issuedTicket->fresh()];
     }
@@ -228,6 +228,7 @@ class TicketRequestInactiveFareTest extends TestCase
             'payment_by' => 'company',
             'payment_option' => 'customer_payment',
             'ticket_fare_id' => $fare->id,
+            'ticket_agent_id' => $this->deps['agent']->id,
         ];
     }
 

@@ -93,8 +93,17 @@ class RefundController extends Controller
                 $oldData['issued_ticket_id'] = $issuedTicket->id;
             }
 
+            $resolvedAgentId = $validated['ticket_agent_id'] ?? $refundSource->ticket_agent_id;
+
+            if (! $resolvedAgentId) {
+                DB::rollBack();
+
+                return response()->json(['message' => 'Ticket agent is required to process this refund.'], 422);
+            }
+
             $refundData = array_merge($validated, [
                 'user_id' => auth()->id(),
+                'ticket_agent_id' => $resolvedAgentId,
                 'selling_fare' => $refundSource->selling_fare ?? 0,
                 'net_fare' => $refundSource->net_fare ?? 0,
                 'offer_price' => $refundSource->offer_price ?? 0,

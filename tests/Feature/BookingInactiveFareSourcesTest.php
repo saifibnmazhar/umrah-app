@@ -406,6 +406,7 @@ class BookingInactiveFareSourcesTest extends TestCase
         ]), [
             'issued_ticket_id' => $pendingOutbound->id,
             'ticket_fare_id' => $outboundFare->id,
+            'ticket_agent_id' => $ticketAgent->id,
             'issued_date' => now()->toDateString(),
             'selling_fare' => 26000.00,
             'net_fare' => 23000.00,

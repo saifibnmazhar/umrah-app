@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\Role;
+use App\Models\TicketAgent;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\Voucher;
@@ -244,9 +245,11 @@ class ReIssueEditRefundPayableAdjustTest extends TestCase
 
     private function editReIssue(User $staff, Booking $booking, Passenger $passenger, IssuedTicket $issuedTicket, array $payload)
     {
+        $agent = TicketAgent::create(['name' => 'Agent '.uniqid(), 'address' => 'Addr', 'contacts' => '0123']);
+
         return $this->actingAs($staff)->putJson(
             route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]),
-            array_merge(['issued_ticket_id' => $issuedTicket->id], $payload)
+            array_merge(['issued_ticket_id' => $issuedTicket->id, 'ticket_agent_id' => $agent->id], $payload)
         );
     }
 
