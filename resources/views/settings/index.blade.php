@@ -897,12 +897,16 @@
                                         @php
                                             $inType = $fare['ticket_type'];
                                             $inPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($inType ?? '?');
+                                            if (in_array($fare['id'], $usedInboundFareIds ?? [])) {
+                                                $inPrefix .= ' (USED)';
+                                            }
                                         @endphp
                                         <option value="{{ $fare['id'] }}"
                                             data-selling-fare="{{ $fare['selling_fare'] }}"
                                             data-ticket-type="{{ $fare['ticket_type'] }}"
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
-                                            data-display-prefix="{{ $inPrefix }}">
+                                            data-display-prefix="{{ $inPrefix }}"
+                                            data-used="{{ in_array($fare['id'], $usedInboundFareIds ?? []) ? 'true' : 'false' }}">
                                             {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
                                         </option>
                                     @endforeach
@@ -916,12 +920,16 @@
                                         @php
                                             $outType = $fare['ticket_type'];
                                             $outPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($outType ?? '?');
+                                            if (in_array($fare['id'], $usedOutboundFareIds ?? [])) {
+                                                $outPrefix .= ' (USED)';
+                                            }
                                         @endphp
                                         <option value="{{ $fare['id'] }}"
                                             data-selling-fare="{{ $fare['selling_fare'] }}"
                                             data-ticket-type="{{ $fare['ticket_type'] }}"
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
-                                            data-display-prefix="{{ $outPrefix }}">
+                                            data-display-prefix="{{ $outPrefix }}"
+                                            data-used="{{ in_array($fare['id'], $usedOutboundFareIds ?? []) ? 'true' : 'false' }}">
                                             {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
                                         </option>
                                     @endforeach
