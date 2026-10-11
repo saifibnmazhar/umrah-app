@@ -645,6 +645,7 @@
                     display += ' | SAR ' + offerPrice.toLocaleString();
                 }
             }
+            display += ' | TKT ID: ' + opt.value;
             opt.textContent = display;
         });
     }
@@ -881,7 +882,7 @@
                                     data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                     data-display-prefix="{{ $prefix }}"
                                     data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
-                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                 </option>
                             @endforeach
                         </select>
@@ -907,7 +908,7 @@
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                             data-display-prefix="{{ $inPrefix }}"
                                             data-used="{{ in_array($fare['id'], $usedInboundFareIds ?? []) ? 'true' : 'false' }}">
-                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -930,7 +931,7 @@
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                             data-display-prefix="{{ $outPrefix }}"
                                             data-used="{{ in_array($fare['id'], $usedOutboundFareIds ?? []) ? 'true' : 'false' }}">
-                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>
