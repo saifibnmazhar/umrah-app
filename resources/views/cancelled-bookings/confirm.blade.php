@@ -102,7 +102,7 @@
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
                 },
                 body: JSON.stringify({ refund_amount: this.refundSubmit }),
             });
@@ -348,10 +348,12 @@ function validateRefundForm() {
         alert('Remarks are required when payment method is Bank.');
         return false;
     }
-    const scope = document.querySelector('[x-data]');
-    const refund = parseFloat(scope?.__x?.$data?.refundAmount ?? document.querySelector('[name="refund_amount"]').value) || 0;
-    const cap = parseFloat(scope?.__x?.$data?.maxRefundable ?? Infinity);
-    const orig = parseFloat(scope?.__x?.$data?.originalRefundAmount ?? Infinity);
+    const component = [...document.querySelectorAll('[x-data]')]
+        .map(el => (typeof Alpine !== 'undefined' ? Alpine.$data(el) : null))
+        .find(data => data && 'refundAmount' in data);
+    const refund = parseFloat(component?.refundAmount ?? document.querySelector('[name="refund_amount"]').value) || 0;
+    const cap = parseFloat(component?.maxRefundable ?? Infinity);
+    const orig = parseFloat(component?.originalRefundAmount ?? Infinity);
     const max = Math.min(cap, orig);
     if (refund - max > 0.000001) {
         alert('Customer refund cannot exceed remaining refundable (paid minus already refunded).');
