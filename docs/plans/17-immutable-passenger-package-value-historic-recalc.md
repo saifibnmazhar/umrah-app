@@ -2,11 +2,11 @@
 
 **Status: PLAN ONLY — DO NOT IMPLEMENT until explicitly approved.**
 
-**Revision 2** — incorporates loophole resolutions **L1–L8** and the uniform anchor
-decision (see Decision log §end). Limitations (B\*) / inconsistencies (I\*) review
-still pending; sections marked **⚠ pending** carry recommended defaults subject to
-that round. All line references below were re-verified against the working tree
-(verification addendum V1–V13 folded in).
+**Revision 3** — incorporates loophole resolutions **L1–L8**, the uniform anchor
+decision, and the **B1–B8 limitation round (all resolved; see Decision log §end)**.
+The inconsistency round **I1–I12 is still pending** — remaining ⚠ markers refer to
+I-items only. All line references re-verified against the working tree; dataset
+evidence from the local database (confirmed identical to production).
 
 ## Problem
 
@@ -79,9 +79,11 @@ lastSwapAt = max( booking_update_logs.created_at
 - Filter `action = 'updated'` is mandatory: a booking's `created` log row also
   carries `package_id` in `new_values` and must not masquerade as a swap.
 - **Fallback:** swaps before 2026-07-14 (`booking_update_logs` inception) are
-  unlogged → `lastSwapAt = null` → anchor = `created_at` (accepted; mostly exact
-  because in-use prices were structurally frozen 2026-05-27 → 2026-09-22; `--dry-run`
-  quantifies residue).
+  unlogged → `lastSwapAt = null` → anchor = `created_at`. Accepted with evidence:
+  the earliest booking is **2026-06-20** (after the 2026-05-27 locks), so no
+  booking predates the locked-record era; of the 258 pre-log bookings, **0** show
+  swap evidence outside the log (package_name snapshot mismatch without a logged
+  swap). `--dry-run` remains the final proof.
 
 ## Design decisions (confirmed)
 
@@ -155,7 +157,7 @@ anchor):
 |---|---|---|
 | Ticket (single) | `$ticketFare->selling_fare/offer_price`, live child/infant % | `valueAt('selling_fare'\|'offer_price'\|'ticket_type'\|child%/infant%, $at)` composed exactly as today (`offer_price ?? selling_fare` when type == offer at `$at`) |
 | Ticket (double) | `$package->ticketFareInbound/Outbound` live | replay against the **passenger's** `ticket_fare_inbound_id`/`ticket_fare_outbound_id` fares; preserve current semantics exactly: combined base, percentages from the **inbound** fare with `?? 70` / `?? 30` defaults (`BookingService.php:101-102`) |
-| Visa | `$package->visaSellingPrice->selling_price` (:118) | `Package::valueAt('visa_selling_price_id', $at)` → immutable `visa_selling_prices` row → `selling_price`. **⚠ pending B4:** recommended — unify on this forward replay (column lives on the same log table) instead of porting the reverse-walk `BackfillVisaSubmissionPrices::resolvePriceAt()` (`app/Console/Commands/BackfillVisaSubmissionPrices.php:147-177`); the reverse walk returns `null` when a post-`$at` row has no `old_values` entry (a `created` row qualifies), a case forward replay handles cleanly |
+| Visa | `$package->visaSellingPrice->selling_price` (:118) | `Package::valueAt('visa_selling_price_id', $at)` → immutable `visa_selling_prices` row → `selling_price`. **Decided:** forward replay for engine consistency — one shared replay engine (`LogReplay::valueFromEvents`) also serving `service_charge`/`regular_price`, mirroring the shipped, tested `TicketFare::valueAt` pattern. The shipped reverse-walk `BackfillVisaSubmissionPrices::resolvePriceAt()` (`app/Console/Commands/BackfillVisaSubmissionPrices.php:147-177`) stays untouched: its `return null` path is unreachable under the `visa_selling_price_id` NOT NULL invariant (NOT NULL since `2026_05_07_000002:16`, 0/57 null in DB; `created` rows excluded by the after-`$at` filter; `updated` rows always carry complete `old_values`; `fare_updated` rows never touch the column) |
 | Service charge | `$package->service_charge` (:119/:123) | `Package::valueAt('service_charge', $at)` |
 | Extra charge | `$passenger->extra_charge` | unchanged (current — direct passenger field) |
 
@@ -230,11 +232,16 @@ DB::transaction(function () use ($b, $recomputeAt, $reason, $only) {
 Atomic (single transaction per call), ordering fixed inside the service, pairing
 cannot be forgotten, and stale-relation split-brain is impossible.
 
-**Log memoization (L4):** `applyFinancials` eager-loads `updateLogs` once for the
-booking's package and each involved fare (`relationLoaded` already honored by
-`TicketFare::valueAt`; same pattern for `Package::valueAt`) and passes parsed event
-arrays into the calculator — an all-passenger recompute drops from ~40-70 replay
-queries to ~3-4.
+**Log memoization (L4) — explicit query budget:** `recalculatePassengerValues`
+loads, once per booking: (a) the package with `updateLogs` eager, (b) all distinct
+passenger fares (single + inbound/outbound) with `updateLogs` in one `whereIn`,
+(c) `booking_update_logs` once for anchor derivation — **~5-6 queries per booking
+regardless of passenger count** (vs ~40-70 naive, ~10 with today's live reads).
+Per-passenger `valueAt` calls then run in-memory, enabled by two verified hooks:
+`TicketFare::valueAt` honors `relationLoaded('updateLogs')` (`:128-130`), and
+`percentageAtFromLogs` is static, taking a pre-built `$events` array (`:162`);
+`Package::valueAt` follows the same contract. Optionally assert the budget in
+test 4 via `expectsDatabaseQueryCount` (nice-to-have).
 
 ### 2b. Trigger → action matrix (anchor collapsed to one rule)
 
@@ -413,8 +420,11 @@ Supporting SQL (PR description):
 
 1. Fares/packages with `updated_at > '2026-09-22'` but **zero** rows in
    `ticket_fare_update_logs` / `package_update_logs` → unlogged-edit record count.
-2. Bookings created **before 2026-07-14** (anchor-derivation fallback exposure
-   count).
+2. Pre-log swap evidence: bookings created before 2026-07-14 whose
+   `bookings.package_name` snapshot disagrees with the current package name and
+   which have **no** logged `package_id` swap → suspected unlogged swaps
+   (expected 0; measured 0 locally; a swap between two identically named
+   packages would hide — accepted).
 3. Count of distinct `action` values in `package_update_logs` — expect only
    `created|updated|deleted|fare_updated` (replay covers all but `deleted`).
 
@@ -507,18 +517,25 @@ docker compose -f docker-compose.prod.yml config --quiet
 
 ## Caveats (accepted)
 
-- **Pre-log fallbacks.** Anchor derivation covers swaps from 2026-07-14; earlier
-  swaps fall back to `created_at`. Replay falls back to live values for any column
-  with no log rows. Both are mostly exact for the locked-record era (in-use price
-  edits were structurally impossible 2026-05-27 → 2026-09-22, the same commit
-  range that shipped the log tables) with two known residue windows:
-  2026-05-08→05-27 (no locks yet) and writes suppressed by the old auth guards
-  until Phase 3 ships. `--dry-run` quantifies.
-- **⚠ pending B3:** live-fallback is per-*column*; one historically unlogged edit
-  makes that column permanently resolve to live for that record.
-- **Heterogeneous eras:** after a passenger add, the new passenger carries `now()`
-  prices while existing ones keep their anchor-era prices — correct per design;
-  note in the PR description (⚠ pending B6).
+- **Why the live-fallback and pre-log anchors are exact in this dataset**
+  (B1/B3 closed with evidence; local DB confirmed identical to production):
+  earliest booking **2026-06-20** — after the 2026-05-27 locks — so no booking
+  ever referenced a fare/package during the pre-lock era; edits before first
+  package use affected zero bookings. 2026-05-27 → 2026-09-22: in-use fares/
+  packages fully frozen; locked-branch editing of `service_charge`/
+  `visa_selling_price_id` was introduced in the **same commit** as the log tables
+  (`e8f0dab7`, 2026-09-22), so every such edit is logged from the moment it
+  became possible — the same claim is already codified in the shipped
+  `TicketFare::valueAt` docblock (`:120-124`). Measured: 0 pre-log bookings with
+  suspected unlogged swaps (package_name evidence); 28 logged swaps; 0 fares and
+  0 packages edited after 2026-09-22 without log rows; auth-guard suppression
+  (B5) evidence-closed the same way (CLI commands never write prices). Net: the
+  rule-4 fallback and `created_at` anchors are exact for this data; Phase 5
+  dry-run is the final pre-deploy proof; Phase 3 prevents recurrence going
+  forward.
+- **Heterogeneous eras (decided):** after a passenger add, the new passenger
+  carries `now()` prices while existing ones keep their anchor-era prices —
+  correct by design; state this in the PR description. No code change.
 - **`PackageObserver` profit writes** on `service_charge` continue
   (snapshot-based; never touch `package_value`).
 - **Out of scope:** `ProfitCalculationService`, cancellation/refund flows (read
@@ -546,7 +563,7 @@ require it.
 
 **Tests:** 9 new files + 2 updated (Phase 6).
 
-## Decision log (Revision 2)
+## Decision log (Revisions 2–3)
 
 | Ref | Decision |
 |---|---|
@@ -559,13 +576,15 @@ require it.
 | L7 | Unused recalculate endpoint **deleted** (D7) |
 | L8 | `updateQuietly` + `action='recalculated'` only when authenticated; no command logs (D9) |
 | Anchor | Uniform `max(created_at, lastSwapAt)`; derived from `booking_update_logs`; **no column**; D2 amended (swap-time pricing persists through later re-valuations; old swap-then-type edge eliminated) |
+| B1/B3 | Live-fallback + pre-log anchors evidence-closed (locks 05-27 / earliest booking 06-20 / logs 09-22 / locked-branch edits same commit as logs); dry-run final proof |
+| B4 | Forward replay decided for engine consistency; NOT NULL invariant verified; shipped reverse-walk untouched (dead null path) |
+| B5 | Query budget ~5-6/booking specified; auth-guard suppression evidence-closed; Phase 3 prevents recurrence |
+| B6 | Heterogeneous-eras PR note adopted; no code change |
 
-## Open for the B/I round
+## Open for the I round
 
 | Ref | Topic | Recommended default in this revision |
 |---|---|---|
 | I1 | `SettingsController:233` dead-code line | Leave as no-op or delete during I round (does not affect logging) |
-| I3 | Replay helper return typing | Mixed-return internal helper; `float` wrappers preserved on `TicketFare` public API |
-| B4 | Visa FK resolution | Unify on forward replay via `Package::valueAt('visa_selling_price_id')` |
-| B3 / B6 | Caveat wording | Per-column live-fallback; heterogeneous eras note in PR |
-| (resolved by verification) | I5 test-citation audit | `PassengerExtraChargeTotalsTest` needs **no** changes (verified); I10 line refs confirmed correct |
+| I3 | Replay helper return typing | Mixed-return internal helper (`string\|int\|float`); `float` wrappers preserved on `TicketFare` public API; needed for `ticket_type` (string) and FK columns (int) |
+| (verified) | I5 / I10 | `PassengerExtraChargeTotalsTest` needs **no** changes (verified); line refs confirmed correct |
