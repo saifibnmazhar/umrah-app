@@ -2728,12 +2728,12 @@ Alpine.data('editBookingApp', () => ({
         return this.totalPackageValue + (parseFloat(this.fingerprintCharge) || 0);
     },
     get discountedTotal() {
-        const disc = parseFloat(this.bookingData.discount_value) || 0;
+        // Stored computed discount (plan 17 Phase 4) — not the raw modal input
+        // (discount_value), which is re-applied server-side on save.
+        const disc = parseFloat(this.existingBooking?.discount_amount) || 0;
         if (disc <= 0) return null;
         const grand = this.grandTotalValue;
-        const discType = this.bookingData.discount_type;
-        const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
-        return grand - discAmt;
+        return Math.max(0, grand - disc);
     },
     get exchangeRateValue() {
         return parseFloat(this.exchangeRate) || 0;
@@ -2802,7 +2802,12 @@ Alpine.data('editBookingApp', () => ({
             if (serverData.preSelectedPackageId) {
                 this.bookingData.package_id = String(serverData.preSelectedPackageId);
             }
-            this.recalculateAllPassengerValues();
+            // Edit mode: the values map is seeded from STORED package_value
+            // (loadExistingBooking) — live recompute is creation-flow only
+            // (plan 17 Phase 4). Swap previews recompute via onPackageChange.
+            if (!this.isEditMode) {
+                this.recalculateAllPassengerValues();
+            }
         });
     },
 
@@ -2886,6 +2891,7 @@ Alpine.data('editBookingApp', () => ({
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
                 extra_charge: p.extra_charge || 0,
+                package_value: parseFloat(p.package_value) || 0,
                 baggage_weight: '',
             }));
 
@@ -2928,10 +2934,19 @@ Alpine.data('editBookingApp', () => ({
             });
 
             this.passengerCount = this.passengers.length;
+
+            // Seed the totals map from STORED package_value (plan 17 Phase 4):
+            // the edit page displays server truth; live recompute happens only
+            // in pre-save previews (onPackageChange) and is overwritten on save.
+            this.passengerPackageValues = {};
+            this.passengers.forEach((p, index) => {
+                this.passengerPackageValues[index] = parseFloat(p.package_value) || 0;
+            });
         }
 
         this.updateFingerprintCharge();
-        this.updateGrandTotal();
+        // Note: no updateGrandTotal()/recalculateAllPassengerValues() here —
+        // the totals map is seeded from stored values above (plan 17 Phase 4).
     },
 
     showForm() {
@@ -3459,10 +3474,11 @@ Alpine.data('editBookingApp', () => ({
             const bookingId = window.__bookingServerData?.bookingId
                 || this.existingBooking?.id;
             if (!bookingId) {
+                // No server roundtrip possible — keep remaining passengers'
+                // STORED values (plan 17 Phase 4), never live recompute.
                 this.passengers.splice(index, 1);
                 this.passengerCount = this.passengers.length;
-                this.passengerPackageValues = {};
-                this.recalculateAllPassengerValues();
+                this.reseedStoredPackageValues();
                 return;
             }
 
@@ -3478,8 +3494,9 @@ Alpine.data('editBookingApp', () => ({
                 if (data.success) {
                     this.passengers.splice(index, 1);
                     this.passengerCount = this.passengers.length;
-                    this.passengerPackageValues = {};
-                    this.recalculateAllPassengerValues();
+                    // Post-delete truth comes from the enriched server response
+                    // (plan 17 Phase 4) — the client never re-derives it.
+                    this.applyServerFinancials(data);
                     if (typeof showToast === 'function') {
                         showToast('Passenger removed successfully');
                     }
@@ -3491,10 +3508,52 @@ Alpine.data('editBookingApp', () => ({
                 alert('Error: ' + error.message);
             });
         } else {
+            // Unsaved local passenger — remaining passengers keep stored values.
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.reseedStoredPackageValues();
+        }
+    },
+
+    /**
+     * Rebuild the totals map from each passenger's STORED package_value
+     * (plan 17 Phase 4) — the authoritative server-rendered value.
+     */
+    reseedStoredPackageValues() {
+        this.passengerPackageValues = {};
+        this.passengers.forEach((p, index) => {
+            this.passengerPackageValues[index] = parseFloat(p.package_value) || 0;
+        });
+    },
+
+    /**
+     * Apply the enriched removePassenger/addPassenger JSON response (plan 17
+     * Phase 4): per-passenger stored values + booking totals/discount, so the
+     * no-reload edit page displays server truth.
+     */
+    applyServerFinancials(data) {
+        if (Array.isArray(data.passengers)) {
+            const valuesById = {};
+            data.passengers.forEach(sp => {
+                valuesById[String(sp.id)] = parseFloat(sp.package_value) || 0;
+            });
             this.passengerPackageValues = {};
-            this.recalculateAllPassengerValues();
+            this.passengers.forEach((p, index) => {
+                this.passengerPackageValues[index] = (p.id && valuesById[String(p.id)] !== undefined)
+                    ? valuesById[String(p.id)]
+                    : (parseFloat(p.package_value) || 0);
+            });
+        } else {
+            this.reseedStoredPackageValues();
+        }
+
+        if (this.existingBooking) {
+            if (data.total_value !== undefined) {
+                this.existingBooking.total_value = parseFloat(data.total_value) || 0;
+            }
+            if (data.discount_amount !== undefined) {
+                this.existingBooking.discount_amount = parseFloat(data.discount_amount) || 0;
+            }
         }
     },
 
@@ -3564,10 +3623,12 @@ Alpine.data('editBookingApp', () => ({
     },
 
     openPaymentModal() {
-        const packageSelect = document.querySelector('#bookingPackage');
-        const packageValue = parseInt(packageSelect?.selectedOptions[0]?.dataset?.packageValue) || 0;
-        const totalPackageValue = (packageValue * this.passengers.length) + this.fingerprintCharge;
-        const due = totalPackageValue - this.bookingData.discount_value;
+        // Stored truth only (plan 17 Phase 4): total from the seeded map +
+        // district charge, due from the STORED discount_amount. (The old
+        // #bookingPackage dataset read matched no view element — total was
+        // always just the fingerprint charge.)
+        const totalPackageValue = this.grandTotalValue;
+        const due = Math.max(0, totalPackageValue - (parseFloat(this.existingBooking?.discount_amount) || 0));
 
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
@@ -3645,10 +3706,6 @@ Alpine.data('editBookingApp', () => ({
         this.bookingData.discount_type = document.getElementById('discountType')?.value || 'fixed';
         this.bookingData.discount_value = parseFloat(document.getElementById('discountValue')?.value) || 0;
         this.closeDiscountModal();
-    },
-
-    updateGrandTotal() {
-        this.recalculateAllPassengerValues();
     },
 
     submitForm(e) {
@@ -3842,67 +3899,16 @@ Alpine.data('editBookingApp', () => ({
     },
 
     getPassengerFare(passenger) {
-        const serviceRequired = passenger.service_required || 'all';
-        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
-
-        let ticketAmount = 0;
-        if (serviceRequired !== 'visa_only') {
-            if (passenger.ticket_fare_inbound_id && passenger.ticket_fare_outbound_id) {
-                const inboundTicket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_inbound_id));
-                const outboundTicket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_outbound_id));
-                let inboundFare = 0, outboundFare = 0;
-                if (inboundTicket) {
-                    inboundFare = inboundTicket.ticket_type === 'offer'
-                        ? (parseFloat(inboundTicket.offer_price) || 0)
-                        : (parseFloat(inboundTicket.selling_fare) || 0);
-                }
-                if (outboundTicket) {
-                    outboundFare = outboundTicket.ticket_type === 'offer'
-                        ? (parseFloat(outboundTicket.offer_price) || 0)
-                        : (parseFloat(outboundTicket.selling_fare) || 0);
-                }
-                const baseFare = inboundFare + outboundFare;
-                ticketAmount = passengerType === 'child'
-                    ? baseFare * ((parseFloat(inboundTicket?.child_fare_percentage) || 70)) / 100
-                    : passengerType === 'infant'
-                        ? baseFare * ((parseFloat(inboundTicket?.infant_fare_percentage) || 30)) / 100
-                        : baseFare;
-            } else {
-                let ticket = passenger.ticket_fare || null;
-                if (!ticket && passenger.ticket_fare_id) {
-                    ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
-                }
-                if (ticket) {
-                    const baseFare = ticket.ticket_type === 'offer'
-                        ? (parseFloat(ticket.offer_price) || 0)
-                        : (parseFloat(ticket.selling_fare) || 0);
-                    ticketAmount = baseFare;
-                    if (passengerType === 'child') {
-                        const pct = parseFloat(ticket.child_fare_percentage) || 0;
-                        ticketAmount = baseFare * pct / 100;
-                    } else if (passengerType === 'infant') {
-                        const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-                        ticketAmount = baseFare * pct / 100;
-                    }
-                }
-            }
-        }
-
-        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
-        const visaPrice = parseFloat(pkg?.visa_selling_price) || 0;
-        const serviceCharge = parseFloat(pkg?.service_charge) || 0;
-
-        let visaAmount = 0;
-        let scAmount = 0;
-        if (serviceRequired !== 'ticket_only') {
-            visaAmount = visaPrice;
-            scAmount = serviceCharge;
-        } else {
-            scAmount = serviceCharge;
-        }
-
-        const total = ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
-        return total > 0 ? Alpine.store('currency').format(total) : '-';
+        // Edit page displays STORED package_value (plan 17 Phase 4). The
+        // totals map is seeded from stored values; a pre-save swap preview
+        // (onPackageChange) updates it, keeping this row consistent with the
+        // totals. Live fare math belongs to the creation flow only.
+        const index = this.passengers.indexOf(passenger);
+        const mapped = index >= 0 ? this.passengerPackageValues[index] : undefined;
+        const stored = (mapped !== undefined && mapped !== null)
+            ? parseFloat(mapped)
+            : (parseFloat(passenger?.package_value) || 0);
+        return stored > 0 ? Alpine.store('currency').format(stored) : '-';
     },
 
     openCustomerModal() {

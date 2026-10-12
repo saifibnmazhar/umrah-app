@@ -2519,10 +2519,22 @@ class BookingController extends Controller
 
             $invoiceData = $this->syncBookingFinancials($booking, 'passenger_removed');
 
+            // Phase 4 (plan 17): the edit page consumes this no-reload response
+            // — return the stored post-delete truth (totals + per-passenger
+            // values) so the client never re-derives it from live prices.
             return response()->json([
                 'success' => true,
                 'message' => 'Passenger removed successfully',
                 'invoice' => $invoiceData,
+                'total_value' => (float) $booking->total_value,
+                'discount_amount' => (float) $booking->discount_amount,
+                'passengers' => $booking->passengers()
+                    ->get(['id', 'package_value'])
+                    ->map(fn (Passenger $p) => [
+                        'id' => $p->id,
+                        'package_value' => (float) $p->package_value,
+                    ])
+                    ->values(),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to remove passenger'], 500);

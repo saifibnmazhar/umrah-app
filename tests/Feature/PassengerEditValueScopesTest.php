@@ -162,6 +162,30 @@ class PassengerEditValueScopesTest extends TestCase
         $this->assertEqualsWithDelta(self::MARKER, (float) $this->invoice->fresh()->total_amount, 0.001);
     }
 
+    public function test_remove_passenger_json_returns_stored_totals_and_values(): void
+    {
+        [$p1, $p2] = $this->bookingWithTwoPassengers();
+
+        $this->actingAs($this->user);
+        $response = $this->deleteJson(route('bookings.passengers.destroy', [
+            'booking' => $this->booking->id, 'passenger' => $p1->id,
+        ]))->assertOk();
+
+        // Phase 4 (plan 17): the no-reload delete path must return the stored
+        // post-delete truth so the edit page never re-derives it client-side.
+        $response->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success', 'message', 'invoice', 'total_value', 'discount_amount',
+                'passengers' => [['id', 'package_value']],
+            ]);
+        $this->assertEqualsWithDelta(self::MARKER, (float) $response->json('total_value'), 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $response->json('discount_amount'), 0.001);
+
+        $this->assertCount(1, $response->json('passengers'));
+        $this->assertSame($p2->id, $response->json('passengers.0.id'));
+        $this->assertEqualsWithDelta(self::MARKER, (float) $response->json('passengers.0.package_value'), 0.001);
+    }
+
     public function test_cancelled_passenger_is_frozen_but_still_summed(): void
     {
         [$p1, $p2] = $this->bookingWithTwoPassengers();
