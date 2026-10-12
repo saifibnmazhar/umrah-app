@@ -46,8 +46,8 @@ use App\Services\PaymentService;
 use App\Services\ProfitCalculationService;
 use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
+use App\Support\PackageEras;
 use App\Traits\ConvertsDocumentsToPdf;
-use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -214,13 +214,13 @@ class BookingController extends Controller
      * Run the financial orchestrator for a booking and shape the invoice JSON
      * shared by every mutation endpoint.
      *
-     * `$recomputeAt` null = totals-only (no passenger recompute); now() for
-     * swap/add triggers; a passenger's historicAnchor() for scoped
-     * re-valuation of `$only` (plan 17 §2b/§2c).
+     * `$recomputeValues` false = totals-only (no passenger recompute); true
+     * = re-derive the scope from earliest-era anchors — swap/add triggers
+     * (plan 17 §2b/§2c + earliest-era amendment).
      */
-    private function syncBookingFinancials(Booking $booking, ?string $reason = null, ?CarbonInterface $recomputeAt = null, ?Passenger $only = null): array
+    private function syncBookingFinancials(Booking $booking, ?string $reason = null, bool $recomputeValues = false, ?Passenger $only = null): array
     {
-        $this->bookingService->applyFinancials($booking, $recomputeAt, $reason, $only);
+        $this->bookingService->applyFinancials($booking, $recomputeValues, $reason, $only);
 
         $invoice = $booking->invoice;
         if ($invoice) {
@@ -2006,9 +2006,148 @@ class BookingController extends Controller
         }
         $currentCurrencyRate = $currencyRate;
 
+        // Every package this booking has ever been on — embedded for the edit
+        // page so onPackageChange knows when to fetch a true swap preview.
+        $previouslyUsedPackageIds = PackageEras::usedPackageIds(
+            $booking->package_id,
+            PackageEras::logsFor($booking->id)
+        );
+
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches'
+            'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches', 'previouslyUsedPackageIds'
         ));
+    }
+
+    /**
+     * Read-only preview of a package swap: the exact values a save would
+     * STORE (the same earliest-era derivation the swap call site uses).
+     *
+     * Zero writes by construction — the hypothetical package/FK state lives
+     * on in-memory model copies, so no passenger/booking/invoice/audit row
+     * is touched. For a package the booking was ever on, values come from
+     * that package's EARLIEST era (restoration); a never-used package
+     * previews at now(), matching its save-time anchor.
+     */
+    public function swapPreview(Request $request, Booking $booking)
+    {
+        $this->ensureBranchAccess($booking);
+        $this->ensureEditWindow($booking);
+
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'package_id' => 'required|integer|exists:packages,id',
+        ]);
+
+        $package = Package::with([
+            'ticketFare.updateLogs',
+            'ticketFareInbound.updateLogs',
+            'ticketFareOutbound.updateLogs',
+            'visaSellingPrice',
+            'updateLogs',
+        ])->findOrFail($validated['package_id']);
+
+        $booking->load('passengers');
+        $eraLogs = PackageEras::logsFor($booking->id);
+        $usedIds = PackageEras::usedPackageIds($booking->package_id, $eraLogs);
+        $restored = in_array((int) $package->id, $usedIds, true);
+
+        // In-memory stand-in for the post-save booking: same package, and
+        // the fare FK re-pointing the real swap block performs (visa_only
+        // excluded; fare-less single-ticket packages keep their FKs — the
+        // documented plan 17 §2d scope limit, mirrored deliberately).
+        $previewBooking = new Booking(['package_id' => $package->id]);
+        $previewBooking->package_id = $package->id;
+        $previewBooking->setRelation('package', $package);
+
+        foreach ($booking->passengers as $passenger) {
+            $serviceRequired = $passenger->service_required;
+            if ($serviceRequired instanceof \BackedEnum) {
+                $serviceRequired = $serviceRequired->value;
+            }
+
+            if ($serviceRequired !== 'visa_only') {
+                if ($package->is_double_ticket) {
+                    $passenger->ticket_fare_id = null;
+                    $passenger->ticket_fare_inbound_id = $package->ticket_fare_inbound_id;
+                    $passenger->ticket_fare_outbound_id = $package->ticket_fare_outbound_id;
+                } elseif ($package->ticket_fare_id) {
+                    $passenger->ticket_fare_id = $package->ticket_fare_id;
+                    $passenger->ticket_fare_inbound_id = null;
+                    $passenger->ticket_fare_outbound_id = null;
+                }
+
+                $passenger->unsetRelation('ticketFare')
+                    ->unsetRelation('ticketFareInbound')
+                    ->unsetRelation('ticketFareOutbound');
+            }
+
+            $passenger->setRelation('booking', $previewBooking);
+        }
+
+        $fareIds = $booking->passengers
+            ->flatMap(fn (Passenger $p) => [$p->ticket_fare_id, $p->ticket_fare_inbound_id, $p->ticket_fare_outbound_id])
+            ->filter()->unique();
+        $fares = TicketFare::with('updateLogs')->whereIn('id', $fareIds)->get()->keyBy('id');
+
+        $service = $this->bookingService;
+        $passengerRows = [];
+        $passengerTotal = 0.0;
+
+        foreach ($booking->passengers as $passenger) {
+            $passenger->setRelation('ticketFare', $fares[$passenger->ticket_fare_id] ?? null);
+            $passenger->setRelation('ticketFareInbound', $fares[$passenger->ticket_fare_inbound_id] ?? null);
+            $passenger->setRelation('ticketFareOutbound', $fares[$passenger->ticket_fare_outbound_id] ?? null);
+
+            if ($passenger->is_cancelled) {
+                $value = (float) $passenger->package_value; // frozen (D4)
+            } else {
+                $anchor = $restored
+                    ? PackageEras::anchorAt($booking->created_at, $package->id, $eraLogs, $passenger->created_at)
+                    : now();
+                $value = $service->calculatePackageValue($passenger, $anchor);
+            }
+
+            $passengerTotal += $value;
+            $passengerRows[] = [
+                'id' => $passenger->id,
+                'package_value' => $value,
+            ];
+        }
+
+        $fingerprintLocation = $booking->fingerprint_location;
+        if ($fingerprintLocation instanceof \BackedEnum) {
+            $fingerprintLocation = $fingerprintLocation->value;
+        }
+
+        $total = $passengerTotal + $service->getFingerprintCharge(
+            $booking->district_id,
+            $fingerprintLocation
+        );
+
+        $discountType = $booking->discount_type;
+        if ($discountType instanceof \BackedEnum) {
+            $discountType = $discountType->value;
+        }
+
+        $discount = $service->calculateDiscount(
+            $total,
+            $discountType ?? 'fixed',
+            (float) ($booking->discount_value ?? 0)
+        );
+
+        return response()->json([
+            'success' => true,
+            'restored' => $restored,
+            'anchor' => ($restored
+                ? PackageEras::eraStart($booking->created_at, $package->id, $eraLogs)
+                : now())?->toDateTimeString(),
+            'passengers' => $passengerRows,
+            'total_value' => $total,
+            'discount_amount' => $discount,
+        ]);
     }
 
     public function update(Request $request, Booking $booking)
@@ -2187,15 +2326,18 @@ class BookingController extends Controller
                 $booking->fingerprint->update(['assigned_staff_id' => null]);
             }
 
-            $recomputeAt = null;
+            $recomputeValues = false;
             if ($booking->wasChanged('package_id')) {
                 app(ProfitCalculationService::class)->recalculateBookingProfit($booking->fresh());
-                // Package swap: all passengers re-valued at now() (plan 17 §2b).
-                $recomputeAt = now();
+                // Package swap: re-derive every passenger from the EARLIEST
+                // era of the now-active package — a swap-back restores
+                // first-era prices instead of re-pricing at now()
+                // (plan 17 earliest-era amendment).
+                $recomputeValues = true;
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated', $recomputeAt);
+            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated', $recomputeValues);
 
             $discountType = $booking->discount_type;
             if ($discountType instanceof \BackedEnum) {
@@ -2481,9 +2623,10 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            // Only the new passenger is valued (at now()); existing passengers
-            // keep their stored values (plan 17 §2b "passenger add" row).
-            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added', now(), $passenger);
+            // Only the new passenger is valued — derived anchor = their own
+            // creation moment; existing passengers keep their stored values
+            // (plan 17 §2b "passenger add" row).
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added', true, $passenger);
 
             $passenger = $passenger->fresh()->load('ticketFare');
 

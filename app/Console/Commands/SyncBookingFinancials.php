@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  * invoices.total_amount (plan 17 D5).
  *
  * - Recomputes each non-cancelled passenger at their own historicAnchor()
- *   (max(created_at, lastSwapAt)) — never at live prices.
+ *   (earliest era start of the booking's current package, floored at own
+ *   creation) — never at live prices.
  * - Re-totals the booking, re-applies the discount and pushes the invoice
  *   delta with reason='historic_backfill' so every backfill movement is
  *   greppable in invoice_update_logs.

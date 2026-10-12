@@ -79,7 +79,8 @@ class SyncPassengerTicketFareV2 extends Command
                         $oldValue = (float) ($passenger->package_value ?? 0);
 
                         // Historic recompute at the passenger's own anchor
-                        // (max(created_at, lastSwapAt)) — never at live prices.
+                        // (earliest era start, floored at own creation) —
+                        // never at live prices.
                         // Known, intentional scope limit (plan 17 §2d): value
                         // repair only runs when an FK actually changed, so pure
                         // value drift with matching FKs is left to
