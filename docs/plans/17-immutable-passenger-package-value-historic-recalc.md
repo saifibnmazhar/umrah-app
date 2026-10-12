@@ -2,11 +2,11 @@
 
 **Status: PLAN ONLY — DO NOT IMPLEMENT until explicitly approved.**
 
-**Revision 3** — incorporates loophole resolutions **L1–L8**, the uniform anchor
-decision, and the **B1–B8 limitation round (all resolved; see Decision log §end)**.
-The inconsistency round **I1–I12 is still pending** — remaining ⚠ markers refer to
-I-items only. All line references re-verified against the working tree; dataset
-evidence from the local database (confirmed identical to production).
+**Revision 4** — final. Incorporates loophole resolutions **L1–L8**, the uniform
+anchor decision, the **B1–B8 limitation round**, and the **I1–I12 inconsistency
+round (all resolved)**. ⚠ markers removed. All line references re-verified against
+the working tree; dataset evidence from the local database (confirmed identical to
+production). **Ready for implementation approval.**
 
 ## Problem
 
@@ -122,9 +122,10 @@ Mirror `TicketFare::valueAt()` (`app/Models/TicketFare.php:126-145`) over
   both `TicketFare` and `Package`. Keep `TicketFare::percentageAtFromLogs()`
   (:162-191) signature/behavior backward-compatible
   (`tests/Unit/TicketFareReplayTest.php` exists).
-  - **⚠ pending I3:** recommended shape — the internal helper returns
-    `string|int|float` (needed for `ticket_type` and FK columns);
-    `TicketFare::valueAt()`/`percentageAtFromLogs()` stay `float` wrappers for
+  - **Decided (I3):** internal `LogReplay::valueFromEvents()` returns
+    `string|int|float` (int for FK columns, string for `ticket_type`, floats for
+    prices/percentages); `TicketFare::valueAt(): float` /
+    `percentageAtFromLogs(): float` stay wrappers — zero behavior change for
     existing callers (`PassengerController.php:955-956`).
 
 ### 1b. Anchor derivation helper (new)
@@ -307,11 +308,22 @@ test 4 via `expectsDatabaseQueryCount` (nice-to-have).
 
 Without complete logs, every replay silently degrades to the live-value fallback.
 
-- **Migrations (4):** make `user_id` nullable + `nullOnDelete` on
-  `package_update_logs`, `ticket_fare_update_logs`, `booking_update_logs`,
-  `passenger_update_logs`. Precedent: `invoice_update_logs`
-  (`2026_08_13_000006:15`). (`invoice_update_logs` already nullable — not touched.)
-  *(`nullOnDelete` also allows user-account deletion without FK-restrict errors.)*
+- **Migrations (4 new ALTER files; the CREATE files are already deployed in
+  prod and must not be edited):**
+  `2026_<impl-date>_00000{1-4}_make_user_id_nullable_on_{booking,passenger,package,ticket_fare}_update_logs.php`
+  — each: drop the old `user_id` FK (currently RESTRICT, verified), change
+  `user_id` to nullable, re-add the FK with `->nullOnDelete()`. Template:
+  `invoice_update_logs` (`2026_08_13_000006:15`, nullable + SET NULL — verified).
+  **Mandatory, not cosmetic:** after guard removal, an unauthenticated/CLI
+  observer write would otherwise fail the NOT NULL constraint inside the model
+  event, aborting the originating edit/command. A fallback system-user id was
+  considered and rejected: NOT NULL + `nullOnDelete` are mutually exclusive
+  (user deletion would stay FK-blocked), it adds a per-environment seed
+  dependency, and `?? 1`-style fallbacks falsely attribute writes to a real
+  person. NULL means "system"; the UI renders it as such. The UI path can never
+  produce NULL rows — all mutating routes sit behind `Route::middleware('auth')`
+  (`routes/web.php:85`; only `/login`, `/logout`, `/_session/ping` are outside,
+  none mutating them).
 - **Observers:** `TicketFareObserver`, `PackageObserver`, `BookingObserver`,
   `PassengerObserver` — remove the `$user = Auth::user(); if (! $user) return;`
   guard **before log writes only**; log with `$user?->id` (null = system/CLI).
@@ -322,10 +334,12 @@ Without complete logs, every replay silently degrades to the live-value fallback
 - **Programmatic financial writes stay quiet:** `package_value` via
   `updateQuietly` (2a.1); `bookings.total_value` via `updateQuietly` (2a.2).
   Entity edits continue to log normally.
-- **⚠ pending I1:** `SettingsController.php:233` (`$validated['user_id'] =
-  auth()->id() ?? 1`) sets a **non-fillable, non-existent** `packages.user_id` —
-  the value is silently discarded and never affected logging. No-op either way;
-  drop the planned change or delete the line during the I round.
+- **Delete the dead line (I1, decided):** `SettingsController.php:233`
+  (`$validated['user_id'] = auth()->id() ?? 1`) — `packages` has **no `user_id`
+  column at all** (verified `DESC packages`, 13 columns) and `user_id` is not in
+  `Package::$fillable`; the value is silently discarded and never affected
+  logging. Deleting it removes a latent trap (adding `user_id` to `$fillable`
+  later would turn it into an unknown-column SQL error on every package create).
 
 ---
 
@@ -405,7 +419,7 @@ create :1272-1332, edit :3219+, show :4835-4893.
   server-provided passenger list (`bookingIndexApp`) — stored, no change.
 - `bookings/show.blade.php:134` — `$passenger->ticketFare?->fare` is always null
   (no `fare` column on `ticket_fares`, no accessor on `TicketFare`) ⇒ dead
-  expression, renders `0`; **⚠ pending I-round** optional one-line cleanup.
+  expression, renders `0`; optional one-line cleanup during Phase 4.
 - Legacy `bookingApp` (:4-754) is dead code; excluded from scope.
 
 ---
@@ -438,8 +452,9 @@ under the new regime that divergence is by design (frozen at swap), not drift.)*
 1. **Unit** `tests/Unit/PackageValueReplayTest.php` — `Package::valueAt`: seed
    from `created`; seed from first `old_values` **of any action type** (incl.
    leading `fare_updated`); no-logs ⇒ live value; `updated` walk; `fare_updated`
-   applied; null `created_at` rows skipped; anchor inclusivity. **⚠ pending I3:**
-   `ticket_type` string-replay case.
+   applied; null `created_at` rows skipped; anchor inclusivity. Include the
+   `ticket_type` string-replay case and an FK-int replay case
+   (`visa_selling_price_id`).
 2. **Unit** `tests/Unit/HistoricAnchorTest.php` — anchor rule: never swapped →
    `created_at`; swap after creation → swap log time; passenger added after swap →
    `created_at` (= add time); booking `created`-action logs ignored; pre-log-era →
@@ -536,6 +551,13 @@ docker compose -f docker-compose.prod.yml config --quiet
 - **Heterogeneous eras (decided):** after a passenger add, the new passenger
   carries `now()` prices while existing ones keep their anchor-era prices —
   correct by design; state this in the PR description. No code change.
+- **NULL-keyed log rows (explained):** `package_update_logs` currently contains
+  rows with `package_id = NULL` (e.g., 10 dev-era rows for test packages 86/87).
+  Cause verified: the `package_id` FK is `ON DELETE SET NULL`, which nulls the
+  key **retroactively** when the referenced package is deleted — the rows were
+  written correctly and keyed at write time. Harmless: deleted packages have no
+  bookings, so replay never needs them; the observer always keys `package_id`
+  at write time (`PackageObserver:27,67,87`). No fix needed.
 - **`PackageObserver` profit writes** on `service_charge` continue
   (snapshot-based; never touch `package_value`).
 - **Out of scope:** `ProfitCalculationService`, cancellation/refund flows (read
@@ -548,8 +570,8 @@ docker compose -f docker-compose.prod.yml config --quiet
 (+ D2 rule removal), `Package` (`valueAt`), `TicketFare` (helper extraction),
 `Support/LogReplay` (new), `SyncBookingFinancials`, `SyncPassengerTicketFare`,
 `SyncPassengerTicketFareV2`, observers ×4, `TicketFareController` (cascade log
-guard), `Passenger`/`Booking` (`historicAnchor` + relations), optional
-`SettingsController` (⚠ I1).
+guard), `Passenger`/`Booking` (`historicAnchor` + relations), `SettingsController` (I1 —
+delete dead `:233` line).
 
 **Deleted:** `routes/web.php:185` + `BookingController::recalculatePassengerValue`.
 
@@ -563,7 +585,7 @@ require it.
 
 **Tests:** 9 new files + 2 updated (Phase 6).
 
-## Decision log (Revisions 2–3)
+## Decision log (Revisions 2–4)
 
 | Ref | Decision |
 |---|---|
@@ -580,11 +602,12 @@ require it.
 | B4 | Forward replay decided for engine consistency; NOT NULL invariant verified; shipped reverse-walk untouched (dead null path) |
 | B5 | Query budget ~5-6/booking specified; auth-guard suppression evidence-closed; Phase 3 prevents recurrence |
 | B6 | Heterogeneous-eras PR note adopted; no code change |
+| I1 | Delete `SettingsController:233` dead line (no `user_id` column on packages — verified) |
+| I3 | Mixed-return `LogReplay` helper decided; `TicketFare` float wrappers preserved |
+| user_id | NULL = system; fallback system-user rejected (NOT NULL ⟂ nullOnDelete; seed dependency; false attribution); 4 new ALTER migrations named, mandatory with guard removal |
 
-## Open for the I round
+## Review rounds — closed
 
-| Ref | Topic | Recommended default in this revision |
-|---|---|---|
-| I1 | `SettingsController:233` dead-code line | Leave as no-op or delete during I round (does not affect logging) |
-| I3 | Replay helper return typing | Mixed-return internal helper (`string\|int\|float`); `float` wrappers preserved on `TicketFare` public API; needed for `ticket_type` (string) and FK columns (int) |
-| (verified) | I5 / I10 | `PassengerExtraChargeTotalsTest` needs **no** changes (verified); line refs confirmed correct |
+All L1–L8, B1–B8, and I1–I12 items are resolved (see Decision log). The previously
+pending I5/I10 findings stand as verified facts: `PassengerExtraChargeTotalsTest`
+needs no changes; flagged line references were confirmed correct.
