@@ -17,12 +17,14 @@ use App\Models\Package;
 use App\Models\PackageUpdateLog;
 use App\Models\Passenger;
 use App\Models\PassengerUpdateLog;
+use App\Models\Role;
 use App\Models\Route;
 use App\Models\TicketFare;
 use App\Models\TicketFareUpdateLog;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
+use App\Rules\FlightDateSlot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -63,6 +65,7 @@ class RecalculationAuditLogTest extends TestCase
             'branch_code' => 'MAIN01',
         ]);
         $this->user = User::factory()->create(['branch_id' => $this->branch->id]);
+        $this->user->roles()->attach(Role::firstOrCreate(['name' => 'Super Admin']));
         $this->district = District::create(['name' => 'D', 'division' => 'Div']);
         $this->customer = Customer::create([
             'name' => 'Cust', 'passport_no' => 'T1', 'mobile_no' => '0501',
@@ -159,8 +162,8 @@ class RecalculationAuditLogTest extends TestCase
             'passport_expiry' => '2030-12-31',
             'stay_duration' => 14,
             'service_required' => 'all',
-            'flight_date_from' => now()->addDays(5)->toDateString(),
-            'flight_date_to' => now()->addDays(15)->toDateString(),
+            'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+            'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
             'ticket_status' => 'pending',
             'address' => 'Addr',
             'package_value' => 40000.00,
@@ -291,5 +294,64 @@ class RecalculationAuditLogTest extends TestCase
         $this->assertEqualsWithDelta(30000.0, (float) $log->old_values['regular_price'], 0.001);
         $this->assertEqualsWithDelta(33000.0, (float) $log->new_values['regular_price'], 0.001);
         $this->assertEqualsWithDelta(33000.0, (float) $package->fresh()->regular_price, 0.001);
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 2 half (D9 / L8): recalc logging + quiet financial writes.
+    // ------------------------------------------------------------------
+
+    public function test_authenticated_trigger_writes_recalculated_log(): void
+    {
+        $booking = $this->makeBooking();
+        $passenger = $this->makePassenger($booking);
+
+        $this->actingAs($this->user);
+        $this->put(route('passengers.update', $passenger->id), [
+            'first_name' => $passenger->first_name,
+            'last_name' => $passenger->last_name,
+            'passport_no' => $passenger->passport_no,
+            'date_of_birth' => '1990-01-01',
+            'stay_duration' => 14,
+            'flight_date_from' => FlightDateSlot::validPairForTesting()[0],
+            'flight_date_to' => FlightDateSlot::validPairForTesting()[1],
+            'extra_charge' => 250,
+        ])->assertRedirect(route('passengers.show', $passenger->id))
+            ->assertSessionHasNoErrors();
+
+        $recalc = PassengerUpdateLog::where('passenger_id', $passenger->id)
+            ->where('action', 'recalculated')->first();
+
+        $this->assertNotNull($recalc, 'authenticated recompute must write a recalculated row');
+        $this->assertSame($this->user->id, (int) $recalc->user_id);
+        // Stored value was 40000; the historic calculator at the passenger's
+        // anchor recomputes visa 2000 + service 1500 + extra 250 (no fare FK).
+        $this->assertEqualsWithDelta(40000.0, (float) $recalc->old_values['package_value'], 0.001);
+        $this->assertEqualsWithDelta(3750.0, (float) $recalc->new_values['package_value'], 0.001);
+
+        // package_value / total_value are written via updateQuietly: no
+        // observer 'updated' row carries them.
+        $this->assertFalse(
+            PassengerUpdateLog::where('passenger_id', $passenger->id)
+                ->where('action', 'updated')
+                ->where('new_values', 'like', '%"package_value"%')->exists(),
+            'package_value must not be written via the observer path'
+        );
+        $this->assertFalse(
+            BookingUpdateLog::where('booking_id', $booking->id)
+                ->where('action', 'updated')
+                ->where('new_values', 'like', '%"total_value"%')->exists(),
+            'bookings.total_value must be written quietly (the initial created row legitimately carries it)'
+        );
+    }
+
+    public function test_command_recalculation_writes_no_log(): void
+    {
+        $booking = $this->makeBooking();
+        $this->makePassenger($booking);
+
+        $this->artisan('bookings:sync-financials')->assertSuccessful();
+
+        $this->assertSame(0, PassengerUpdateLog::where('action', 'recalculated')->count(),
+            'commands run unauthenticated — no recalculated rows (D9)');
     }
 }

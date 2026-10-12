@@ -5,17 +5,21 @@ namespace App\Services;
 use App\Enums\PassengerType;
 use App\Enums\TicketType;
 use App\Models\Booking;
+use App\Models\BookingUpdateLog;
 use App\Models\Branch;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\PassengerUpdateLog;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use App\Support\LogReplay;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BookingService
 {
@@ -178,49 +182,126 @@ class BookingService
         );
     }
 
-    public function recalculateBookingTotal(Booking $booking): float
+    /**
+     * Recompute `package_value` for the requested scope from HISTORIC prices.
+     *
+     * `$at === null` derives each passenger's own `historicAnchor()`
+     * (max(created_at, lastSwapAt)) with booking_update_logs loaded once per
+     * booking (L4 query budget); an explicit `$at` applies one moment to the
+     * whole scope — `now()` for swap/add triggers, the passenger's anchor for
+     * type/extra_charge/service_required changes (plan 17 §2b trigger matrix).
+     *
+     * `is_cancelled` passengers are never touched (D4). Values are written
+     * via `updateQuietly` — no observer rows for programmatic financial
+     * writes (L8) — plus a D9 `recalculated` audit row only when a user is
+     * authenticated (commands run unauthenticated and deliberately log nothing).
+     */
+    public function recalculatePassengerValues(Booking $booking, ?CarbonInterface $at = null, ?Passenger $only = null): void
     {
-        foreach ($booking->passengers as $passenger) {
-            $passenger->package_value = $this->calculatePackageValue($passenger);
-            $passenger->save();
+        $passengers = $only
+            ? collect([$only])
+            : Passenger::where('booking_id', $booking->id)->get();
+
+        $booking->loadMissing('package.updateLogs');
+
+        // Anchor derivation from a single booking_update_logs load (L4).
+        $lastSwapAt = null;
+        if ($at === null) {
+            $lastSwapAt = BookingUpdateLog::where('booking_id', $booking->id)
+                ->where('action', 'updated')
+                ->get()
+                ->filter(fn (BookingUpdateLog $log) => is_array($log->old_values)
+                    && array_key_exists('package_id', $log->old_values))
+                ->max(fn (BookingUpdateLog $log) => $log->created_at);
         }
 
-        $passengerTotal = (float) $booking->passengers->sum('package_value');
+        // All fare legs in one query, then bound in-memory (L4).
+        $fareIds = $passengers->flatMap(fn (Passenger $passenger) => [
+            $passenger->ticket_fare_id,
+            $passenger->ticket_fare_inbound_id,
+            $passenger->ticket_fare_outbound_id,
+        ])->filter()->unique();
+        $fares = TicketFare::with('updateLogs')->whereIn('id', $fareIds)->get()->keyBy('id');
+
+        foreach ($passengers as $passenger) {
+            if ($passenger->is_cancelled) {
+                continue;
+            }
+
+            $passenger->setRelation('booking', $booking);
+            $passenger->setRelation('ticketFare', $passenger->ticket_fare_id ? ($fares[$passenger->ticket_fare_id] ?? null) : null);
+            $passenger->setRelation('ticketFareInbound', $passenger->ticket_fare_inbound_id ? ($fares[$passenger->ticket_fare_inbound_id] ?? null) : null);
+            $passenger->setRelation('ticketFareOutbound', $passenger->ticket_fare_outbound_id ? ($fares[$passenger->ticket_fare_outbound_id] ?? null) : null);
+
+            $anchor = $at
+                ?? (($lastSwapAt && $lastSwapAt->gt($passenger->created_at)) ? $lastSwapAt : $passenger->created_at);
+
+            $oldValue = (float) $passenger->package_value;
+            $newValue = $this->calculatePackageValue($passenger, $anchor);
+
+            if (abs($oldValue - $newValue) < 0.005) {
+                continue;
+            }
+
+            $passenger->package_value = $newValue;
+            $passenger->saveQuietly();
+
+            if (Auth::user()) {
+                PassengerUpdateLog::create([
+                    'passenger_id' => $passenger->id,
+                    'user_id' => Auth::id(),
+                    'passport_no' => $passenger->passport_no,
+                    'action' => 'recalculated',
+                    'old_values' => ['package_value' => $oldValue],
+                    'new_values' => ['package_value' => $newValue],
+                ]);
+            }
+        }
+
+        $booking->unsetRelation('passengers');
+    }
+
+    /**
+     * Re-sum bookings.total_value from the stored passenger values (the D4
+     * re-sum set — cancelled passengers' frozen values still count) plus the
+     * CURRENT district's fingerprint charge (D3). Written quietly (L8):
+     * programmatic total writes produce no booking_update_logs row.
+     */
+    public function refreshBookingTotals(Booking $booking): float
+    {
+        $passengerTotal = (float) Passenger::where('booking_id', $booking->id)->sum('package_value');
 
         $fingerprintLocation = $booking->fingerprint_location;
         if ($fingerprintLocation instanceof \BackedEnum) {
             $fingerprintLocation = $fingerprintLocation->value;
         }
 
-        $fingerprintCharge = $this->getFingerprintCharge(
+        $total = $passengerTotal + $this->getFingerprintCharge(
             $booking->district_id,
             $fingerprintLocation
         );
 
-        $total = $passengerTotal + $fingerprintCharge;
-
-        $booking->total_value = $total;
-        $booking->save();
+        $booking->updateQuietly(['total_value' => $total]);
 
         return $total;
     }
 
-    public function syncFinancials(Booking $booking, ?string $reason = null): void
+    /**
+     * Recompute discount_amount from the current total. A normal save is kept
+     * deliberately: dirty discount fields drive BookingObserver profit
+     * recalculation (:33-35).
+     */
+    public function applyDiscount(Booking $booking): float
     {
-        $oldTotal = (float) $booking->total_value;
-        $oldDiscount = (float) $booking->discount_amount;
-
-        $this->recalculateBookingTotal($booking);
-
         $discountType = $booking->discount_type;
         if ($discountType instanceof \BackedEnum) {
             $discountType = $discountType->value;
         }
 
         $discountAmount = $this->calculateDiscount(
-            $booking->total_value,
+            (float) $booking->total_value,
             $discountType ?? 'fixed',
-            $booking->discount_value ?? 0
+            (float) ($booking->discount_value ?? 0)
         );
 
         if ($booking->discount_amount != $discountAmount) {
@@ -228,18 +309,56 @@ class BookingService
             $booking->save();
         }
 
-        $invoice = $booking->invoice;
-        if ($invoice) {
-            $oldDiscounted = max(0, $oldTotal - $oldDiscount);
-            $newDiscounted = max(0, $booking->total_value - $discountAmount);
-            $delta = $newDiscounted - $oldDiscounted;
+        return $discountAmount;
+    }
 
-            $this->invoiceService->updateTotals(
-                $invoice,
-                (float) $invoice->total_amount + $delta,
-                $reason
-            );
+    /**
+     * Move the invoice's total_amount by the discounted-total delta and
+     * audit-write the reason (e.g. 'booking_updated', 'historic_backfill').
+     * Delta semantics preserve invoice-internal adjustments (cancellation
+     * deductions etc.) that an absolute overwrite would clobber.
+     */
+    public function applyInvoiceDelta(Booking $booking, float $oldTotal, float $oldDiscount, ?string $reason): void
+    {
+        $invoice = $booking->invoice;
+        if (! $invoice) {
+            return;
         }
+
+        $oldDiscounted = max(0, $oldTotal - $oldDiscount);
+        $newDiscounted = max(0, (float) $booking->total_value - (float) $booking->discount_amount);
+        $delta = $newDiscounted - $oldDiscounted;
+
+        $this->invoiceService->updateTotals(
+            $invoice,
+            (float) $invoice->total_amount + $delta,
+            $reason
+        );
+    }
+
+    /**
+     * The single financial orchestrator (plan 17 §2a): optional historic
+     * recompute → totals re-sum → discount recompute → invoice delta, all in
+     * one transaction.
+     *
+     * `$recomputeAt === null` means "no recompute" (totals-only triggers such
+     * as generic edits/removals); pass `now()` for swap/add triggers or a
+     * passenger's `historicAnchor()` for a scoped re-valuation.
+     */
+    public function applyFinancials(Booking $booking, ?CarbonInterface $recomputeAt = null, ?string $reason = null, ?Passenger $only = null): void
+    {
+        DB::transaction(function () use ($booking, $recomputeAt, $reason, $only) {
+            $oldTotal = (float) $booking->total_value;
+            $oldDiscount = (float) $booking->discount_amount;
+
+            if ($recomputeAt !== null) {
+                $this->recalculatePassengerValues($booking, $recomputeAt, $only);
+            }
+
+            $this->refreshBookingTotals($booking);
+            $this->applyDiscount($booking);
+            $this->applyInvoiceDelta($booking, $oldTotal, $oldDiscount, $reason);
+        });
     }
 
     public function calculateTotal(Booking $booking): array

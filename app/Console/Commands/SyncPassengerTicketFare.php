@@ -29,6 +29,10 @@ class SyncPassengerTicketFare extends Command
                 foreach ($passengers as $passenger) {
                     $packageFareId = $passenger->booking->package->ticket_fare_id;
 
+                    // Known, intentional scope limit (plan 17 §2d): a package
+                    // without a fare (incl. double-ticket packages, whose fares
+                    // live on the inbound/outbound columns) skips the passenger
+                    // entirely — FK and value both untouched.
                     if ($packageFareId === null) {
                         continue;
                     }
@@ -38,10 +42,17 @@ class SyncPassengerTicketFare extends Command
                         $passenger->refresh();
                     }
 
-                    $newPackageValue = $bookingService->calculatePackageValue($passenger);
+                    $oldValue = (float) ($passenger->package_value ?? 0);
 
-                    if ((float) ($passenger->package_value ?? 0) !== $newPackageValue) {
-                        $passenger->update(['package_value' => $newPackageValue]);
+                    // Historic recompute at the passenger's own anchor
+                    // (max(created_at, lastSwapAt)) — never at live prices.
+                    $bookingService->recalculatePassengerValues(
+                        $passenger->booking,
+                        $passenger->historicAnchor(),
+                        $passenger
+                    );
+
+                    if (abs($oldValue - (float) $passenger->fresh()->package_value) >= 0.005) {
                         $updated++;
                     }
                 }

@@ -47,6 +47,7 @@ use App\Services\ProfitCalculationService;
 use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
+use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -209,9 +210,17 @@ class BookingController extends Controller
         }
     }
 
-    private function syncBookingFinancials(Booking $booking, ?string $reason = null): array
+    /**
+     * Run the financial orchestrator for a booking and shape the invoice JSON
+     * shared by every mutation endpoint.
+     *
+     * `$recomputeAt` null = totals-only (no passenger recompute); now() for
+     * swap/add triggers; a passenger's historicAnchor() for scoped
+     * re-valuation of `$only` (plan 17 §2b/§2c).
+     */
+    private function syncBookingFinancials(Booking $booking, ?string $reason = null, ?CarbonInterface $recomputeAt = null, ?Passenger $only = null): array
     {
-        $this->bookingService->syncFinancials($booking, $reason);
+        $this->bookingService->applyFinancials($booking, $recomputeAt, $reason, $only);
 
         $invoice = $booking->invoice;
         if ($invoice) {
@@ -1637,7 +1646,12 @@ class BookingController extends Controller
             }
 
             $booking->refresh();
-            $this->bookingService->recalculateBookingTotal($booking);
+            // Creation flow: value all passengers at now() and re-sum totals
+            // inside the existing manual transaction. No applyFinancials here —
+            // the bespoke invoice + discount block below owns creation
+            // (there is no pre-existing invoice to delta, plan 17 §2c).
+            $this->bookingService->recalculatePassengerValues($booking, now());
+            $this->bookingService->refreshBookingTotals($booking);
 
             $invoice = $this->bookingService->createInvoiceForBooking($booking);
 
@@ -2173,12 +2187,15 @@ class BookingController extends Controller
                 $booking->fingerprint->update(['assigned_staff_id' => null]);
             }
 
+            $recomputeAt = null;
             if ($booking->wasChanged('package_id')) {
                 app(ProfitCalculationService::class)->recalculateBookingProfit($booking->fresh());
+                // Package swap: all passengers re-valued at now() (plan 17 §2b).
+                $recomputeAt = now();
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated');
+            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated', $recomputeAt);
 
             $discountType = $booking->discount_type;
             if ($discountType instanceof \BackedEnum) {
@@ -2464,7 +2481,9 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added');
+            // Only the new passenger is valued (at now()); existing passengers
+            // keep their stored values (plan 17 §2b "passenger add" row).
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added', now(), $passenger);
 
             $passenger = $passenger->fresh()->load('ticketFare');
 
@@ -2872,23 +2891,6 @@ class BookingController extends Controller
                     : 'Failed to update payment.',
             ], 500);
         }
-    }
-
-    public function recalculatePassengerValue(Passenger $passenger)
-    {
-        $this->ensureBranchAccess($passenger->booking);
-
-        $packageValue = $this->bookingService->calculatePackageValue($passenger);
-        $passenger->update(['package_value' => $packageValue]);
-        $booking = $passenger->booking->fresh();
-
-        $invoiceData = $this->syncBookingFinancials($booking, 'passenger_value_recalculated');
-
-        return response()->json([
-            'package_value' => $packageValue,
-            'total_value' => $booking->total_value,
-            'invoice' => $invoiceData,
-        ]);
     }
 
     public function downloadAllDocs(Booking $booking)

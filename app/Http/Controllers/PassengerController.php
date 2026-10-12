@@ -593,9 +593,8 @@ class PassengerController extends Controller
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
             'gender' => 'nullable|in:male,female',
-            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
-            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
-            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            // D2: fare-FK fields are intentionally NOT validated or accepted
+            // here — package_value derives from historic prices (plan 17).
             'extra_charge' => 'nullable|numeric|min:0',
         ]);
 
@@ -633,7 +632,20 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking = $booking->fresh();
 
-                $this->bookingService->syncFinancials($booking, 'passenger_updated');
+                $typeChanged = isset($validated['passenger_type'])
+                    && $validated['passenger_type'] !== ($oldPassengerType instanceof \BackedEnum ? $oldPassengerType->value : $oldPassengerType);
+                $serviceChanged = isset($validated['service_required'])
+                    && $validated['service_required'] !== ($oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired);
+                $extraChanged = $passenger->wasChanged('extra_charge');
+
+                // type/extra_charge/service_required changes re-value ONLY this
+                // passenger, anchored at historicAnchor(); every other edit
+                // leaves package_value alone and just re-totals (plan 17 §2b).
+                $recomputeAt = ($typeChanged || $serviceChanged || $extraChanged)
+                    ? $passenger->historicAnchor()
+                    : null;
+
+                $this->bookingService->applyFinancials($booking, $recomputeAt, 'passenger_updated', $recomputeAt ? $passenger : null);
                 $booking = $booking->fresh();
 
                 if ($passenger->wasChanged('extra_charge')) {
@@ -690,7 +702,9 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking->update(['pax_qty' => $booking->passengers()->count()]);
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking, 'passenger_removed');
+                // Re-sum only — a removal never re-values the remaining
+                // passengers (plan 17 §2b "passenger remove" row).
+                $this->bookingService->applyFinancials($booking, null, 'passenger_removed');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
