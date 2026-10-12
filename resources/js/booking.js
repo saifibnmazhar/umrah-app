@@ -3334,7 +3334,51 @@ Alpine.data('editBookingApp', () => ({
                 });
             }
         }
+
+        // A package this booking was ever on previews from SERVER truth
+        // (earliest-era restoration via swap-preview); anything else keeps
+        // the client-side live estimate, as before.
+        const server = window.__bookingServerData || {};
+        const targetId = String(this.bookingData.package_id);
+        this.swapPreviewSeq = (this.swapPreviewSeq || 0) + 1;
+        const usedIds = Array.isArray(server.previouslyUsedPackageIds)
+            ? server.previouslyUsedPackageIds.map(String)
+            : [];
+
+        if (server.swapPreviewRoute && usedIds.includes(targetId)) {
+            this.fetchSwapPreview(this.swapPreviewSeq, server.swapPreviewRoute, targetId);
+            return;
+        }
+
         this.recalculateAllPassengerValues();
+    },
+
+    /**
+     * Apply the swap-preview response (same shape as the enriched
+     * removePassenger JSON) so the pre-save display matches what a save
+     * would store. Any failure falls back to the live client estimate;
+     * a stale response (user already moved on) is dropped via the seq.
+     */
+    fetchSwapPreview(seq, route, packageId) {
+        fetch(route + '?package_id=' + encodeURIComponent(packageId), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('swap preview failed');
+                return response.json();
+            })
+            .then(data => {
+                if (seq !== this.swapPreviewSeq) return;
+                this.applyServerFinancials(data);
+            })
+            .catch(() => {
+                if (seq !== this.swapPreviewSeq) return;
+                this.recalculateAllPassengerValues();
+            });
     },
 
     calculateFlightDateRange() {

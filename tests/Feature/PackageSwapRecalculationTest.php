@@ -13,8 +13,10 @@ use Tests\Feature\Concerns\CreatesPackageValueFixtures;
 use Tests\TestCase;
 
 /**
- * Test 4 (plan 17): a package swap recalculates ALL passengers at now(),
- * re-sums booking totals and applies the invoice delta.
+ * Test 4 (plan 17): a package swap re-derives ALL passengers from the
+ * earliest era of the target package — a never-used target has no earlier
+ * era, so its first era IS the swap moment (live prices), re-sums booking
+ * totals and applies the invoice delta.
  */
 class PackageSwapRecalculationTest extends TestCase
 {
@@ -71,7 +73,8 @@ class PackageSwapRecalculationTest extends TestCase
             'package_id' => $this->packageB->id,
         ])->assertRedirect();
 
-        // Swap anchor = now() => live prices of package B: 28000 + 2500 + 1500.
+        // Never-used target: first era = the swap moment => live prices of
+        // package B: 28000 + 2500 + 1500.
         $expected = 32000.00;
 
         $this->assertEqualsWithDelta($expected, (float) $this->passenger->fresh()->package_value, 0.001, 'package_value');

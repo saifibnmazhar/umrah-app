@@ -74,6 +74,9 @@ class ServiceRequiredExitVisaOnlyHistoricTest extends TestCase
             'ticket_fare_id' => null,
             'package_value' => 3500.00,
         ]);
+        // Booking + passenger share the era: the earliest-era anchor floors
+        // at max(booking creation, passenger creation).
+        $this->pvSetCreatedAt($this->booking, '2026-07-10 10:00:00');
         $this->pvSetCreatedAt($passenger, '2026-07-10 10:00:00');
         $this->booking->updateQuietly(['pax_qty' => 1]);
 

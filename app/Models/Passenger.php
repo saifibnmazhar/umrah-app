@@ -8,6 +8,7 @@ use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
+use App\Support\PackageEras;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -438,28 +439,29 @@ class Passenger extends Model
 
     /**
      * The moment whose prices govern this passenger's package_value:
-     * max(own creation, the booking's most recent package swap).
+     * the start of the EARLIEST era in which the booking's current package
+     * was active, floored at the passenger's own creation (plan 17
+     * amendment — earliest-era anchoring).
      *
-     * Derived from immutable facts (creation time + append-only
-     * booking_update_logs rows) — no anchor column is stored, so command
-     * re-runs are idempotent by construction. The `action='updated'` filter
-     * is mandatory: a booking's `created` log row also carries package_id in
-     * new_values and must not masquerade as a swap. Swaps before
+     * Consequences: a swap-back to a previously used package restores that
+     * package's first-era prices; a first-time swap anchors at the swap
+     * moment (no earlier era exists); a passenger added later is floored at
+     * their add time. Derived from immutable facts (creation time +
+     * append-only booking_update_logs rows) — no anchor column is stored, so
+     * command re-runs are idempotent by construction. Swaps before
      * 2026-07-14 (booking_update_logs inception) are unlogged and fall back
      * to created_at — evidence-closed, see plan 17.
      */
     public function historicAnchor(): CarbonInterface
     {
-        $lastSwapAt = BookingUpdateLog::where('booking_id', $this->booking_id)
-            ->where('action', 'updated')
-            ->get()
-            ->filter(fn (BookingUpdateLog $log) => is_array($log->old_values)
-                && array_key_exists('package_id', $log->old_values))
-            ->max(fn (BookingUpdateLog $log) => $log->created_at);
+        $booking = $this->booking;
 
-        return ($lastSwapAt && $lastSwapAt->gt($this->created_at))
-            ? $lastSwapAt
-            : $this->created_at;
+        return PackageEras::anchorAt(
+            $booking->created_at,
+            $booking->package_id,
+            PackageEras::logsFor($this->booking_id),
+            $this->created_at
+        );
     }
 
     public const MANUAL_STATUSES = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];

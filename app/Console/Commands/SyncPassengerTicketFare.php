@@ -45,7 +45,8 @@ class SyncPassengerTicketFare extends Command
                     $oldValue = (float) ($passenger->package_value ?? 0);
 
                     // Historic recompute at the passenger's own anchor
-                    // (max(created_at, lastSwapAt)) — never at live prices.
+                    // (earliest era start, floored at own creation) — never
+                    // at live prices.
                     $bookingService->recalculatePassengerValues(
                         $passenger->booking,
                         $passenger->historicAnchor(),

@@ -73,6 +73,9 @@ class SyncBookingFinancialsHistoricTest extends TestCase
             'package_value' => $passengerValue,
         ]);
         if ($passengerCreatedAt) {
+            // Booking + passenger share the era (earliest-era anchor floors
+            // at max(booking creation, passenger creation)).
+            $this->pvSetCreatedAt($booking, $passengerCreatedAt);
             $this->pvSetCreatedAt($passenger, $passengerCreatedAt);
         }
         $invoice = app(InvoiceService::class)->createForBooking($booking);
