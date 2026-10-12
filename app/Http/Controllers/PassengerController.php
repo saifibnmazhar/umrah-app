@@ -1228,6 +1228,7 @@ class PassengerController extends Controller
                 'ticket_fare_id' => null,
                 'user_id' => auth()->id(),
                 'status' => 'pending',
+                'outbound_pending' => true,
                 'selling_fare' => $inSelling,
                 'offer_price' => $inOffer,
             ]);
@@ -1266,6 +1267,7 @@ class PassengerController extends Controller
                 'ticket_fare_id' => $passenger->ticket_fare_id,
                 'user_id' => auth()->id(),
                 'status' => 'pending',
+                'outbound_pending' => true,
                 'selling_fare' => $sellingFare,
                 'offer_price' => $offerPrice,
             ]);
