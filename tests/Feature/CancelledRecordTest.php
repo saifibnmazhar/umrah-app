@@ -57,6 +57,7 @@ class CancelledRecordTest extends TestCase
         Schema::dropIfExists('passengers');
         Schema::dropIfExists('passenger_statuses');
         Schema::dropIfExists('invoices');
+        Schema::dropIfExists('fingerprints');
         Schema::dropIfExists('bookings');
         Schema::dropIfExists('user_roles');
         Schema::dropIfExists('roles');
@@ -81,6 +82,7 @@ class CancelledRecordTest extends TestCase
         Schema::create('branches', function ($table) {
             $table->id();
             $table->string('name');
+            $table->string('location')->nullable();
             $table->boolean('fingerprint_operation')->default(false);
             $table->timestamps();
         });
@@ -130,6 +132,15 @@ class CancelledRecordTest extends TestCase
             $table->decimal('discount_amount', 14, 6)->default(0);
             $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('fingerprints', function ($table) {
+            $table->id();
+            $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->date('deadline')->nullable();
+            $table->decimal('cost', 10, 2)->default(0);
+            $table->foreignId('assigned_staff_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
 
@@ -524,6 +535,44 @@ class CancelledRecordTest extends TestCase
         $response->assertOk()
             ->assertSee('Cancelled Booking Details')
             ->assertSee('Print Refund Voucher');
+    }
+
+    public function test_booking_confirm_x_data_attributes_are_not_truncated(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $manager = $this->createUserWithRole('Branch Manager', $branch->id);
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $cb = $this->makeCancelledBooking($manager, $branch, $booking);
+
+        $response = $this->actingAs($manager)->get(route('cancelled-bookings.confirm', $cb));
+        $response->assertOk()
+            ->assertSee('Financial Summary');
+
+        // A `"` inside the double-quoted x-data attribute ends the attribute
+        // early, so Alpine receives truncated JS, throws "Invalid or unexpected
+        // token" and the component never renders (blank Financial Summary rows).
+        preg_match_all('/x-data="([^"]*)"/', $response->getContent(), $matches);
+        $chunks = $matches[1];
+
+        $this->assertNotEmpty($chunks, 'Expected at least one x-data attribute on the confirm page.');
+
+        foreach ($chunks as $chunk) {
+            $this->assertStringEndsWith(
+                '}',
+                trim($chunk),
+                'x-data attribute was truncated — it contains an unescaped double quote.'
+            );
+        }
+
+        $component = collect($chunks)->first(fn (string $chunk) => str_contains($chunk, 'refundAmount'));
+
+        $this->assertNotNull($component, 'Confirm page x-data component with refundAmount is missing.');
+        $this->assertStringContainsString('totalPassengerRefundable', $component);
+        $this->assertStringContainsString('effectiveServiceCharge', $component);
+        $this->assertStringContainsString('saveRefundAmount', $component);
+        $this->assertStringContainsString('X-CSRF-TOKEN', $component);
     }
 
     public function test_booking_print_voucher_renders_refund_voucher(): void
