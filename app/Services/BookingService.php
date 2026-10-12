@@ -11,7 +11,11 @@ use App\Models\FlightDateGap;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\TicketFare;
+use App\Models\VisaSellingPrice;
+use App\Support\LogReplay;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 class BookingService
 {
@@ -70,8 +74,18 @@ class BookingService
         return min($value, $total);
     }
 
-    public function calculatePackageValue(Passenger $passenger): float
+    /**
+     * Package value for a passenger, reconstructed from HISTORIC prices as of
+     * $at (the uniform historic anchor: max(created_at, lastSwapAt) — or
+     * now() at creation/add/swap moments), never from live rows.
+     *
+     * With $at = now() the result is numerically identical to the old live
+     * calculation: replaying up to now always lands on the live values.
+     */
+    public function calculatePackageValue(Passenger $passenger, ?CarbonInterface $at = null): float
     {
+        $at ??= now();
+
         $ticketFare = $passenger->ticketFare;
         $booking = $passenger->booking;
         $package = $booking->package;
@@ -92,38 +106,76 @@ class BookingService
 
         if ($serviceRequired !== 'visa_only') {
             if ($package && $package->is_double_ticket) {
-                $inboundFare = $package->ticketFareInbound;
-                $outboundFare = $package->ticketFareOutbound;
-                $inboundAmount = $inboundFare ? (float) $inboundFare->selling_fare : 0;
-                $outboundAmount = $outboundFare ? (float) $outboundFare->selling_fare : 0;
+                // Replay against the passenger's own fare FKs (package-level
+                // fares are the pre-D2 fallback when the FKs are unset).
+                $inboundFare = $passenger->ticketFareInbound ?? $package->ticketFareInbound;
+                $outboundFare = $passenger->ticketFareOutbound ?? $package->ticketFareOutbound;
+                $inboundAmount = $inboundFare ? (float) $this->historicFareValue($inboundFare, 'selling_fare', $at) : 0;
+                $outboundAmount = $outboundFare ? (float) $this->historicFareValue($outboundFare, 'selling_fare', $at) : 0;
                 $baseFare = $inboundAmount + $outboundAmount;
+                // Percentages come from the INBOUND fare, with the historical
+                // ?? 70 / ?? 30 defaults preserved (null fare or null replayed
+                // value ⇒ default).
                 $ticketAmount = match ($passengerType) {
-                    'child' => $baseFare * ((float) ($inboundFare->child_fare_percentage ?? 70)) / 100,
-                    'infant' => $baseFare * ((float) ($inboundFare->infant_fare_percentage ?? 30)) / 100,
+                    'child' => $baseFare * ((float) (($inboundFare ? $this->historicFareValue($inboundFare, 'child_fare_percentage', $at) : null) ?? 70)) / 100,
+                    'infant' => $baseFare * ((float) (($inboundFare ? $this->historicFareValue($inboundFare, 'infant_fare_percentage', $at) : null) ?? 30)) / 100,
                     default => $baseFare,
                 };
             } elseif ($ticketFare) {
-                $baseFare = $ticketFare->ticket_type === TicketType::OFFER
-                    ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
-                    : (float) $ticketFare->selling_fare;
+                $sellingFare = (float) $this->historicFareValue($ticketFare, 'selling_fare', $at);
+                $offerPrice = $this->historicFareValue($ticketFare, 'offer_price', $at);
+                $ticketType = $this->historicFareValue($ticketFare, 'ticket_type', $at);
+                $baseFare = strtolower((string) $ticketType) === TicketType::OFFER->value
+                    ? (float) ($offerPrice ?? $sellingFare)
+                    : $sellingFare;
                 $ticketAmount = match ($passengerType) {
-                    'child' => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
-                    'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
+                    'child' => $baseFare * ((float) $this->historicFareValue($ticketFare, 'child_fare_percentage', $at)) / 100,
+                    'infant' => $baseFare * ((float) $this->historicFareValue($ticketFare, 'infant_fare_percentage', $at)) / 100,
                     default => $baseFare,
                 };
             }
         }
 
         if ($serviceRequired !== 'ticket_only' && $package) {
-            $visaAmount = (float) ($package->visaSellingPrice?->selling_price ?? 0);
-            $serviceChargeAmount = (float) ($package->service_charge ?? 0);
+            // visa_selling_price_id replayed to the era's immutable price row.
+            $visaSellingPriceId = $package->valueAt('visa_selling_price_id', $at);
+            $visaAmount = $visaSellingPriceId
+                ? (float) (VisaSellingPrice::find($visaSellingPriceId)?->selling_price ?? 0)
+                : 0;
+            $serviceChargeAmount = (float) ($package->valueAt('service_charge', $at) ?? 0);
         }
 
         if ($serviceRequired === 'ticket_only' && $package) {
-            $serviceChargeAmount = (float) ($package->service_charge ?? 0);
+            $serviceChargeAmount = (float) ($package->valueAt('service_charge', $at) ?? 0);
         }
 
         return $ticketAmount + $visaAmount + $serviceChargeAmount + (float) ($passenger->extra_charge ?? 0);
+    }
+
+    /**
+     * Historic raw value of a fare column at $at. Honors a preloaded
+     * updateLogs relation (loadMissing below) so batch operations replay
+     * in-memory after a single query per fare.
+     *
+     * @return string|int|float|null raw replayed value; ?? composition at the
+     *                               call site preserves legacy defaults
+     *                               (offer ?? selling, pct ?? 70/30)
+     */
+    private function historicFareValue(TicketFare $fare, string $column, CarbonInterface $at): string|int|float|null
+    {
+        $fare->loadMissing('updateLogs');
+
+        $fallback = $fare->{$column};
+        if ($fallback instanceof \BackedEnum) {
+            $fallback = $fallback->value;
+        }
+
+        return LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($fare->updateLogs),
+            $column,
+            $at,
+            $fallback
+        );
     }
 
     public function recalculateBookingTotal(Booking $booking): float
