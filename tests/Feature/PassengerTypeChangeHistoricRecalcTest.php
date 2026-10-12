@@ -14,7 +14,8 @@ use Tests\TestCase;
 
 /**
  * Test 5 (plan 17): passenger_type changes recompute THAT passenger at
- * historicAnchor() = max(created_at, lastSwapAt) — never at live prices.
+ * historicAnchor() = earliest era start of the booking's current package,
+ * floored at own creation — never at live prices.
  * (b) locks the D2 amendment: on a swapped booking the anchor is the SWAP
  * moment, so later re-valuations keep swap-time pricing.
  */
@@ -70,6 +71,9 @@ class PassengerTypeChangeHistoricRecalcTest extends TestCase
             'ticket_fare_id' => $this->fare->id,
             'package_value' => 31500.00, // adult: 28000 (as-of creation era) + 2000 + 1500
         ]);
+        // Booking + passenger share the era (earliest-era anchor floors at
+        // max(booking creation, passenger creation)).
+        $this->pvSetCreatedAt($booking, $passengerCreatedAt);
         $this->pvSetCreatedAt($passenger, $passengerCreatedAt);
         $invoice = app(InvoiceService::class)->createForBooking($booking);
         $invoice->updateQuietly(['total_amount' => 31500.00, 'paid_amount' => 0]);
@@ -115,13 +119,15 @@ class PassengerTypeChangeHistoricRecalcTest extends TestCase
 
     public function test_swapped_type_change_uses_swap_time_fare(): void
     {
-        // Booking created 2026-07-02 (fare 28000 era), swapped at 2026-07-10,
-        // fare raised AGAIN after the swap (2026-08-01 -> 30000, live), type
-        // change at now(): the ticket leg must use the fare AS OF THE SWAP.
+        // Booking created 2026-07-02 (fare 28000 era), swapped ONTO this
+        // package at 2026-07-10, fare raised after the swap (2026-08-01 ->
+        // 30000, live), type change at now(): the ticket leg must use the
+        // fare AS OF THE SWAP (the package's earliest era here).
         [$booking, $passenger] = $this->bookingWithPassenger('2026-07-02 10:00:00');
 
-        $booking->updateQuietly(['package_id' => $this->package->id]); // package stays; log records a swap
-        $this->pvLogSwap($booking, $this->package->id, $this->package->id + 1, '2026-07-10 10:00:00', $this->user);
+        // Log + current state stay coherent: the booking is ON this package,
+        // having come from another one at swap time.
+        $this->pvLogSwap($booking, $this->package->id + 1, $this->package->id, '2026-07-10 10:00:00', $this->user);
 
         $this->actingAs($this->user);
         $this->editPassenger($passenger, ['passenger_type' => 'child']);

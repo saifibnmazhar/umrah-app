@@ -645,13 +645,12 @@ class PassengerController extends Controller
                 $extraChanged = $extraChargeChanged;
 
                 // type/extra_charge/service_required changes re-value ONLY this
-                // passenger, anchored at historicAnchor(); every other edit
-                // leaves package_value alone and just re-totals (plan 17 §2b).
-                $recomputeAt = ($typeChanged || $serviceChanged || $extraChanged)
-                    ? $passenger->historicAnchor()
-                    : null;
+                // passenger, at their derived earliest-era anchor (=
+                // historicAnchor()); every other edit leaves package_value
+                // alone and just re-totals (plan 17 §2b).
+                $recomputeValues = $typeChanged || $serviceChanged || $extraChanged;
 
-                $this->bookingService->applyFinancials($booking, $recomputeAt, 'passenger_updated', $recomputeAt ? $passenger : null);
+                $this->bookingService->applyFinancials($booking, $recomputeValues, 'passenger_updated', $recomputeValues ? $passenger : null);
                 $booking = $booking->fresh();
 
                 if ($extraChargeChanged) {
@@ -710,7 +709,7 @@ class PassengerController extends Controller
                 $booking = $booking->fresh();
                 // Re-sum only — a removal never re-values the remaining
                 // passengers (plan 17 §2b "passenger remove" row).
-                $this->bookingService->applyFinancials($booking, null, 'passenger_removed');
+                $this->bookingService->applyFinancials($booking, false, 'passenger_removed');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
@@ -1096,10 +1095,11 @@ class PassengerController extends Controller
         $isDoubleTicket = $package->is_double_ticket;
         $passengerType = $this->passengerTypeValue($passenger);
 
-        // Same era the caller re-values package_value in
-        // (Passenger::historicAnchor() = max(created_at, lastSwapAt)), so the
-        // new ticket snapshot and the total stay in one era. store/addPassenger
-        // stay now()-anchored by design — this branch only.
+        // Same era the caller re-values package_value in (Passenger::
+        // historicAnchor() = earliest era start of the current package,
+        // floored at own creation), so the new ticket snapshot and the total
+        // stay in one era. store/addPassenger stay now()-anchored by design —
+        // this branch only.
         $anchor = $passenger->historicAnchor();
 
         if ($isDoubleTicket) {

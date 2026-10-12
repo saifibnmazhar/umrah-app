@@ -1,6 +1,7 @@
 # Plan: Immutable passenger `package_value` + historic price recalculation
 
-**Status: PLAN ONLY — DO NOT IMPLEMENT until explicitly approved.**
+**Status: IMPLEMENTED (phases 1–6) + earliest-era amendment — see “Amendment”
+at the end of this document.**
 
 **Revision 4** — final. Incorporates loophole resolutions **L1–L8**, the uniform
 anchor decision, the **B1–B8 limitation round**, and the **I1–I12 inconsistency
@@ -611,3 +612,86 @@ require it.
 All L1–L8, B1–B8, and I1–I12 items are resolved (see Decision log). The previously
 pending I5/I10 findings stand as verified facts: `PassengerExtraChargeTotalsTest`
 needs no changes; flagged line references were confirmed correct.
+
+## Amendment (2026-10-12): earliest-era anchor + swap preview
+
+The uniform anchor rule D1 (`max(created_at, lastSwapAt)`) could not restore
+first-era prices on a swap-back: any package edit between two visits moved the
+swap-back valuation to current prices, so returning a booking to its original
+package did **not** reproduce its original values. Replaces the "Anchor" row
+of the decision log above.
+
+### Rule
+
+```
+anchor(booking, passenger) = max(
+    earliest era start of the booking's CURRENT package,   // ← new
+    passenger.created_at                                   // add-time floor
+)
+
+era start of package P :=
+    booking.created_at            if P was the booking's initial package
+    swap.created_at               for every swap that targeted P
+    → take the EARLIEST such moment
+```
+
+Eras are reconstructed on demand from `booking_update_logs`
+(`App\Support\PackageEras`): initial package from the `created` row (else the
+first logged swap's origin; never-swapped ⇒ current), swap boundaries from
+`action='updated'` rows carrying `package_id`. No column is stored — command
+re-runs stay idempotent (D1's no-column clause unchanged).
+
+Consequences (all covered by tests):
+
+- Swap-back B→A restores A's **first-era** values exactly (V2 == V0) — the
+  headline guarantee; double returns are idempotent.
+- First-time swaps to a never-used package anchor at the swap moment
+  (numerically identical to the old `now()` behavior).
+- Later triggers (type/extra/service edits, repair command, V1/V2) re-derive
+  the same anchor — restoration is **sticky**, the old rule cannot fight it.
+- Passengers added after a restoration floor at their own creation (heterogeneous
+  eras by design — B6 still applies).
+- **No escape hatch** (user decision): once a package's first era on a booking
+  passes, that booking's valuation of the package is frozen at first-era prices
+  permanently. New bookings and first-time swaps still pick up current prices.
+  No `--current-prices` flag was added (user decision).
+
+### Swap call sites
+
+`applyFinancials()` now takes `bool $recomputeValues` instead of a
+`?CarbonInterface $recomputeAt`: every recompute derives its anchor
+(`recalculatePassengerValues($booking, null)`). Only the creation flow passes
+an explicit `now()`, which equals its derived anchor by construction.
+
+### Pre-save swap preview (user decision: preview endpoint)
+
+`GET /bookings/{booking}/swap-preview?package_id=X` (`BookingController@swapPreview`,
+behind auth + branch + edit-window guards): read-only — the hypothetical
+package/FK state lives on in-memory model copies, so zero rows are written by
+construction. Responds `{restored, anchor, passengers:[{id, package_value}],
+total_value, discount_amount}` (same shape as the enriched removePassenger
+JSON, so the client reuses `applyServerFinancials()`).
+
+- Used-before target → `restored: true`, values derived at the earliest-era
+  anchor (what a save would store); never-used target → `restored: false`,
+  `now()` values (what a first-time swap would store).
+- The edit page embeds `previouslyUsedPackageIds` (from the same
+  `PackageEras::logsFor` query); `onPackageChange` calls the endpoint only for
+  used-before targets, with a sequence guard and a live-estimate fallback on
+  failure. The response covers the known client preview quirk from Phase 4.
+
+### Tests
+
+- New: `tests/Unit/HistoricAnchorTest` (era semantics, 8 cases),
+  `tests/Feature/SwapBackRestorationTest` (6),
+  `tests/Feature/SwapPreviewEndpointTest` (5, incl. zero-write + access).
+- Fixture coherence: backdate `bookings.created_at` alongside passengers in
+  `PassengerTypeChange…`, `ServiceRequiredExitVisaOnly…`,
+  `SyncBookingFinancialsHistoric…`, `SyncPassengerTicketFareHistoric…`
+  (the earliest-era floor reads booking creation; old fixtures never set it),
+  and make `pvLogSwap` chains coherent with `bookings.package_id`.
+
+### Post-deploy
+
+Re-run the Phase 5 dry-run (`bookings:sync-financials --dry-run`): the
+“would change” set shifts under the new rule, superseding the original report.

@@ -69,6 +69,9 @@ class SyncPassengerTicketFareHistoricTest extends TestCase
             'ticket_fare_id' => $fareId,
             'package_value' => $value,
         ]);
+        // Booking + passenger share the era (earliest-era anchor floors at
+        // max(booking creation, passenger creation)).
+        $this->pvSetCreatedAt($booking, $createdAt);
         $this->pvSetCreatedAt($passenger, $createdAt);
 
         return $passenger;

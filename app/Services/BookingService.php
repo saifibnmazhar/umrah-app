@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\PassengerType;
 use App\Enums\TicketType;
 use App\Models\Booking;
-use App\Models\BookingUpdateLog;
 use App\Models\Branch;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
@@ -16,6 +15,7 @@ use App\Models\PassengerUpdateLog;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use App\Support\LogReplay;
+use App\Support\PackageEras;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Auth;
@@ -80,8 +80,9 @@ class BookingService
 
     /**
      * Package value for a passenger, reconstructed from HISTORIC prices as of
-     * $at (the uniform historic anchor: max(created_at, lastSwapAt) — or
-     * now() at creation/add/swap moments), never from live rows.
+     * $at (the uniform earliest-era anchor — earliest era start of the
+     * booking's current package, floored at the passenger's creation — or
+     * now() at creation moments), never from live rows.
      *
      * With $at = now() the result is numerically identical to the old live
      * calculation: replaying up to now always lands on the live values.
@@ -185,11 +186,12 @@ class BookingService
     /**
      * Recompute `package_value` for the requested scope from HISTORIC prices.
      *
-     * `$at === null` derives each passenger's own `historicAnchor()`
-     * (max(created_at, lastSwapAt)) with booking_update_logs loaded once per
-     * booking (L4 query budget); an explicit `$at` applies one moment to the
-     * whole scope — `now()` for swap/add triggers, the passenger's anchor for
-     * type/extra_charge/service_required changes (plan 17 §2b trigger matrix).
+     * `$at === null` derives each passenger's own earliest-era anchor
+     * (max(earliest era start of the booking's current package, own
+     * creation)) with booking_update_logs loaded once per booking (L4 query
+     * budget); an explicit `$at` applies one moment to the whole scope —
+     * `now()` for the creation flow (plan 17 §2b trigger matrix; every other
+     * trigger derives, so a swap-back restores first-era prices).
      *
      * `is_cancelled` passengers are never touched (D4). Values are written
      * via `updateQuietly` — no observer rows for programmatic financial
@@ -204,15 +206,10 @@ class BookingService
 
         $booking->loadMissing('package.updateLogs');
 
-        // Anchor derivation from a single booking_update_logs load (L4).
-        $lastSwapAt = null;
+        // Era reconstruction from a single booking_update_logs load (L4).
+        $eraLogs = null;
         if ($at === null) {
-            $lastSwapAt = BookingUpdateLog::where('booking_id', $booking->id)
-                ->where('action', 'updated')
-                ->get()
-                ->filter(fn (BookingUpdateLog $log) => is_array($log->old_values)
-                    && array_key_exists('package_id', $log->old_values))
-                ->max(fn (BookingUpdateLog $log) => $log->created_at);
+            $eraLogs = PackageEras::logsFor($booking->id);
         }
 
         // All fare legs in one query, then bound in-memory (L4).
@@ -234,7 +231,12 @@ class BookingService
             $passenger->setRelation('ticketFareOutbound', $passenger->ticket_fare_outbound_id ? ($fares[$passenger->ticket_fare_outbound_id] ?? null) : null);
 
             $anchor = $at
-                ?? (($lastSwapAt && $lastSwapAt->gt($passenger->created_at)) ? $lastSwapAt : $passenger->created_at);
+                ?? PackageEras::anchorAt(
+                    $booking->created_at,
+                    $booking->package_id,
+                    $eraLogs,
+                    $passenger->created_at
+                );
 
             $oldValue = (float) $passenger->package_value;
             $newValue = $this->calculatePackageValue($passenger, $anchor);
@@ -341,18 +343,21 @@ class BookingService
      * recompute → totals re-sum → discount recompute → invoice delta, all in
      * one transaction.
      *
-     * `$recomputeAt === null` means "no recompute" (totals-only triggers such
-     * as generic edits/removals); pass `now()` for swap/add triggers or a
-     * passenger's `historicAnchor()` for a scoped re-valuation.
+     * `$recomputeValues === true` re-values the scope from each passenger's
+     * DERIVED earliest-era anchor (null `$at` in recalculatePassengerValues)
+     * — swaps restore first-era prices for previously used packages, adds
+     * floor at the new passenger's creation; `false` means totals-only
+     * (generic edits/removals). The creation flow calls
+     * recalculatePassengerValues directly with an explicit now().
      */
-    public function applyFinancials(Booking $booking, ?CarbonInterface $recomputeAt = null, ?string $reason = null, ?Passenger $only = null): void
+    public function applyFinancials(Booking $booking, bool $recomputeValues = false, ?string $reason = null, ?Passenger $only = null): void
     {
-        DB::transaction(function () use ($booking, $recomputeAt, $reason, $only) {
+        DB::transaction(function () use ($booking, $recomputeValues, $reason, $only) {
             $oldTotal = (float) $booking->total_value;
             $oldDiscount = (float) $booking->discount_amount;
 
-            if ($recomputeAt !== null) {
-                $this->recalculatePassengerValues($booking, $recomputeAt, $only);
+            if ($recomputeValues) {
+                $this->recalculatePassengerValues($booking, null, $only);
             }
 
             $this->refreshBookingTotals($booking);
