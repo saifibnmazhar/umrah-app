@@ -1183,13 +1183,55 @@ class PassengerController extends Controller
         }
     }
 
+    /**
+     * Distinguish a store()/addPassenger()-created visa_only placeholder from
+     * a genuine ticket row.
+     *
+     * BookingController::store() (:1601-1611) and addPassenger() (:2600-2610)
+     * pass only booking_id, passenger_id, user_id, ticket_fare_id, status,
+     * selling_fare and offer_price — leaving issue_type, outbound_pending,
+     * net_fare, ticket_number, pnr, issued_date and ticket_agent_id at their
+     * column defaults, with no issued_ticket_logs row.
+     *
+     * Any lifecycle signal below proves the row came from a real issuance,
+     * edit, void, re-issue or refund event (or from a previous run of
+     * handleServiceRequiredChangeFromVisaOnly, which sets outbound_pending),
+     * so it must never be rewritten as a placeholder conversion.
+     */
+    private function isStorePlaceholderTicket(IssuedTicket $ticket): bool
+    {
+        return $ticket->issue_type === null
+            && ! $ticket->outbound_pending
+            && $ticket->status === 'pending'
+            && $ticket->ticket_number === null
+            && $ticket->pnr === null
+            && $ticket->issued_date === null
+            && $ticket->ticket_agent_id === null
+            && (float) $ticket->net_fare === 0.0
+            && ! $ticket->logs()->exists();
+    }
+
     private function handleServiceRequiredChangeFromVisaOnly(Passenger $passenger): void
     {
-        if ($passenger->issuedTickets()->count() > 0) {
+        // store()/addPassenger() create one fare-less placeholder row even for
+        // visa_only passengers, so "any row exists" is NOT evidence of a real
+        // ticket. Only rows carrying lifecycle evidence (issue_type, the
+        // outbound_pending flag, a non-pending status, any issuance field, or
+        // an issued_ticket_logs row) take the historic-snapshot early return.
+        $tickets = $passenger->issuedTickets()->get();
+
+        if ($tickets->isNotEmpty()
+            && $tickets->contains(fn (IssuedTicket $t) => ! $this->isStorePlaceholderTicket($t))) {
             $this->recalculateFareSnapshots($passenger);
 
             return;
         }
+
+        // Only store()/addPassenger() placeholders (or no rows at all) reach
+        // here. A pending_outbound companion can never be placeholder-shaped,
+        // so its presence would already have returned above — the reusable row
+        // is therefore at most the single issue_type-null placeholder.
+        $placeholder = $tickets->firstWhere(fn (IssuedTicket $t) => $this->isStorePlaceholderTicket($t));
 
         $booking = $passenger->booking;
         $package = $booking?->package;
@@ -1222,16 +1264,25 @@ class PassengerController extends Controller
                 ? $this->historicTicketSnapshot($inboundFare, $passengerType, $anchor)
                 : [0.0, 0.0];
 
-            IssuedTicket::create([
-                'booking_id' => $booking->id,
-                'passenger_id' => $passenger->id,
+            $regularAttributes = [
                 'ticket_fare_id' => null,
-                'user_id' => auth()->id(),
-                'status' => 'pending',
                 'outbound_pending' => true,
                 'selling_fare' => $inSelling,
                 'offer_price' => $inOffer,
-            ]);
+            ];
+
+            if ($placeholder) {
+                // Reuse the store-created placeholder: only fare-bearing
+                // columns are written, never protected issuance fields.
+                $placeholder->update($regularAttributes);
+            } else {
+                IssuedTicket::create(array_merge([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ], $regularAttributes));
+            }
 
             $outSelling = 0.0;
             $outOffer = 0.0;
@@ -1261,16 +1312,25 @@ class PassengerController extends Controller
             [$sellingFare, $offerPrice] = $fare
                 ? $this->historicTicketSnapshot($fare, $passengerType, $anchor)
                 : [0.0, 0.0];
-            IssuedTicket::create([
-                'booking_id' => $booking->id,
-                'passenger_id' => $passenger->id,
+            $regularAttributes = [
                 'ticket_fare_id' => $passenger->ticket_fare_id,
-                'user_id' => auth()->id(),
-                'status' => 'pending',
                 'outbound_pending' => true,
                 'selling_fare' => $sellingFare,
                 'offer_price' => $offerPrice,
-            ]);
+            ];
+
+            if ($placeholder) {
+                // Reuse the store-created placeholder: only fare-bearing
+                // columns are written, never protected issuance fields.
+                $placeholder->update($regularAttributes);
+            } else {
+                IssuedTicket::create(array_merge([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ], $regularAttributes));
+            }
         }
     }
 }
