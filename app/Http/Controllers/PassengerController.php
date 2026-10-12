@@ -24,6 +24,7 @@ use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\ProfitCalculationService;
 use App\Support\DiagnosticLogger;
+use App\Support\LogReplay;
 use App\Traits\ConvertsDocumentsToPdf;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -612,10 +613,15 @@ class PassengerController extends Controller
             }
 
             $oldServiceValue = $oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired;
+            $extraChargeChanged = $passenger->wasChanged('extra_charge');
             if ($oldServiceValue === 'visa_only'
                 && isset($validated['service_required'])
                 && $validated['service_required'] !== 'visa_only') {
                 $this->handleServiceRequiredChangeFromVisaOnly($passenger->fresh());
+                // The handler assigns fare-FKs on a fresh copy; reload so the
+                // scoped recompute below sees the new FKs (refresh() clears
+                // dirty state, hence $extraChargeChanged captured above).
+                $passenger->refresh();
             }
 
             $newServiceRequired = $validated['service_required'] ?? null;
@@ -636,7 +642,7 @@ class PassengerController extends Controller
                     && $validated['passenger_type'] !== ($oldPassengerType instanceof \BackedEnum ? $oldPassengerType->value : $oldPassengerType);
                 $serviceChanged = isset($validated['service_required'])
                     && $validated['service_required'] !== ($oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired);
-                $extraChanged = $passenger->wasChanged('extra_charge');
+                $extraChanged = $extraChargeChanged;
 
                 // type/extra_charge/service_required changes re-value ONLY this
                 // passenger, anchored at historicAnchor(); every other edit
@@ -648,7 +654,7 @@ class PassengerController extends Controller
                 $this->bookingService->applyFinancials($booking, $recomputeAt, 'passenger_updated', $recomputeAt ? $passenger : null);
                 $booking = $booking->fresh();
 
-                if ($passenger->wasChanged('extra_charge')) {
+                if ($extraChargeChanged) {
                     app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
                     $booking = $booking->fresh();
                 }
@@ -971,6 +977,50 @@ class PassengerController extends Controller
         ];
     }
 
+    /**
+     * Historic ticket_type of $fare in effect at $at (replayed from
+     * ticket_fare_update_logs). The plain accessor reads the live row, which
+     * would mis-resolve the offer_price carry for fares whose type changed
+     * after the anchor moment.
+     */
+    private function historicTicketType(TicketFare $fare, $at): ?string
+    {
+        $fare->loadMissing('updateLogs');
+
+        $live = $fare->ticket_type instanceof \BackedEnum ? $fare->ticket_type->value : $fare->ticket_type;
+        $type = LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($fare->updateLogs),
+            'ticket_type',
+            $at ?? now(),
+            $live
+        );
+
+        return $type === null || $type === '' ? null : (string) $type;
+    }
+
+    /**
+     * Historic [selling_fare, offer_price] snapshot of one fare leg at $at,
+     * adjusted for $passengerType with historic child/infant percentages.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function historicTicketSnapshot(TicketFare $fare, string $passengerType, $at): array
+    {
+        [$s0, $o0] = [
+            $fare->valueAt('selling_fare', $at ?? now()),
+            $this->historicTicketType($fare, $at) === 'offer' ? $fare->valueAt('offer_price', $at ?? now()) : 0.0,
+        ];
+
+        return $this->adjustFaresForType(
+            (float) $s0,
+            (float) $o0,
+            $passengerType,
+            $fare,
+            $this->historicFarePercentage($fare, 'child', $passengerType, $at),
+            $this->historicFarePercentage($fare, 'infant', $passengerType, $at),
+        );
+    }
+
     private function recalculateFareSnapshots(Passenger $passenger): void
     {
         $ptype = $this->passengerTypeValue($passenger);
@@ -1046,13 +1096,26 @@ class PassengerController extends Controller
         $isDoubleTicket = $package->is_double_ticket;
         $passengerType = $this->passengerTypeValue($passenger);
 
+        // Same era the caller re-values package_value in
+        // (Passenger::historicAnchor() = max(created_at, lastSwapAt)), so the
+        // new ticket snapshot and the total stay in one era. store/addPassenger
+        // stay now()-anchored by design — this branch only.
+        $anchor = $passenger->historicAnchor();
+
         if ($isDoubleTicket) {
+            $passenger->update([
+                'ticket_fare_id' => null,
+                'ticket_fare_inbound_id' => $package->ticket_fare_inbound_id,
+                'ticket_fare_outbound_id' => $package->ticket_fare_outbound_id,
+            ]);
+            $passenger->refresh();
+
             $inboundFare = $package->ticketFareInbound;
             $outboundFare = $package->ticketFareOutbound;
 
-            $inSelling = $inboundFare ? (float) ($inboundFare->selling_fare ?? 0) : 0;
-            $inOffer = ($inboundFare && $this->ticketTypeValue($inboundFare) === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0;
-            [$inSelling, $inOffer] = $this->adjustFaresForType($inSelling, $inOffer, $passengerType, $inboundFare);
+            [$inSelling, $inOffer] = $inboundFare
+                ? $this->historicTicketSnapshot($inboundFare, $passengerType, $anchor)
+                : [0.0, 0.0];
 
             IssuedTicket::create([
                 'booking_id' => $booking->id,
@@ -1064,9 +1127,11 @@ class PassengerController extends Controller
                 'offer_price' => $inOffer,
             ]);
 
-            $outSelling = $outboundFare ? (float) ($outboundFare->selling_fare ?? 0) : 0;
-            $outOffer = ($outboundFare && $this->ticketTypeValue($outboundFare) === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0;
-            [$outSelling, $outOffer] = $this->adjustFaresForType($outSelling, $outOffer, $passengerType, $outboundFare);
+            $outSelling = 0.0;
+            $outOffer = 0.0;
+            if ($outboundFare) {
+                [$outSelling, $outOffer] = $this->historicTicketSnapshot($outboundFare, $passengerType, $anchor);
+            }
 
             IssuedTicket::create([
                 'booking_id' => $booking->id,
@@ -1080,13 +1145,16 @@ class PassengerController extends Controller
             ]);
         } else {
             $fare = $package->ticketFare;
-            $sellingFare = 0;
-            $offerPrice = 0;
-            if ($fare) {
-                $sellingFare = (float) ($fare->selling_fare ?? 0);
-                $offerPrice = $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0;
-                [$sellingFare, $offerPrice] = $this->adjustFaresForType($sellingFare, $offerPrice, $passengerType, $fare);
-            }
+            $passenger->update([
+                'ticket_fare_id' => $package->ticket_fare_id,
+                'ticket_fare_inbound_id' => null,
+                'ticket_fare_outbound_id' => null,
+            ]);
+            $passenger->refresh();
+
+            [$sellingFare, $offerPrice] = $fare
+                ? $this->historicTicketSnapshot($fare, $passengerType, $anchor)
+                : [0.0, 0.0];
             IssuedTicket::create([
                 'booking_id' => $booking->id,
                 'passenger_id' => $passenger->id,
