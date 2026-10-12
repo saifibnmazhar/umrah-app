@@ -645,6 +645,7 @@
                     display += ' | SAR ' + offerPrice.toLocaleString();
                 }
             }
+            display += ' | TKT ID: ' + opt.value;
             opt.textContent = display;
         });
     }
@@ -706,6 +707,7 @@
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Package Name</th>
                             <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket ID</th>
                             <th class="px-3 py-2 text-right font-medium">Ticket Selling Fare</th>
                             <th class="px-3 py-2 text-right font-medium">Ticket Offer Fare</th>
                             <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
@@ -749,6 +751,7 @@
                             <tr class="hover:bg-slate-50">
                                 <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
                                 <td class="px-3 py-2 text-slate-600">{{ $routeName }}</td>
+                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">@if($package->is_double_ticket){{ $package->ticket_fare_inbound_id ?? '-' }}(in) | {{ $package->ticket_fare_outbound_id ?? '-' }}(out)@else{{ $package->ticket_fare_id ?? '-' }}@endif</td>
                                 <td class="px-3 py-2 text-right text-slate-800">@currency($ticketSellingFare, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($ticketOfferFare)
@@ -803,7 +806,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
+                                <td colspan="12" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -881,14 +884,14 @@
                                     data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                     data-display-prefix="{{ $prefix }}"
                                     data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
-                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
 
                     <div id="modalDoubleTicketFields" class="mt-4 hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
                                 <select id="modalTicketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -907,7 +910,7 @@
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                             data-display-prefix="{{ $inPrefix }}"
                                             data-used="{{ in_array($fare['id'], $usedInboundFareIds ?? []) ? 'true' : 'false' }}">
-                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -930,7 +933,7 @@
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                             data-display-prefix="{{ $outPrefix }}"
                                             data-used="{{ in_array($fare['id'], $usedOutboundFareIds ?? []) ? 'true' : 'false' }}">
-                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>

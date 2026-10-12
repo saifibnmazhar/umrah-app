@@ -87,7 +87,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
                     @if($locked)<input type="hidden" name="route_type" value="{{ $currentRouteType }}">@endif
-                    <select name="route_type" id="routeType" {{ $locked ? 'disabled' : 'onchange="handleRouteTypeChange()"' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
+                    <select name="route_type" id="routeType" onchange="handleRouteTypeChange()" {{ $locked ? 'disabled' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
                         <option value="">Select Type</option>
                         <option value="oneway_inbound" {{ $currentRouteType == 'oneway_inbound' ? 'selected' : '' }}>One Way - Inbound</option>
                         <option value="oneway_outbound" {{ $currentRouteType == 'oneway_outbound' ? 'selected' : '' }}>One Way - Outbound</option>
@@ -98,7 +98,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
                     @if($locked)<input type="hidden" name="flight_type" value="{{ $currentFlightType }}">@endif
-                    <select name="flight_type" id="flightType" {{ $locked ? 'disabled' : 'onchange="handleFlightTypeChange()"' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
+                    <select name="flight_type" id="flightType" onchange="handleFlightTypeChange()" {{ $locked ? 'disabled' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
                         <option value="">Select Flight Type</option>
                         <option value="direct" {{ $currentFlightType == 'direct' ? 'selected' : '' }}>Direct</option>
                         <option value="transit" {{ $currentFlightType == 'transit' ? 'selected' : '' }}>Transit</option>
@@ -107,7 +107,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
                     @if($locked)<input type="hidden" name="airline_id" value="{{ old('airline_id', $ticketFare->airline_id) }}">@endif
-                    <select name="airline_id" id="airlineId" {{ $locked ? 'disabled' : 'onchange="handleAirlineChange()"' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
+                    <select name="airline_id" id="airlineId" onchange="handleAirlineChange()" {{ $locked ? 'disabled' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
                         <option value="">Select Airline</option>
                         @foreach($airlines as $airline)
                             <option value="{{ $airline->id }}" {{ old('airline_id', $ticketFare->airline_id) == $airline->id ? 'selected' : '' }}>
@@ -131,7 +131,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
                     @if($locked)<input type="hidden" name="route_id" value="{{ old('route_id', $ticketFare->route_id) }}">@endif
-                    <select name="route_id" id="routeId" {{ $locked ? 'disabled' : 'onchange="handleRouteChange()"' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
+                    <select name="route_id" id="routeId" onchange="handleRouteChange()" {{ $locked ? 'disabled' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
                         <option value="">Select Route</option>
                         @foreach($routes as $route)
                             <option value="{{ $route->id }}"
@@ -154,7 +154,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
                     @if($locked)<input type="hidden" name="ticket_type" value="{{ $currentTicketType }}">@endif
-                    <select name="ticket_type" id="ticketType" {{ $locked ? 'disabled' : 'onchange="toggleFields()"' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
+                    <select name="ticket_type" id="ticketType" onchange="toggleFields()" {{ $locked ? 'disabled' : '' }} class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm {{ $locked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : '' }}">
                         <option value="">Select Type</option>
                         <option value="regular" {{ $currentTicketType == 'regular' ? 'selected' : '' }}>Regular</option>
                         <option value="offer" {{ $currentTicketType == 'offer' ? 'selected' : '' }}>Offer</option>
