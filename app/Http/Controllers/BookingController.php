@@ -2298,6 +2298,13 @@ class BookingController extends Controller
                                     'offer_price' => $oo,
                                 ]);
                             }
+
+                            // A live pending_outbound companion now exists, so the
+                            // regular row must advertise it. Created or rewritten,
+                            // the companion always implies outbound_pending = true.
+                            if ($regularTicket && ! $regularTicket->outbound_pending) {
+                                $regularTicket->update(['outbound_pending' => true]);
+                            }
                         } else {
                             $newFare = $passenger->ticketFare;
                             if ($regularTicket && $newFare) {
@@ -2316,6 +2323,17 @@ class BookingController extends Controller
 
                             if ($outboundTicket) {
                                 $outboundTicket->delete();
+                            }
+
+                            // The companion is gone, so derive the flag from what
+                            // actually survives (a stray second live row would keep
+                            // it true) rather than assuming it is now false.
+                            if ($regularTicket) {
+                                $regularTicket->update([
+                                    'outbound_pending' => $passenger->issuedTickets()
+                                        ->where('issue_type', 'pending_outbound')
+                                        ->exists(),
+                                ]);
                             }
                         }
                     }
