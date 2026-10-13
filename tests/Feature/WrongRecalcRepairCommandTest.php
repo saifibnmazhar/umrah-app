@@ -76,6 +76,8 @@ class WrongRecalcRepairCommandTest extends TestCase
         $booking = $this->pvBooking($package, $this->user, $this->fpCharge, $this->district, [
             'total_value' => $stored,
         ]);
+        $booking->created_at = Carbon::parse('2026-07-10 09:00:00');
+        $booking->saveQuietly();
         $passenger = $this->pvPassenger($booking, [
             'ticket_fare_id' => $package->ticket_fare_id,
             'package_value' => $stored,
@@ -142,7 +144,8 @@ class WrongRecalcRepairCommandTest extends TestCase
         $this->logPax($passenger, ['package_value' => 31500.00], ['package_value' => 33500.00], '2026-08-05 10:00:00');
 
         $this->artisan('bookings:repair-wrong-recalcs --dry-run')
-            ->expectsOutputToContain('33500.00 -> 31500.00')
+            ->expectsOutputToContain('passenger #'.$passenger->id.' '.$passenger->first_name.' '.$passenger->last_name.' (passport '.$passenger->passport_no.'): stored 33500.00 -> historic 31500.00')
+            ->expectsOutputToContain('[DRY-RUN] Flagged 1 wrongly recalculated passenger(s)')
             ->assertSuccessful();
 
         $this->assertEqualsWithDelta(33500.00, (float) $passenger->fresh()->package_value, 0.001, 'dry run must not write');

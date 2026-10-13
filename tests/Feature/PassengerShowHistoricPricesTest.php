@@ -86,6 +86,11 @@ class PassengerShowHistoricPricesTest extends TestCase
             $this->package, $this->user, $this->fpCharge, $this->district,
             ['total_value' => 31500.00]
         );
+        // Anchor follows the booking's creation era: without backdating the
+        // booking, historicAnchor() floors at "now" and the replay would read
+        // live rows instead of the anchor-era ones under test.
+        $this->booking->created_at = '2026-07-10 09:00:00';
+        $this->booking->saveQuietly();
         $this->passenger = $this->pvPassenger($this->booking, [
             'ticket_fare_id' => $this->fare->id,
             'package_value' => 31500.00,
