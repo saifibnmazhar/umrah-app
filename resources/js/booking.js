@@ -2714,6 +2714,9 @@ Alpine.data('editBookingApp', () => ({
     filteredTickets: [],
     allPackages: [],
     passengerPackageValues: {},
+    // For booking edit preview - track original package and values
+    originalPackageId: null,
+    originalPassengerValues: {},
     isEditMode: false,
     existingBooking: null,
     existingPassengers: [],
@@ -2782,6 +2785,17 @@ Alpine.data('editBookingApp', () => ({
         this.existingPassengers = serverData.existingPassengers || [];
         this.existingCustomer = serverData.existingCustomer || null;
 
+        // Store original package ID
+        this.originalPackageId = serverData.preSelectedPackageId ? String(serverData.preSelectedPackageId) : null;
+
+        // Store original passenger historical values from database
+        this.originalPassengerValues = {};
+        if (this.existingPassengers) {
+            this.existingPassengers.forEach((passenger, index) => {
+                this.originalPassengerValues[index] = passenger.package_value || 0;
+            });
+        }
+
         if (this.isEditMode && this.existingBooking) {
             this.loadExistingBooking();
         }
@@ -2802,12 +2816,8 @@ Alpine.data('editBookingApp', () => ({
             if (serverData.preSelectedPackageId) {
                 this.bookingData.package_id = String(serverData.preSelectedPackageId);
             }
-            // Edit mode: the values map is seeded from STORED package_value
-            // (loadExistingBooking) — live recompute is creation-flow only
-            // (plan 17 Phase 4). Swap previews recompute via onPackageChange.
-            if (!this.isEditMode) {
-                this.recalculateAllPassengerValues();
-            }
+            // Show preview values (historical for original package, live for changes)
+            this.recalculatePreviewValues();
         });
     },
 
@@ -3293,19 +3303,34 @@ Alpine.data('editBookingApp', () => ({
         return ticketAmount + visaAmount + scAmount + (parseFloat(passenger.extra_charge) || 0);
     },
 
-    recalculateAllPassengerValues() {
-        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
-        this.passengers.forEach((p, index) => {
-            this.passengerPackageValues[index] = this.calculatePackageValue(p, pkg);
-        });
+    recalculatePreviewValues() {
+        // If package hasn't changed from original, use historical values
+        if (this.originalPackageId !== null && 
+            String(this.bookingData.package_id) === String(this.originalPackageId)) {
+            // Use original historical values
+            this.existingPassengers.forEach((passenger, index) => {
+                this.passengerPackageValues[index] = passenger.package_value || 0;
+            });
+        } else {
+            // Package changed or no original - calculate live values
+            this.recalculateAllPassengerValues();
+        }
     },
 
     recalculateCurrentPassenger(index) {
         if (index === null || index === undefined || !this.passengers[index]) {
             return;
         }
-        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
-        this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
+        // If package hasn't changed from original, use historical value
+        if (this.originalPackageId !== null && 
+            String(this.bookingData.package_id) === String(this.originalPackageId) &&
+            this.existingPassengers[index]) {
+            this.passengerPackageValues[index] = this.existingPassengers[index].package_value || 0;
+        } else {
+            // Calculate live value
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
+        }
     },
 
     onPackageChange() {
@@ -3350,7 +3375,7 @@ Alpine.data('editBookingApp', () => ({
             return;
         }
 
-        this.recalculateAllPassengerValues();
+        this.recalculatePreviewValues();
     },
 
     /**
