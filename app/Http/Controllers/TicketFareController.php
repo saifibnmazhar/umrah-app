@@ -493,15 +493,15 @@ class TicketFareController extends Controller
 
             $package->updateQuietly($dirty);
 
-            if (auth()->user()) {
-                PackageUpdateLog::create([
-                    'package_id' => $package->id,
-                    'user_id' => auth()->id(),
-                    'action' => 'fare_updated',
-                    'old_values' => $oldValues,
-                    'new_values' => $dirty,
-                ]);
-            }
+            // Always log (D8): sole production writer of `fare_updated` — the
+            // historic replay engine depends on it; NULL user = system/CLI.
+            PackageUpdateLog::create([
+                'package_id' => $package->id,
+                'user_id' => auth()->id(),
+                'action' => 'fare_updated',
+                'old_values' => $oldValues,
+                'new_values' => $dirty,
+            ]);
         }
     }
 

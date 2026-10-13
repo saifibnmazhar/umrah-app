@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Enums\TicketType;
+use App\Support\LogReplay;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Carbon;
 
 class TicketFare extends Model
 {
@@ -129,19 +129,12 @@ class TicketFare extends Model
             ? $this->updateLogs
             : $this->updateLogs()->orderBy('created_at')->get();
 
-        $events = $logs
-            ->filter(fn ($log) => $log->created_at)
-            ->sortBy('created_at')
-            ->values()
-            ->map(fn ($log) => [
-                'action' => $log->action,
-                'old_values' => $log->old_values ?? [],
-                'new_values' => $log->new_values ?? [],
-                'created_at' => $log->created_at->toDateTimeString(),
-            ])
-            ->all();
-
-        return static::percentageAtFromLogs($events, $column, $at, (float) $this->{$column});
+        return (float) LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($logs),
+            $column,
+            $at,
+            (float) $this->{$column}
+        );
     }
 
     public function percentageAt(string $column, string $at): float
@@ -150,9 +143,8 @@ class TicketFare extends Model
     }
 
     /**
-     * Pure log-replay used by valueAt(): seed the value from the start of
-     * recorded history (the created-event snapshot, else the value just before
-     * the first recorded change), then apply each update up to and including $at.
+     * Float-typed wrapper over the shared replay engine (kept backward
+     * compatible — see tests/Unit/TicketFareReplayTest.php).
      *
      * Note: uses array_key_exists() — never isset()/empty() — because 0 and
      * "70.00" are legitimate percentage values.
@@ -161,33 +153,7 @@ class TicketFare extends Model
      */
     public static function percentageAtFromLogs(array $events, string $column, \DateTimeInterface|string $at, float $fallback): float
     {
-        $anchor = Carbon::parse($at);
-
-        // --- STEP 1: seed — value in effect at the start of recorded history ---
-        $seed = null;
-        foreach ($events as $event) {
-            if ($event['action'] === 'created' && array_key_exists($column, $event['new_values'])) {
-                $seed = (float) $event['new_values'][$column];
-                break;
-            }
-            if ($event['action'] === 'updated' && array_key_exists($column, $event['old_values'])) {
-                $seed = (float) $event['old_values'][$column];
-                break;
-            }
-        }
-
-        // --- STEP 2: forward walk — apply changes up to and including $at ---
-        $value = $seed ?? $fallback;
-        foreach ($events as $event) {
-            if (Carbon::parse($event['created_at'])->gt($anchor)) {
-                break;
-            }
-            if ($event['action'] === 'updated' && array_key_exists($column, $event['new_values'])) {
-                $value = (float) $event['new_values'][$column];
-            }
-        }
-
-        return $value;
+        return (float) LogReplay::valueFromEvents($events, $column, $at, $fallback);
     }
 
     public function getIsLockedAttribute(): bool

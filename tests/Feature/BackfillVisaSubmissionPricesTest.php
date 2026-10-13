@@ -72,7 +72,13 @@ class BackfillVisaSubmissionPricesTest extends TestCase
 
     private function makePackage(string $name, int $visaPriceId): Package
     {
-        return Package::create([
+        // withoutEvents: the scenarios below hand-build their package_update_logs
+        // history (pre-Phase-3 world where unauthenticated creates wrote no
+        // observer rows). A real observer `created` row would carry
+        // created_at = now() — i.e. AFTER the backdated swap — and its
+        // old_values=null would make resolvePriceAt() unresolvable. In
+        // production a package is always created before it can be swapped to.
+        return Package::withoutEvents(fn () => Package::create([
             'package_name' => $name,
             'visa_selling_price_id' => $visaPriceId,
             'regular_price' => 35000.00,
@@ -80,12 +86,15 @@ class BackfillVisaSubmissionPricesTest extends TestCase
             'service_charge' => 1500.00,
             'is_active' => true,
             'is_double_ticket' => false,
-        ]);
+        ]));
     }
 
     private function createBooking(Package $package): Booking
     {
-        return Booking::create([
+        // withoutEvents: same rationale — the tests' manual BookingUpdateLog
+        // rows must be the whole booking history (deterministic swap/created
+        // log resolution, no observer-row tie-breaks).
+        return Booking::withoutEvents(fn () => Booking::create([
             'user_id' => $this->user->id,
             'customer_id' => $this->deps['customer']->id,
             'fingerprint_branch_id' => $this->deps['branch']->id,
@@ -104,7 +113,7 @@ class BackfillVisaSubmissionPricesTest extends TestCase
             'total_value' => 40000.00,
             'remarks' => '',
             'is_cancelled' => false,
-        ]);
+        ]));
     }
 
     private function createPassenger(Booking $booking): Passenger

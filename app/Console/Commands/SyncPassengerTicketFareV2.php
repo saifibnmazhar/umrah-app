@@ -76,13 +76,24 @@ class SyncPassengerTicketFareV2 extends Command
                             ->where('status', 'pending')
                             ->update(['ticket_fare_id' => $passenger->ticket_fare_id]);
 
-                        $newPackageValue = $bookingService->calculatePackageValue($passenger);
+                        $oldValue = (float) ($passenger->package_value ?? 0);
 
-                        if ((float) ($passenger->package_value ?? 0) !== $newPackageValue) {
-                            $passenger->update(['package_value' => $newPackageValue]);
+                        // Historic recompute at the passenger's own anchor
+                        // (earliest era start, floored at own creation) —
+                        // never at live prices.
+                        // Known, intentional scope limit (plan 17 §2d): value
+                        // repair only runs when an FK actually changed, so pure
+                        // value drift with matching FKs is left to
+                        // bookings:sync-financials.
+                        $bookingService->recalculatePassengerValues(
+                            $passenger->booking,
+                            $passenger->historicAnchor(),
+                            $passenger
+                        );
+
+                        if (abs($oldValue - (float) $passenger->fresh()->package_value) >= 0.005) {
+                            $updated++;
                         }
-
-                        $updated++;
                     }
                 }
             });
