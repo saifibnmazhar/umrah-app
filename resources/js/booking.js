@@ -38,6 +38,7 @@ Alpine.data('bookingApp', () => ({
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
+    originalPackageId: null,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -2654,6 +2655,7 @@ Alpine.data('editBookingApp', () => ({
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
+    originalPackageId: null,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -2782,6 +2784,9 @@ Alpine.data('editBookingApp', () => ({
         this.existingBooking = serverData.existingBooking || null;
         this.existingPassengers = serverData.existingPassengers || [];
         this.existingCustomer = serverData.existingCustomer || null;
+        // The package the edit form loaded with — the swap-preview endpoint
+        // compares every target against it (kept as a string, like package_id).
+        this.originalPackageId = serverData.preSelectedPackageId ? String(serverData.preSelectedPackageId) : null;
 
         if (this.isEditMode && this.existingBooking) {
             this.loadExistingBooking();
@@ -3336,17 +3341,15 @@ Alpine.data('editBookingApp', () => ({
             }
         }
 
-        // A package this booking was ever on previews from SERVER truth
-        // (earliest-era restoration via swap-preview); anything else keeps
-        // the client-side live estimate, as before.
+        // A target different from the originally-loaded package previews from
+        // SERVER truth (live values via swap-preview); the unchanged package
+        // keeps the client-side estimate, which equals the stored values.
         const server = window.__bookingServerData || {};
         const targetId = String(this.bookingData.package_id);
         this.swapPreviewSeq = (this.swapPreviewSeq || 0) + 1;
-        const usedIds = Array.isArray(server.previouslyUsedPackageIds)
-            ? server.previouslyUsedPackageIds.map(String)
-            : [];
 
-        if (server.swapPreviewRoute && usedIds.includes(targetId)) {
+        if (this.originalPackageId && server.swapPreviewRoute
+            && String(targetId) !== String(this.originalPackageId)) {
             this.fetchSwapPreview(this.swapPreviewSeq, server.swapPreviewRoute, targetId);
             return;
         }
@@ -3361,7 +3364,8 @@ Alpine.data('editBookingApp', () => ({
      * a stale response (user already moved on) is dropped via the seq.
      */
     fetchSwapPreview(seq, route, packageId) {
-        fetch(route + '?package_id=' + encodeURIComponent(packageId), {
+        fetch(route + '?package_id=' + encodeURIComponent(packageId)
+            + '&original_package_id=' + encodeURIComponent(this.originalPackageId || ''), {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',

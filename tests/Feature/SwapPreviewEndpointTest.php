@@ -19,10 +19,11 @@ use Tests\TestCase;
 
 /**
  * GET bookings/{booking}/swap-preview: read-only truth for the edit page's
- * pre-save package swap. A previously used target previews its earliest-era
- * (restored) values; a never-used target previews current prices — exactly
- * what a save would store. Nothing may be written: passenger values,
- * booking totals, invoice and every audit stream stay untouched.
+ * pre-save package swap. A target equal to the booking's currently-loaded
+ * package previews its stored (historical) values; any other target previews
+ * live current prices — exactly what a save would store. Nothing may be
+ * written: passenger values, booking totals, invoice and every audit stream
+ * stay untouched.
  */
 class SwapPreviewEndpointTest extends TestCase
 {
@@ -112,15 +113,18 @@ class SwapPreviewEndpointTest extends TestCase
         ])->assertRedirect();
     }
 
-    private function preview(Booking $booking, Package $package)
+    private function preview(Booking $booking, Package $package, ?int $originalPackageId = null)
     {
+        $originalPackageId ??= (int) $booking->fresh()->package_id;
+
         return $this->getJson(route('bookings.swap-preview', [
             'booking' => $booking->id,
             'package_id' => $package->id,
+            'original_package_id' => $originalPackageId,
         ]));
     }
 
-    public function test_preview_returns_restored_values_and_writes_nothing(): void
+    public function test_preview_of_non_original_package_uses_live_prices_and_writes_nothing(): void
     {
         [$booking, $passenger, $invoice] = $this->createBookingOnA();
         $this->actingAs($this->user);
@@ -128,7 +132,9 @@ class SwapPreviewEndpointTest extends TestCase
         Carbon::setTestNow('2026-06-15 10:00:00');
         $this->swapPackage($booking, $this->packageB);
 
-        // A's price moved after the booking left it — restoration territory.
+        // A's price moved after the booking left it. The edit form loads on the
+        // current package (B), so previewing A — a target ≠ original — must
+        // show live current prices, not restored ones.
         Carbon::setTestNow('2026-07-01 10:00:00');
         $fare = $this->fareA;
         $fare->updateQuietly(['selling_fare' => 33000.00]);
@@ -145,10 +151,9 @@ class SwapPreviewEndpointTest extends TestCase
         $response->assertOk();
 
         $data = $response->json();
-        $this->assertTrue($data['restored'], 'package A was used before');
-        $this->assertSame('2026-06-01 10:00:00', $data['anchor']);
-        $this->assertEqualsWithDelta(31500.00, (float) $data['passengers'][0]['package_value'], 0.005, 'restored first-era value (live would be 37000)');
-        $this->assertEqualsWithDelta(31500.00, (float) $data['total_value'], 0.005);
+        $this->assertSame('2026-07-15 10:00:00', $data['anchor'], 'target ≠ original → live anchor (now())');
+        $this->assertEqualsWithDelta(36500.00, (float) $data['passengers'][0]['package_value'], 0.005, 'live current prices for A (33000 fare + 2000 visa + 1500 sc)');
+        $this->assertEqualsWithDelta(36500.00, (float) $data['total_value'], 0.005);
         $this->assertEqualsWithDelta(0.00, (float) $data['discount_amount'], 0.005);
 
         // NOTHING written — stored state and audit streams untouched.
@@ -176,8 +181,7 @@ class SwapPreviewEndpointTest extends TestCase
         $response->assertOk();
 
         $data = $response->json();
-        $this->assertFalse($data['restored'], 'package C was never on this booking');
-        $this->assertSame('2026-07-15 10:00:00', $data['anchor'], 'never-used package previews at now()');
+        $this->assertSame('2026-07-15 10:00:00', $data['anchor'], 'target ≠ original → live anchor (now())');
         $this->assertEqualsWithDelta(26000.00 + 2200.00 + 1600.00, (float) $data['passengers'][0]['package_value'], 0.005, 'current prices (29800)');
     }
 
@@ -191,8 +195,7 @@ class SwapPreviewEndpointTest extends TestCase
         $response->assertOk();
 
         $data = $response->json();
-        $this->assertTrue($data['restored'], 'the current package counts as used');
-        $this->assertSame('2026-06-01 10:00:00', $data['anchor']);
+        $this->assertSame('2026-06-01 10:00:00', $data['anchor'], 'target == original → historical anchor (era start)');
         $this->assertEqualsWithDelta(31500.00, (float) $data['passengers'][0]['package_value'], 0.005, 'no-op preview equals stored value');
     }
 
