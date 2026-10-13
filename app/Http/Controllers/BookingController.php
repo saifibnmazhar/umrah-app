@@ -2013,8 +2013,10 @@ class BookingController extends Controller
             PackageEras::logsFor($booking->id)
         );
 
+        $originalPackageId = $booking->package_id ?? null;
+
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches', 'previouslyUsedPackageIds'
+            'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches', 'previouslyUsedPackageIds', 'originalPackageId'
         ));
     }
 
@@ -2039,6 +2041,7 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'package_id' => 'required|integer|exists:packages,id',
+            'original_package_id' => 'required|integer|exists:packages,id',
         ]);
 
         $package = Package::with([
@@ -2051,8 +2054,8 @@ class BookingController extends Controller
 
         $booking->load('passengers');
         $eraLogs = PackageEras::logsFor($booking->id);
-        $usedIds = PackageEras::usedPackageIds($booking->package_id, $eraLogs);
-        $restored = in_array((int) $package->id, $usedIds, true);
+        $originalPackageId = $validated['original_package_id'];
+        $useHistorical = (int) $validated['package_id'] === (int) $originalPackageId;
 
         // In-memory stand-in for the post-save booking: same package, and
         // the fare FK re-pointing the real swap block performs (visa_only
@@ -2104,9 +2107,9 @@ class BookingController extends Controller
             if ($passenger->is_cancelled) {
                 $value = (float) $passenger->package_value; // frozen (D4)
             } else {
-                $anchor = $restored
-                    ? PackageEras::anchorAt($booking->created_at, $package->id, $eraLogs, $passenger->created_at)
-                    : now();
+                 $anchor = $useHistorical
+                     ? PackageEras::anchorAt($booking->created_at, $package->id, $eraLogs, $passenger->created_at)
+                     : now();
                 $value = $service->calculatePackageValue($passenger, $anchor);
             }
 
@@ -2140,8 +2143,7 @@ class BookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'restored' => $restored,
-            'anchor' => ($restored
+            'anchor' => ($useHistorical
                 ? PackageEras::eraStart($booking->created_at, $package->id, $eraLogs)
                 : now())?->toDateTimeString(),
             'passengers' => $passengerRows,
