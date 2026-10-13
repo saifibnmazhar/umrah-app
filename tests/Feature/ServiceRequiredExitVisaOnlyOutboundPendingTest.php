@@ -67,9 +67,12 @@ class ServiceRequiredExitVisaOnlyOutboundPendingTest extends TestCase
         $this->booking = $this->pvBooking($this->package, $this->user, $this->fpCharge, $this->district, [
             'total_value' => 3500.00,
         ]);
-        $this->booking->update(['created_at' => '2026-07-09 10:00:00']);
+        // created_at is not fillable; assign it directly so the anchor is the
+        // booking's historic era (not "now").
+        $this->booking->created_at = '2026-07-09 10:00:00';
+        $this->booking->saveQuietly();
         $this->invoice = app(InvoiceService::class)->createForBooking($this->booking);
-        $this->invoice->updateQuietly(['total_amount' => 3500.00, 'balance' => 3500.00, 'paid_amount' = 0]);
+        $this->invoice->updateQuietly(['total_amount' => 3500.00, 'balance' => 3500.00, 'paid_amount' => 0]);
     }
 
     private function visaOnlyPassenger(array $overrides = []): Passenger
@@ -97,8 +100,8 @@ class ServiceRequiredExitVisaOnlyOutboundPendingTest extends TestCase
             'date_of_birth' => '1990-01-01',
             'stay_duration' => 14,
             'flight_date_from' => $this->flightFrom(),
-            'flight_date_to' = $this->flightTo(),
-            'service_required' = $service,
+            'flight_date_to' => $this->flightTo(),
+            'service_required' => $service,
         ])->assertRedirect();
     }
 
@@ -150,15 +153,15 @@ class ServiceRequiredExitVisaOnlyOutboundPendingTest extends TestCase
         $this->package = $this->pvPackage($this->user, $this->package->visaSellingPrice, [
             'is_double_ticket' => true,
             'ticket_fare_id' => $inboundFare->id,
-            'ticket_fare_inbound_id' = $inboundFare->id,
-            'ticket_fare_outbound_id' = $outboundFare->id,
+            'ticket_fare_inbound_id' => $inboundFare->id,
+            'ticket_fare_outbound_id' => $outboundFare->id,
             'regular_price' => 30000.00,
-            'offer_price' = 28000.00,
-            'service_charge' = 1500.00,
+            'offer_price' => 28000.00,
+            'service_charge' => 1500.00,
         ]);
         $this->booking = $this->pvBooking($this->package, $this->user, $this->fpCharge, $this->district, ['total_value' => 3500.00]);
         $this->invoice = app(InvoiceService::class)->createForBooking($this->booking);
-        $this->invoice->updateQuietly(['total_amount' => 3500.00, 'balance' = 3500.00, 'paid_amount' = 0]);
+        $this->invoice->updateQuietly(['total_amount' => 3500.00, 'balance' => 3500.00, 'paid_amount' => 0]);
         $passenger = $this->visaOnlyPassenger();
         $this->editServiceRequired($passenger, 'all');
         $rows = IssuedTicket::where('passenger_id', $passenger->id)->orderBy('id')->get();
@@ -201,15 +204,15 @@ class ServiceRequiredExitVisaOnlyOutboundPendingTest extends TestCase
             'booking_id' => $this->booking->id,
             'passenger_id' => $passenger->id,
             'ticket_fare_id' => null,
-            'user_id' = $this->user->id,
-            'status' = 'issued',
+            'user_id' => $this->user->id,
+            'status' => 'issued',
             'issue_type' => 'regular',
-            'ticket_number' = 'TK-9001',
+            'ticket_number' => 'TK-9001',
             'pnr' => 'PNR9001',
-            'issued_date' = '2026-07-12',
-            'net_fare' = 24000.00,
-            'selling_fare' = 28000.00,
-            'offer_price' = 0,
+            'issued_date' => '2026-07-12',
+            'net_fare' => 24000.00,
+            'selling_fare' => 28000.00,
+            'offer_price' => 0,
         ]);
         $genuine->logAction('issued', [], $genuine->toArray());
 
@@ -240,14 +243,6 @@ class ServiceRequiredExitVisaOnlyOutboundPendingTest extends TestCase
         $this->assertSame($row->ticket_fare_id ?? null, $this->fare->id, 'row FK assigned from package');
         $this->assertSame(null, $passenger->fresh()->ticket_fare_inbound_id);
         $this->assertSame(null, $passenger->fresh()->ticket_fare_outbound_id);
-        $bookingCreatedAt = $this->booking->created_at;
-        $passengerCreatedAt = $passenger->created_at;
-        dump('Booking created_at: '.$bookingCreatedAt);
-        dump('Passenger created_at: '.$passengerCreatedAt);
-        $anchor = $passenger->historicAnchor();
-        dump('Anchor: '.$anchor->toDateTimeString());
-        $s0 = $this->fare->valueAt('selling_fare', $anchor);
-        dump('Fare selling_fare at anchor: '.$s0);
         $this->assertEqualsWithDelta($expectedSellingFare, (float) $row->selling_fare, 0.001, 'snapshot at anchor, not live fare');
         $this->assertSame(0.0, (float) $row->offer_price, 'no offer price for adult regular row');
 

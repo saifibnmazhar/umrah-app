@@ -390,10 +390,11 @@ class RepairWrongRecalcs extends Command
         $this->line(sprintf('Booking #%d (%s):', $booking->id, $booking->invoice_id));
         foreach ($changes as [$old, $new, $passenger]) {
             $this->line(sprintf(
-                '  passenger #%d %s %s: %s -> %s',
+                '  passenger #%d %s %s (passport %s): stored %s -> historic %s',
                 $passenger->id,
                 $passenger->first_name,
                 $passenger->last_name,
+                $passenger->passport_no ?? 'n/a',
                 $this->fmt($old),
                 $this->fmt($new)
             ));
