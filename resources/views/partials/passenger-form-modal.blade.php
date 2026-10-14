@@ -32,11 +32,12 @@
                         <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         <div x-show="passengerData.passenger_type === 'Adult'" class="mt-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
-                            <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.gender" :required="passengerData.passenger_type === 'Adult'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
+                            <p x-show="passengerData.passenger_type === 'Adult' && !passengerData.gender" class="text-xs text-red-500 mt-1">Gender is required for adult passengers.</p>
                         </div>
                     </div>
                     <div>
@@ -56,8 +57,9 @@
                         <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
-                        <input type="date" x-model="passengerData.passport_expiry" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date *</label>
+                        <input type="date" x-model="passengerData.passport_expiry" required min="{{ date('Y-m-d', strtotime('+1 day')) }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <p x-show="passengerData.passport_expiry && new Date(passengerData.passport_expiry) <= new Date(new Date().toDateString())" class="text-xs text-red-500 mt-1">Expiry must be a future date.</p>
                     </div>
                 </div>
             </div>
