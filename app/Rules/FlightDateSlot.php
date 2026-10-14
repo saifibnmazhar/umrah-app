@@ -15,6 +15,8 @@ use Illuminate\Contracts\Validation\ValidationRule;
  *  - same calendar month, exactly 1-10 | 11-20 | 21-lastDay
  *  - `from` must not be earlier than the slot containing (today + finalGap),
  *    where finalGap = defaultGap (flight_date_gaps.gap) + additionalGap (route.additional_gap)
+ *    The gap portion is optional and enforced by default (`enforceGap: true`).
+ *    Pass `enforceGap: false` to check only the slot shape (passenger update flow).
  *
  * Missing/empty pair members hard-fail so empty submissions cannot fall
  * through to placeholder defaults.
@@ -26,6 +28,7 @@ class FlightDateSlot implements ValidationRule
         private int $defaultGap = 30,
         private int $additionalGap = 0,
         private ?Carbon $today = null,
+        private bool $enforceGap = true,
     ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -41,6 +44,10 @@ class FlightDateSlot implements ValidationRule
         if (! self::isValidSlot($this->from, $to)) {
             $fail('Invalid flight date range. Use 1-10, 11-20, or 21-last day of the same month.');
 
+            return;
+        }
+
+        if (! $this->enforceGap) {
             return;
         }
 

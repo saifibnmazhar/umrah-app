@@ -8,7 +8,6 @@ use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
-use App\Models\FlightDateGap;
 use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
@@ -662,26 +661,22 @@ class PassengerController extends Controller
             abort(403);
         }
 
-        if (! $this->isFlightDateAdmin()) {
-            $request->request->remove('flight_date_from');
-            $request->request->remove('flight_date_to');
+        $canEditProtectedFields = $this->isFlightDateAdmin();
+
+        if (! $canEditProtectedFields) {
+            foreach (['flight_date_from', 'flight_date_to', 'extra_charge'] as $protected) {
+                $request->request->remove($protected);
+                $request->query->remove($protected);
+                if ($request->isJson()) {
+                    $request->json()->remove($protected);
+                }
+            }
         }
 
-        if (! $this->isFlightDateAdmin()) {
-            $request->request->remove('extra_charge');
-        }
-
-        $isFlightDateAdmin = $this->isFlightDateAdmin();
         // Validate merged (incoming ?? stored) values so a `to`-only payload
         // cannot bypass the slot check. Non-admins have dates stripped above
         // and keep plain date rules since they cannot modify flight dates.
         $mergedFrom = $request->input('flight_date_from', $passenger->flight_date_from?->format('Y-m-d'));
-        $fareId = $request->input('ticket_fare_id', $passenger->ticket_fare_id)
-            ?? $request->input('ticket_fare_inbound_id', $passenger->ticket_fare_inbound_id);
-        $defaultGap = FlightDateGap::first()?->gap ?? 30;
-        $additionalGap = $fareId
-            ? (int) (TicketFare::with('route')->find($fareId)?->route?->additional_gap ?? 0)
-            : 0;
 
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -692,9 +687,9 @@ class PassengerController extends Controller
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
             'stay_duration' => 'required|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
-            'flight_date_from' => $isFlightDateAdmin ? ['required', 'date'] : ['nullable', 'date'],
-            'flight_date_to' => $isFlightDateAdmin
-                ? ['required', 'date', new FlightDateSlot(is_string($mergedFrom) ? $mergedFrom : null, $defaultGap, $additionalGap)]
+            'flight_date_from' => $canEditProtectedFields ? ['required', 'date'] : ['nullable', 'date'],
+            'flight_date_to' => $canEditProtectedFields
+                ? ['required', 'date', new FlightDateSlot(from: is_string($mergedFrom) ? $mergedFrom : null, enforceGap: false)]
                 : ['nullable', 'date'],
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
