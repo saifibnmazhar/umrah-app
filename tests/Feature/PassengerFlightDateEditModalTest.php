@@ -88,7 +88,9 @@ class PassengerFlightDateEditModalTest extends TestCase
             'rate' => 0,
         ])->render();
 
-        $this->assertStringContainsString('id="passengerFlightDateRange"', $html);
+        $this->assertStringNotContainsString('id="passengerFlightDateRange"', $html);
+        $this->assertStringNotContainsString('id="passengerFlightDateRangeDouble"', $html);
+        $this->assertStringContainsString($passenger->flight_date_display, $html);
         $this->assertStringNotContainsString('<button type="button" @click="openFlightDateModal()"', $html);
     }
 }

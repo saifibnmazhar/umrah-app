@@ -100,7 +100,10 @@ class PassengerExtraChargeCurrencyToggleTest extends TestCase
     {
         $html = $this->renderPassengerEdit();
 
-        $this->assertStringContainsString('extra_charge: parseFloat(this.passengerData.extra_charge) || 0', $html);
+        $this->assertStringContainsString('payload.extra_charge = parseFloat(this.passengerData.extra_charge) || 0', $html);
+        $this->assertStringContainsString('payload.flight_date_from = flightDateFrom', $html);
+        $this->assertStringContainsString('payload.flight_date_to = flightDateTo', $html);
+        $this->assertStringContainsString('if (canEditProtectedFields)', $html);
     }
 
     public function test_passenger_edit_page_hides_extra_charge_field_for_non_admins(): void
