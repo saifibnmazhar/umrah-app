@@ -4,7 +4,10 @@
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Edit Ticket Fare</h1>
-<a href="{{ route('fare.admin', ['tab' => 'fares', 'page' => request('page', 1)]) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+@php
+    $fareEditFilters = array_filter(request()->only(['search', 'airline_id', 'ticket_type', 'status', 'page']), fn ($v) => $v !== null && $v !== '');
+@endphp
+<a href="{{ route('fare.admin', array_merge(['tab' => 'fares'], $fareEditFilters ?: ['page' => 1])) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
     Back to List
 </a>
     </div>
@@ -77,6 +80,10 @@
         @csrf
         @method('PUT')
         <input type="hidden" name="page" value="{{ request('page', 1) }}">
+        <input type="hidden" name="search" value="{{ request('search', '') }}">
+        <input type="hidden" name="airline_id" value="{{ request('airline_id', '') }}">
+        <input type="hidden" name="ticket_type" value="{{ request('ticket_type', '') }}">
+        <input type="hidden" name="status" value="{{ request('status', '') }}">
 
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Basic Information</h2>

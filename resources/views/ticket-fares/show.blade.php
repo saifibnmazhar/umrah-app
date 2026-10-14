@@ -2,9 +2,17 @@
 @section('title', 'Ticket Fare Details')
 @section('content')
 <div class="max-w-4xl mx-auto">
+    @php
+        $fareListFilters = array_filter(request()->only(['search', 'airline_id', 'ticket_type', 'status', 'page']), fn ($v) => $v !== null && $v !== '');
+        $cameFromFareAdmin = request('tab') === 'fares' || count($fareListFilters) > 0;
+        $fareListUrl = $cameFromFareAdmin
+            ? route('fare.admin', array_merge(['tab' => 'fares'], $fareListFilters))
+            : route('ticket-fares.index');
+        $fareListQuery = $fareListFilters ? '?'.http_build_query($fareListFilters) : '';
+    @endphp
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Ticket Fare Details</h1>
-        <a href="{{ route('ticket-fares.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+        <a href="{{ $fareListUrl }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
             Back to List
         </a>
     </div>
@@ -196,7 +204,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="text-sm font-medium text-slate-500 mb-4">Actions</h3>
                 <div class="space-y-2">
-                    <a href="{{ route('ticket-fares.edit', $ticketFare->id) }}" class="block w-full text-center px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
+                    <a href="{{ route('ticket-fares.edit', $ticketFare->id) }}{{ $fareListQuery }}" class="block w-full text-center px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
                         Edit
                     </a>
                     @if($ticketFare->is_locked)

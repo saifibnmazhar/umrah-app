@@ -182,6 +182,16 @@ class TicketFareController extends Controller
         return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'travelClasses', 'routes', 'inUse'));
     }
 
+    private function fareAdminRedirectParams(Request $request): array
+    {
+        $filters = array_filter(
+            $request->only(['search', 'airline_id', 'ticket_type', 'status', 'page']),
+            fn ($v) => $v !== null && $v !== ''
+        );
+
+        return array_merge(['tab' => 'fares'], $filters);
+    }
+
     public function update(Request $request, TicketFare $ticketFare)
     {
         if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
@@ -213,7 +223,7 @@ class TicketFareController extends Controller
                     $this->cascadeFarePriceToPackages($ticketFare, $oldSelling, $oldOffer, $newSelling, $newOffer);
                 });
 
-                return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
+                return redirect()->route('fare.admin', $this->fareAdminRedirectParams($request))->with('success', 'Ticket fare updated successfully.');
             }
 
             $rules = [
@@ -289,7 +299,7 @@ class TicketFareController extends Controller
 
             $this->updateBaggageAllowances($ticketFare, $request);
 
-            return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
+            return redirect()->route('fare.admin', $this->fareAdminRedirectParams($request))->with('success', 'Ticket fare updated successfully.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -297,7 +307,7 @@ class TicketFareController extends Controller
                 ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update ticket fare.';
 
-            return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('error', $message);
+            return redirect()->route('fare.admin', $this->fareAdminRedirectParams($request))->with('error', $message);
         }
     }
 
