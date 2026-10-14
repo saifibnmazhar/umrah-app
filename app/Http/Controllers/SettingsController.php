@@ -230,7 +230,6 @@ class SettingsController extends Controller
         }
 
         try {
-            $validated['user_id'] = auth()->id() ?? 1;
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             Package::create($validated);
             $tab = $request->input('tab', 'package-configuration');

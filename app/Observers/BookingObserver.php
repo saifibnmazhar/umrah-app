@@ -11,14 +11,11 @@ class BookingObserver
 {
     public function created(Booking $booking): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
+        // Always log (D8): unauthenticated/CLI writes carry user_id = NULL
+        // ("system") — the replay engine depends on complete history.
         BookingUpdateLog::create([
             'booking_id' => $booking->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $booking->invoice_id,
             'action' => 'created',
             'old_values' => null,
@@ -34,8 +31,7 @@ class BookingObserver
             app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
         }
 
-        $user = Auth::user();
-        if (! $user || empty($dirty)) {
+        if (empty($dirty)) {
             return;
         }
 
@@ -49,7 +45,7 @@ class BookingObserver
 
         BookingUpdateLog::create([
             'booking_id' => $booking->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $booking->invoice_id,
             'action' => 'updated',
             'old_values' => $oldValues,
@@ -59,16 +55,11 @@ class BookingObserver
 
     public function deleting(Booking $booking): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $oldValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
 
         BookingUpdateLog::create([
             'booking_id' => $booking->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $booking->invoice_id,
             'action' => 'deleted',
             'old_values' => $oldValues,

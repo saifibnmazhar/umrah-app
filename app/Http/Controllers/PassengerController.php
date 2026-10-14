@@ -24,6 +24,7 @@ use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\ProfitCalculationService;
 use App\Support\DiagnosticLogger;
+use App\Support\LogReplay;
 use App\Traits\ConvertsDocumentsToPdf;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -88,12 +89,16 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFare.updateLogs',
             'ticketFareInbound.airline',
             'ticketFareInbound.airlineClass.class',
             'ticketFareInbound.route',
+            'ticketFareInbound.updateLogs',
             'ticketFareOutbound.airline',
             'ticketFareOutbound.airlineClass.class',
             'ticketFareOutbound.route',
+            'ticketFareOutbound.updateLogs',
+            'booking.package.updateLogs',
             'documents',
             'visaSubmission.visaAgent.visaAgentCost',
             'visaSubmission.visaAgent.commissionAgents',
@@ -131,44 +136,9 @@ class PassengerController extends Controller
         $outboundIssuedTicket = $passenger->allIssuedTickets
             ->first(fn ($t) => $t->issue_type === 'pending_outbound');
 
-        $ticketFare = 0;
-        $passengerType = $passenger->passenger_type;
-        if ($passengerType instanceof \BackedEnum) {
-            $passengerType = $passengerType->value;
-        }
-        $passengerType = strtolower($passengerType ?? '');
-
-        $fareBase = function ($fare) {
-            if (! $fare) {
-                return 0;
-            }
-            if ($fare->ticket_type?->value === 'offer') {
-                return (float) ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0);
-            }
-
-            return (float) ($fare->selling_fare ?? $fare->net_fare ?? 0);
-        };
-
-        $fareForType = function ($fare, $pType) use ($fareBase) {
-            if (! $fare) {
-                return 0;
-            }
-            $base = $fareBase($fare);
-
-            return match ($pType) {
-                'child' => $base * ((float) $fare->child_fare_percentage) / 100,
-                'infant' => $base * ((float) $fare->infant_fare_percentage) / 100,
-                default => $base,
-            };
-        };
-
-        if ($passenger->ticket_fare_inbound_id && $passenger->ticket_fare_outbound_id) {
-            $ticketFare = $fareForType($passenger->ticketFareInbound, $passengerType)
-                        + $fareForType($passenger->ticketFareOutbound, $passengerType);
-        } elseif ($passenger->ticketFare) {
-            $ticketFare = $fareForType($passenger->ticketFare, $passengerType);
-        }
-        $visaCost = $passenger->booking?->package?->visaSellingPrice?->selling_price ?? 0;
+        $anchor = $passenger->historicAnchor();
+        $ticketFare = $this->historicTicketFare($passenger, $anchor);
+        $visaCost = $this->historicVisaCost($passenger, $anchor);
         $fingerprintCost = 0;
         $fpLocation = $passenger->booking?->fingerprint_location;
         if ($fpLocation instanceof \BackedEnum) {
@@ -276,6 +246,142 @@ class PassengerController extends Controller
             ?? 0;
 
         return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'canEditExtraCharge', 'historyRows', 'rate', 'inboundIssuedTicket', 'outboundIssuedTicket'));
+    }
+
+    /**
+     * Historic (point-in-time) ticket fare for the show popup. Replays the
+     * fare columns at the passenger's anchor — same semantics as
+     * BookingService::calculatePackageValue (offer ?? selling base, child/
+     * infant percentages ?? 70/?? 30 from the inbound fare) — so the popup
+     * never shows a live fare edit made after the passenger was created.
+     */
+    private function historicTicketFare(Passenger $passenger, \DateTimeInterface|string $anchor): float
+    {
+        $serviceRequired = $passenger->service_required;
+        if ($serviceRequired instanceof \BackedEnum) {
+            $serviceRequired = $serviceRequired->value;
+        }
+        if (strtolower($serviceRequired ?? '') === 'visa_only') {
+            return 0;
+        }
+
+        $passengerType = $passenger->passenger_type;
+        if ($passengerType instanceof \BackedEnum) {
+            $passengerType = $passengerType->value;
+        }
+        $passengerType = strtolower($passengerType ?? '');
+
+        if ($passenger->ticket_fare_inbound_id && $passenger->ticket_fare_outbound_id) {
+            $inbound = $passenger->ticketFareInbound;
+            $outbound = $passenger->ticketFareOutbound;
+            $base = $this->showFareBase($inbound, $anchor)
+                + $this->showFareBase($outbound, $anchor);
+
+            return match ($passengerType) {
+                'child' => $base * ((float) ($inbound
+                    ? ($this->historicFareValue($inbound, 'child_fare_percentage', $anchor) ?? 70)
+                    : 70)) / 100,
+                'infant' => $base * ((float) ($inbound
+                    ? ($this->historicFareValue($inbound, 'infant_fare_percentage', $anchor) ?? 30)
+                    : 30)) / 100,
+                default => $base,
+            };
+        }
+
+        $fare = $passenger->ticketFare;
+        if (! $fare) {
+            return 0;
+        }
+
+        $base = $this->showFareBase($fare, $anchor);
+
+        return match ($passengerType) {
+            'child' => $base * ((float) ($this->historicFareValue($fare, 'child_fare_percentage', $anchor) ?? 70)) / 100,
+            'infant' => $base * ((float) ($this->historicFareValue($fare, 'infant_fare_percentage', $anchor) ?? 30)) / 100,
+            default => $base,
+        };
+    }
+
+    /**
+     * Historic base amount of one fare at $anchor: offer price for offer
+     * fares (?? selling ?? net), selling fare otherwise — all replayed from
+     * ticket_fare_update_logs, live row only as the no-history fallback.
+     */
+    private function showFareBase(?TicketFare $fare, \DateTimeInterface|string $anchor): float
+    {
+        if (! $fare) {
+            return 0;
+        }
+
+        $ticketType = strtolower((string) ($this->historicFareValue($fare, 'ticket_type', $anchor) ?? ''));
+        if ($ticketType === 'offer') {
+            return (float) ($this->historicFareValue($fare, 'offer_price', $anchor)
+                ?? $this->historicFareValue($fare, 'selling_fare', $anchor)
+                ?? $this->historicFareValue($fare, 'net_fare', $anchor)
+                ?? 0);
+        }
+
+        return (float) ($this->historicFareValue($fare, 'selling_fare', $anchor)
+            ?? $this->historicFareValue($fare, 'net_fare', $anchor)
+            ?? 0);
+    }
+
+    /**
+     * Historic raw value of a fare column at $anchor. Honors the eager-loaded
+     * updateLogs relation so no extra queries run per fare.
+     *
+     * @return string|int|float|null raw replayed value; ?? composition at the
+     *                               call site preserves legacy defaults
+     */
+    private function historicFareValue(TicketFare $fare, string $column, \DateTimeInterface|string $anchor): string|int|float|null
+    {
+        $fare->loadMissing('updateLogs');
+
+        $fallback = $fare->{$column};
+        if ($fallback instanceof \BackedEnum) {
+            $fallback = $fallback->value;
+        }
+
+        return LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($fare->updateLogs),
+            $column,
+            $anchor,
+            $fallback
+        );
+    }
+
+    /**
+     * Historic visa price for the show popup: the passenger's own submission
+     * row (visa_submissions.visa_selling_price_id FK — immutable at submission
+     * time) wins; without a submission the package's visa_selling_price_id is
+     * replayed to the anchor era, never the live package row.
+     */
+    private function historicVisaCost(Passenger $passenger, \DateTimeInterface|string $anchor): float
+    {
+        $serviceRequired = $passenger->service_required;
+        if ($serviceRequired instanceof \BackedEnum) {
+            $serviceRequired = $serviceRequired->value;
+        }
+        if (strtolower($serviceRequired ?? '') === 'ticket_only') {
+            return 0;
+        }
+
+        $submissionPrice = $passenger->visaSubmission?->visaSellingPrice?->selling_price;
+        if ($submissionPrice !== null) {
+            return (float) $submissionPrice;
+        }
+
+        $package = $passenger->booking?->package;
+        if (! $package) {
+            return 0;
+        }
+        $package->loadMissing('updateLogs');
+
+        $visaSellingPriceId = $package->valueAt('visa_selling_price_id', $anchor);
+
+        return $visaSellingPriceId
+            ? (float) (VisaSellingPrice::find($visaSellingPriceId)?->selling_price ?? 0)
+            : 0;
     }
 
     public function edit(Passenger $passenger)
@@ -593,9 +699,8 @@ class PassengerController extends Controller
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
             'gender' => 'nullable|in:male,female',
-            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
-            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
-            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            // D2: fare-FK fields are intentionally NOT validated or accepted
+            // here — package_value derives from historic prices (plan 17).
             'extra_charge' => 'nullable|numeric|min:0',
         ]);
 
@@ -613,10 +718,15 @@ class PassengerController extends Controller
             }
 
             $oldServiceValue = $oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired;
+            $extraChargeChanged = $passenger->wasChanged('extra_charge');
             if ($oldServiceValue === 'visa_only'
                 && isset($validated['service_required'])
                 && $validated['service_required'] !== 'visa_only') {
                 $this->handleServiceRequiredChangeFromVisaOnly($passenger->fresh());
+                // The handler assigns fare-FKs on a fresh copy; reload so the
+                // scoped recompute below sees the new FKs (refresh() clears
+                // dirty state, hence $extraChargeChanged captured above).
+                $passenger->refresh();
             }
 
             $newServiceRequired = $validated['service_required'] ?? null;
@@ -633,10 +743,22 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking = $booking->fresh();
 
-                $this->bookingService->syncFinancials($booking, 'passenger_updated');
+                $typeChanged = isset($validated['passenger_type'])
+                    && $validated['passenger_type'] !== ($oldPassengerType instanceof \BackedEnum ? $oldPassengerType->value : $oldPassengerType);
+                $serviceChanged = isset($validated['service_required'])
+                    && $validated['service_required'] !== ($oldServiceRequired instanceof \BackedEnum ? $oldServiceRequired->value : $oldServiceRequired);
+                $extraChanged = $extraChargeChanged;
+
+                // type/extra_charge/service_required changes re-value ONLY this
+                // passenger, at their derived earliest-era anchor (=
+                // historicAnchor()); every other edit leaves package_value
+                // alone and just re-totals (plan 17 §2b).
+                $recomputeValues = $typeChanged || $serviceChanged || $extraChanged;
+
+                $this->bookingService->applyFinancials($booking, $recomputeValues, 'passenger_updated', $recomputeValues ? $passenger : null);
                 $booking = $booking->fresh();
 
-                if ($passenger->wasChanged('extra_charge')) {
+                if ($extraChargeChanged) {
                     app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
                     $booking = $booking->fresh();
                 }
@@ -690,7 +812,9 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking->update(['pax_qty' => $booking->passengers()->count()]);
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking, 'passenger_removed');
+                // Re-sum only — a removal never re-values the remaining
+                // passengers (plan 17 §2b "passenger remove" row).
+                $this->bookingService->applyFinancials($booking, false, 'passenger_removed');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
@@ -957,6 +1081,50 @@ class PassengerController extends Controller
         ];
     }
 
+    /**
+     * Historic ticket_type of $fare in effect at $at (replayed from
+     * ticket_fare_update_logs). The plain accessor reads the live row, which
+     * would mis-resolve the offer_price carry for fares whose type changed
+     * after the anchor moment.
+     */
+    private function historicTicketType(TicketFare $fare, $at): ?string
+    {
+        $fare->loadMissing('updateLogs');
+
+        $live = $fare->ticket_type instanceof \BackedEnum ? $fare->ticket_type->value : $fare->ticket_type;
+        $type = LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($fare->updateLogs),
+            'ticket_type',
+            $at ?? now(),
+            $live
+        );
+
+        return $type === null || $type === '' ? null : (string) $type;
+    }
+
+    /**
+     * Historic [selling_fare, offer_price] snapshot of one fare leg at $at,
+     * adjusted for $passengerType with historic child/infant percentages.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function historicTicketSnapshot(TicketFare $fare, string $passengerType, $at): array
+    {
+        [$s0, $o0] = [
+            $fare->valueAt('selling_fare', $at ?? now()),
+            $this->historicTicketType($fare, $at) === 'offer' ? $fare->valueAt('offer_price', $at ?? now()) : 0.0,
+        ];
+
+        return $this->adjustFaresForType(
+            (float) $s0,
+            (float) $o0,
+            $passengerType,
+            $fare,
+            $this->historicFarePercentage($fare, 'child', $passengerType, $at),
+            $this->historicFarePercentage($fare, 'infant', $passengerType, $at),
+        );
+    }
+
     private function recalculateFareSnapshots(Passenger $passenger): void
     {
         $ptype = $this->passengerTypeValue($passenger);
@@ -1015,13 +1183,55 @@ class PassengerController extends Controller
         }
     }
 
+    /**
+     * Distinguish a store()/addPassenger()-created visa_only placeholder from
+     * a genuine ticket row.
+     *
+     * BookingController::store() (:1601-1611) and addPassenger() (:2600-2610)
+     * pass only booking_id, passenger_id, user_id, ticket_fare_id, status,
+     * selling_fare and offer_price — leaving issue_type, outbound_pending,
+     * net_fare, ticket_number, pnr, issued_date and ticket_agent_id at their
+     * column defaults, with no issued_ticket_logs row.
+     *
+     * Any lifecycle signal below proves the row came from a real issuance,
+     * edit, void, re-issue or refund event (or from a previous run of
+     * handleServiceRequiredChangeFromVisaOnly, which sets outbound_pending),
+     * so it must never be rewritten as a placeholder conversion.
+     */
+    private function isStorePlaceholderTicket(IssuedTicket $ticket): bool
+    {
+        return $ticket->issue_type === null
+            && ! $ticket->outbound_pending
+            && $ticket->status === 'pending'
+            && $ticket->ticket_number === null
+            && $ticket->pnr === null
+            && $ticket->issued_date === null
+            && $ticket->ticket_agent_id === null
+            && (float) $ticket->net_fare === 0.0
+            && ! $ticket->logs()->exists();
+    }
+
     private function handleServiceRequiredChangeFromVisaOnly(Passenger $passenger): void
     {
-        if ($passenger->issuedTickets()->count() > 0) {
+        // store()/addPassenger() create one fare-less placeholder row even for
+        // visa_only passengers, so "any row exists" is NOT evidence of a real
+        // ticket. Only rows carrying lifecycle evidence (issue_type, the
+        // outbound_pending flag, a non-pending status, any issuance field, or
+        // an issued_ticket_logs row) take the historic-snapshot early return.
+        $tickets = $passenger->issuedTickets()->get();
+
+        if ($tickets->isNotEmpty()
+            && $tickets->contains(fn (IssuedTicket $t) => ! $this->isStorePlaceholderTicket($t))) {
             $this->recalculateFareSnapshots($passenger);
 
             return;
         }
+
+        // Only store()/addPassenger() placeholders (or no rows at all) reach
+        // here. A pending_outbound companion can never be placeholder-shaped,
+        // so its presence would already have returned above — the reusable row
+        // is therefore at most the single issue_type-null placeholder.
+        $placeholder = $tickets->firstWhere(fn (IssuedTicket $t) => $this->isStorePlaceholderTicket($t));
 
         $booking = $passenger->booking;
         $package = $booking?->package;
@@ -1032,27 +1242,53 @@ class PassengerController extends Controller
         $isDoubleTicket = $package->is_double_ticket;
         $passengerType = $this->passengerTypeValue($passenger);
 
+        // Same era the caller re-values package_value in (Passenger::
+        // historicAnchor() = earliest era start of the current package,
+        // floored at own creation), so the new ticket snapshot and the total
+        // stay in one era. store/addPassenger stay now()-anchored by design —
+        // this branch only.
+        $anchor = $passenger->historicAnchor();
+
         if ($isDoubleTicket) {
+            $passenger->update([
+                'ticket_fare_id' => null,
+                'ticket_fare_inbound_id' => $package->ticket_fare_inbound_id,
+                'ticket_fare_outbound_id' => $package->ticket_fare_outbound_id,
+            ]);
+            $passenger->refresh();
+
             $inboundFare = $package->ticketFareInbound;
             $outboundFare = $package->ticketFareOutbound;
 
-            $inSelling = $inboundFare ? (float) ($inboundFare->selling_fare ?? 0) : 0;
-            $inOffer = ($inboundFare && $this->ticketTypeValue($inboundFare) === 'offer') ? (float) ($inboundFare->offer_price ?? 0) : 0;
-            [$inSelling, $inOffer] = $this->adjustFaresForType($inSelling, $inOffer, $passengerType, $inboundFare);
+            [$inSelling, $inOffer] = $inboundFare
+                ? $this->historicTicketSnapshot($inboundFare, $passengerType, $anchor)
+                : [0.0, 0.0];
 
-            IssuedTicket::create([
-                'booking_id' => $booking->id,
-                'passenger_id' => $passenger->id,
+            $regularAttributes = [
                 'ticket_fare_id' => null,
-                'user_id' => auth()->id(),
-                'status' => 'pending',
+                'outbound_pending' => true,
                 'selling_fare' => $inSelling,
                 'offer_price' => $inOffer,
-            ]);
+            ];
 
-            $outSelling = $outboundFare ? (float) ($outboundFare->selling_fare ?? 0) : 0;
-            $outOffer = ($outboundFare && $this->ticketTypeValue($outboundFare) === 'offer') ? (float) ($outboundFare->offer_price ?? 0) : 0;
-            [$outSelling, $outOffer] = $this->adjustFaresForType($outSelling, $outOffer, $passengerType, $outboundFare);
+            if ($placeholder) {
+                // Reuse the store-created placeholder: only fare-bearing
+                // columns are written, never protected issuance fields.
+                $placeholder->update($regularAttributes);
+            } else {
+                IssuedTicket::create(array_merge([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ], $regularAttributes));
+            }
+
+            $outSelling = 0.0;
+            $outOffer = 0.0;
+            if ($outboundFare) {
+                [$outSelling, $outOffer] = $this->historicTicketSnapshot($outboundFare, $passengerType, $anchor);
+            }
 
             IssuedTicket::create([
                 'booking_id' => $booking->id,
@@ -1066,22 +1302,35 @@ class PassengerController extends Controller
             ]);
         } else {
             $fare = $package->ticketFare;
-            $sellingFare = 0;
-            $offerPrice = 0;
-            if ($fare) {
-                $sellingFare = (float) ($fare->selling_fare ?? 0);
-                $offerPrice = $this->ticketTypeValue($fare) === 'offer' ? (float) ($fare->offer_price ?? 0) : 0;
-                [$sellingFare, $offerPrice] = $this->adjustFaresForType($sellingFare, $offerPrice, $passengerType, $fare);
-            }
-            IssuedTicket::create([
-                'booking_id' => $booking->id,
-                'passenger_id' => $passenger->id,
+            $passenger->update([
+                'ticket_fare_id' => $package->ticket_fare_id,
+                'ticket_fare_inbound_id' => null,
+                'ticket_fare_outbound_id' => null,
+            ]);
+            $passenger->refresh();
+
+            [$sellingFare, $offerPrice] = $fare
+                ? $this->historicTicketSnapshot($fare, $passengerType, $anchor)
+                : [0.0, 0.0];
+            $regularAttributes = [
                 'ticket_fare_id' => $passenger->ticket_fare_id,
-                'user_id' => auth()->id(),
-                'status' => 'pending',
+                'outbound_pending' => true,
                 'selling_fare' => $sellingFare,
                 'offer_price' => $offerPrice,
-            ]);
+            ];
+
+            if ($placeholder) {
+                // Reuse the store-created placeholder: only fare-bearing
+                // columns are written, never protected issuance fields.
+                $placeholder->update($regularAttributes);
+            } else {
+                IssuedTicket::create(array_merge([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ], $regularAttributes));
+            }
         }
     }
 }

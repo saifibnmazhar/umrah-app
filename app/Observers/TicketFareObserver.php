@@ -10,14 +10,10 @@ class TicketFareObserver
 {
     public function created(TicketFare $ticketFare): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
+        // Always log (D8): NULL user_id = "system"/CLI.
         TicketFareUpdateLog::create([
             'ticket_fare_id' => $ticketFare->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'created',
             'old_values' => null,
             'new_values' => $ticketFare->attributesToArray(),
@@ -31,11 +27,6 @@ class TicketFareObserver
             return;
         }
 
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $original = $ticketFare->getOriginal();
         $oldValues = [];
         $newValues = [];
@@ -46,7 +37,7 @@ class TicketFareObserver
 
         TicketFareUpdateLog::create([
             'ticket_fare_id' => $ticketFare->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'updated',
             'old_values' => $oldValues,
             'new_values' => $newValues,
@@ -55,18 +46,13 @@ class TicketFareObserver
 
     public function deleting(TicketFare $ticketFare): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $oldValues = collect($ticketFare->attributesToArray())
             ->except(['created_at', 'updated_at'])
             ->toArray();
 
         TicketFareUpdateLog::create([
             'ticket_fare_id' => $ticketFare->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'deleted',
             'old_values' => $oldValues,
             'new_values' => null,

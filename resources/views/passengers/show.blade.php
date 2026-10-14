@@ -520,11 +520,7 @@ $visaSubData = $passenger->visaSubmission ? [
     'status' => $passenger->visaSubmission->status?->value,
 ] : null;
 
-$visaSellingPriceValue = (float)(
-    $passenger->visaSubmission?->visaSellingPrice?->selling_price
-    ?? $passenger->booking?->package?->visaSellingPrice?->selling_price
-    ?? 0
-);
+$visaSellingPriceValue = (float) $visaCost;
 @endphp
 
 <script>

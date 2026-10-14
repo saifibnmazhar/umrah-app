@@ -13,7 +13,9 @@
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     historicalRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
-    updateRoute: '{{ route('bookings.update', $booking->id) }}'
+    previouslyUsedPackageIds: @json($previouslyUsedPackageIds ?? []),
+    updateRoute: '{{ route('bookings.update', $booking->id) }}',
+    swapPreviewRoute: '{{ route('bookings.swap-preview', $booking->id) }}'
 };</script>
 <script>window.__currencyRate = {{ $currentCurrencyRate?->rate ?? 0 }};</script>
 <div class="max-w-5xl mx-auto" x-data="editBookingApp()" x-init="init()">
