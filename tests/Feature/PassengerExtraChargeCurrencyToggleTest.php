@@ -106,7 +106,7 @@ class PassengerExtraChargeCurrencyToggleTest extends TestCase
         $this->assertStringContainsString('if (canEditProtectedFields)', $html);
     }
 
-    public function test_passenger_edit_page_hides_extra_charge_field_for_non_admins(): void
+    public function test_passenger_edit_page_shows_readonly_extra_charge_for_non_admins(): void
     {
         $this->actingAs($this->createUser());
 
@@ -128,7 +128,10 @@ class PassengerExtraChargeCurrencyToggleTest extends TestCase
             'canEditExtraCharge' => false,
         ])->render();
 
-        $this->assertStringNotContainsString('x-model="passengerData.extra_charge_bdt"', $html);
-        $this->assertStringNotContainsString('Extra Charge (BDT)', $html);
+        $this->assertStringContainsString('x-model="passengerData.extra_charge_bdt"', $html);
+        $this->assertStringContainsString('Extra Charge (BDT)', $html);
+        $this->assertStringContainsString('x-model="passengerData.extra_charge"', $html);
+        $this->assertStringContainsString('readonly', $html);
+        $this->assertStringNotContainsString('passengerData.extra_charge = ((parseFloat(passengerData.extra_charge_bdt)', $html);
     }
 }
