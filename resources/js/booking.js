@@ -246,6 +246,9 @@ Alpine.data('bookingApp', () => ({
         }
 
         this.passengerData.passenger_type = calculatedType;
+        if (calculatedType !== 'Adult') {
+            this.passengerData.gender = '';
+        }
         this.updateBaggageWeight();
         // Only recalculate if editing an existing passenger (not adding new one)
         if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
@@ -455,6 +458,17 @@ Alpine.data('bookingApp', () => ({
 
         if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
             alert('Please select gender for adult passenger');
+            return false;
+        }
+
+        if (!this.passengerData.passport_expiry) {
+            alert('Please enter passport expiry date');
+            return false;
+        }
+        const expiryDate = new Date(this.passengerData.passport_expiry);
+        const todayDate = new Date(new Date().toDateString());
+        if (isNaN(expiryDate.getTime()) || expiryDate <= todayDate) {
+            alert('Passport expiry must be a future date');
             return false;
         }
 
@@ -1132,6 +1146,9 @@ Alpine.data('createBookingApp', () => ({
         }
 
         this.passengerData.passenger_type = calculatedType;
+        if (calculatedType !== 'Adult') {
+            this.passengerData.gender = '';
+        }
         this.updateBaggageWeight();
         if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
             this.recalculateCurrentPassenger(this.editingPassengerIndex);
@@ -1688,6 +1705,20 @@ Alpine.data('createBookingApp', () => ({
     savePassenger() {
         if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
             alert('Please fill in all required fields');
+            return;
+        }
+        if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
+            alert('Please select gender for adult passenger');
+            return;
+        }
+        if (!this.passengerData.passport_expiry) {
+            alert('Please enter passport expiry date');
+            return;
+        }
+        const expiryDate = new Date(this.passengerData.passport_expiry);
+        const todayDate = new Date(new Date().toDateString());
+        if (isNaN(expiryDate.getTime()) || expiryDate <= todayDate) {
+            alert('Passport expiry must be a future date');
             return;
         }
         const schedule = this.validatePassengerSchedule();
@@ -3099,6 +3130,9 @@ Alpine.data('editBookingApp', () => ({
         }
 
         this.passengerData.passenger_type = calculatedType;
+        if (calculatedType !== 'Adult') {
+            this.passengerData.gender = '';
+        }
         this.updateBaggageWeight();
         if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
             this.recalculateCurrentPassenger(this.editingPassengerIndex);
@@ -3637,6 +3671,17 @@ Alpine.data('editBookingApp', () => ({
 
         if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
             alert('Please select gender for adult passenger');
+            return false;
+        }
+
+        if (!this.passengerData.passport_expiry) {
+            alert('Please enter passport expiry date');
+            return false;
+        }
+        const expiryDate = new Date(this.passengerData.passport_expiry);
+        const todayDate = new Date(new Date().toDateString());
+        if (isNaN(expiryDate.getTime()) || expiryDate <= todayDate) {
+            alert('Passport expiry must be a future date');
             return false;
         }
 
@@ -4367,6 +4412,16 @@ Alpine.data('showBookingApp', () => ({
             alert('Please select gender for adult passenger');
             return;
         }
+        if (!this.passengerData.passport_expiry) {
+            alert('Please enter passport expiry date');
+            return;
+        }
+        const expiryDate = new Date(this.passengerData.passport_expiry);
+        const todayDate = new Date(new Date().toDateString());
+        if (isNaN(expiryDate.getTime()) || expiryDate <= todayDate) {
+            alert('Passport expiry must be a future date');
+            return;
+        }
 
         const bookingId = window.__bookingServerData?.bookingId;
         if (!bookingId) {
@@ -4535,6 +4590,9 @@ Alpine.data('showBookingApp', () => ({
         }
 
         this.passengerData.passenger_type = calculatedType;
+        if (calculatedType !== 'Adult') {
+            this.passengerData.gender = '';
+        }
         this.updateBaggageWeight();
     },
 
