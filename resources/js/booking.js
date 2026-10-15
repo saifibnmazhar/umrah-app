@@ -2687,6 +2687,11 @@ Alpine.data('editBookingApp', () => ({
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
     originalPackageId: null,
+    // Historic snapshot captured in loadExistingBooking(): the fare/display
+    // fields and booking totals as loaded. Returning to the original package
+    // (A -> B -> A, no save) restores these instead of live-recomputing.
+    initialPassengerFareSnapshot: null,
+    initialBookingTotals: null,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -2979,6 +2984,35 @@ Alpine.data('editBookingApp', () => ({
             this.passengers.forEach((p, index) => {
                 this.passengerPackageValues[index] = parseFloat(p.package_value) || 0;
             });
+
+            // Historic snapshot for return-to-original restores (A -> B -> A,
+            // no save): fare FKs + display fields plus booking totals as
+            // loaded, so the pre-save view matches what a save would store.
+            this.initialPassengerFareSnapshot = this.passengers.map(p => ({
+                ticket_fare_id: p.ticket_fare_id,
+                ticket_fare: p.ticket_fare,
+                ticket_fare_inbound_id: p.ticket_fare_inbound_id,
+                ticket_fare_outbound_id: p.ticket_fare_outbound_id,
+                route: p.route,
+                airline: p.airline,
+                class: p.class,
+                route_type: p.route_type,
+                flight_type: p.flight_type,
+                inbound_route_type: p.inbound_route_type,
+                inbound_flight_type: p.inbound_flight_type,
+                inbound_route: p.inbound_route,
+                inbound_airline: p.inbound_airline,
+                inbound_class: p.inbound_class,
+                outbound_route_type: p.outbound_route_type,
+                outbound_flight_type: p.outbound_flight_type,
+                outbound_route: p.outbound_route,
+                outbound_airline: p.outbound_airline,
+                outbound_class: p.outbound_class,
+            }));
+            this.initialBookingTotals = {
+                total_value: parseFloat(booking.total_value) || 0,
+                discount_amount: parseFloat(booking.discount_amount) || 0,
+            };
         }
 
         this.updateFingerprintCharge();
@@ -3349,6 +3383,19 @@ Alpine.data('editBookingApp', () => ({
     },
 
     onPackageChange() {
+        const server = window.__bookingServerData || {};
+        const targetId = String(this.bookingData.package_id);
+        this.swapPreviewSeq = (this.swapPreviewSeq || 0) + 1;
+
+        // Return to the originally-loaded package (A -> B -> A, no save):
+        // restore the HISTORIC snapshot instead of live-recomputing, so the
+        // passenger cards match what a save would store (a no-op keeps the
+        // stored values) and what a reloaded edit page shows.
+        if (this.originalPackageId && String(targetId) === String(this.originalPackageId)) {
+            this.restoreHistoricPassengerValues();
+            return;
+        }
+
         const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
         if (pkg && pkg.ticket_fare_id) {
             const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
@@ -3376,12 +3423,7 @@ Alpine.data('editBookingApp', () => ({
         }
 
         // A target different from the originally-loaded package previews from
-        // SERVER truth (live values via swap-preview); the unchanged package
-        // keeps the client-side estimate, which equals the stored values.
-        const server = window.__bookingServerData || {};
-        const targetId = String(this.bookingData.package_id);
-        this.swapPreviewSeq = (this.swapPreviewSeq || 0) + 1;
-
+        // SERVER truth (live values via swap-preview).
         if (this.originalPackageId && server.swapPreviewRoute
             && String(targetId) !== String(this.originalPackageId)) {
             this.fetchSwapPreview(this.swapPreviewSeq, server.swapPreviewRoute, targetId);
@@ -3607,6 +3649,29 @@ Alpine.data('editBookingApp', () => ({
         this.passengers.forEach((p, index) => {
             this.passengerPackageValues[index] = parseFloat(p.package_value) || 0;
         });
+    },
+
+    /**
+     * Return-to-original restore (A -> B -> A, no save): the passenger cards
+     * and summary show the HISTORIC stored values again instead of the live
+     * client recompute — matching what a save would store (no-op keeps the
+     * stored values) and what a reloaded edit page shows.
+     */
+    restoreHistoricPassengerValues() {
+        if (Array.isArray(this.initialPassengerFareSnapshot)) {
+            this.initialPassengerFareSnapshot.forEach((snap, index) => {
+                const p = this.passengers[index];
+                if (!p || !snap) return;
+                Object.keys(snap).forEach(key => {
+                    p[key] = snap[key];
+                });
+            });
+        }
+        this.reseedStoredPackageValues();
+        if (this.existingBooking && this.initialBookingTotals) {
+            this.existingBooking.total_value = this.initialBookingTotals.total_value;
+            this.existingBooking.discount_amount = this.initialBookingTotals.discount_amount;
+        }
     },
 
     /**
