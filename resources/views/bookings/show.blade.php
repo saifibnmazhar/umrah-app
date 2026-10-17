@@ -858,8 +858,8 @@
         </div>
 
         <div class="flex gap-3 pt-4 border-t border-slate-200">
-            <button type="button" onclick="applyInvoiceDiscount()"
-                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+            <button type="button" id="applyDiscountBtn" onclick="applyInvoiceDiscount()"
+                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                 Apply
             </button>
             <button type="button" onclick="closeDiscountModal()"
@@ -1074,9 +1074,22 @@ function calculateInvoiceDiscount() {
     }
 }
 
+let applyDiscountInFlight = false;
+
 function applyInvoiceDiscount() {
+    if (applyDiscountInFlight) {
+        return;
+    }
+
     const discountType = document.getElementById('discountType').value;
     const discountValue = getDiscountValue();
+
+    const applyBtn = document.getElementById('applyDiscountBtn');
+    applyDiscountInFlight = true;
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'Applying...';
+    }
 
     fetch('{{ route('bookings.update', $booking->id) }}', {
         method: 'PATCH',
@@ -1110,6 +1123,13 @@ function applyInvoiceDiscount() {
     })
     .catch(error => {
         showToast('Error: ' + error.message, 'error');
+    })
+    .finally(() => {
+        applyDiscountInFlight = false;
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.textContent = 'Apply';
+        }
     });
 }
 

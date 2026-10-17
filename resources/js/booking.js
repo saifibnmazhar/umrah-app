@@ -510,6 +510,12 @@ Alpine.data('bookingApp', () => ({
 
     closeDiscountModal() {
         this.discountModalVisible = false;
+        this.applyingDiscount = false;
+    },
+
+    applyDiscountModal() {
+        this.applyingDiscount = true;
+        this.closeDiscountModal();
     },
 
     openPaymentModal() {
@@ -806,6 +812,7 @@ Alpine.data('createBookingApp', () => ({
     paymentSaved: false,
     isSubmitting: false,
     savingPayment: false,
+    applyingDiscount: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
@@ -2359,6 +2366,12 @@ Alpine.data('createBookingApp', () => ({
 
     closeDiscountModal() {
         this.discountModalVisible = false;
+        this.applyingDiscount = false;
+    },
+
+    applyDiscountModal() {
+        this.applyingDiscount = true;
+        this.closeDiscountModal();
     },
 
     submitForm(e) {
@@ -2688,6 +2701,7 @@ Alpine.data('editBookingApp', () => ({
     },
     paymentSaved: false,
     savingPayment: false,
+    applyingDiscount: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
@@ -3719,6 +3733,12 @@ Alpine.data('editBookingApp', () => ({
 
     closeDiscountModal() {
         this.discountModalVisible = false;
+        this.applyingDiscount = false;
+    },
+
+    applyDiscountModal() {
+        this.applyingDiscount = true;
+        this.closeDiscountModal();
     },
 
     openPaymentModal() {

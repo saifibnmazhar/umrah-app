@@ -349,8 +349,8 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                         class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
-                    <button type="button" onclick="applyIndexDiscount()"
-                        class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                    <button type="button" id="applyIndexDiscountBtn" onclick="applyIndexDiscount()"
+                        class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                         Apply
                     </button>
                     <button type="button" onclick="closeIndexDiscountModal()"
@@ -7455,10 +7455,23 @@ function getIndexDiscountValue() {
     return parseFloat(document.getElementById('indexDiscountValueSar').value) || 0;
 }
 
+let indexDiscountInFlight = false;
+
 function applyIndexDiscount() {
     if (!activeIndexDiscountBookingId) return;
+    if (indexDiscountInFlight) {
+        return;
+    }
     const discountType = document.getElementById('indexDiscountType').value;
     const discountValue = getIndexDiscountValue();
+
+    const applyBtn = document.getElementById('applyIndexDiscountBtn');
+    indexDiscountInFlight = true;
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'Applying...';
+    }
+
     fetch(`/bookings/${activeIndexDiscountBookingId}`, {
         method: 'PATCH',
         headers: {
@@ -7493,6 +7506,13 @@ function applyIndexDiscount() {
     })
     .catch(error => {
         indexDiscountToast('Error: ' + error.message, true);
+    })
+    .finally(() => {
+        indexDiscountInFlight = false;
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.textContent = 'Apply';
+        }
     });
 }
 
