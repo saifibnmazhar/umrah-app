@@ -6137,6 +6137,12 @@ function bookingIndexApp() {
                     break;
             }
 
+            // Leaving inbound-only means the outbound leg is no longer pending:
+            // clear the auto-set flag unless it is locked on an issued ticket.
+            if (routeType !== 'One Way-Inbound' && !f.outbound_pending_locked) {
+                f.outbound_pending = false;
+            }
+
             if (f.double_ticket_active && routeType !== 'One Way-Inbound') {
                 f.outbound_pending = false;
                 f.double_ticket_active = false;
@@ -6625,6 +6631,14 @@ function bookingIndexApp() {
                         this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r4);
                     }
                 }
+            }
+            // Inbound-only: choosing a ticket leaves the outbound leg unissued,
+            // so tick "Outbound Ticket Pending" automatically.
+            if (fare && this.ticketFareForm.route_type === 'One Way-Inbound'
+                && !this.ticketFareForm.isOutboundMode
+                && !this.ticketFareForm.double_ticket_active
+                && !this.ticketFareForm.outbound_pending_locked) {
+                this.ticketFareForm.outbound_pending = true;
             }
             this.suggestBaggage(fare?.baggage_allowances);
         },
