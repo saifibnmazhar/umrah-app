@@ -100,10 +100,13 @@ class PassengerExtraChargeCurrencyToggleTest extends TestCase
     {
         $html = $this->renderPassengerEdit();
 
-        $this->assertStringContainsString('extra_charge: parseFloat(this.passengerData.extra_charge) || 0', $html);
+        $this->assertStringContainsString('payload.extra_charge = parseFloat(this.passengerData.extra_charge) || 0', $html);
+        $this->assertStringContainsString('payload.flight_date_from = flightDateFrom', $html);
+        $this->assertStringContainsString('payload.flight_date_to = flightDateTo', $html);
+        $this->assertStringContainsString('if (canEditProtectedFields)', $html);
     }
 
-    public function test_passenger_edit_page_hides_extra_charge_field_for_non_admins(): void
+    public function test_passenger_edit_page_shows_readonly_extra_charge_for_non_admins(): void
     {
         $this->actingAs($this->createUser());
 
@@ -125,7 +128,10 @@ class PassengerExtraChargeCurrencyToggleTest extends TestCase
             'canEditExtraCharge' => false,
         ])->render();
 
-        $this->assertStringNotContainsString('x-model="passengerData.extra_charge_bdt"', $html);
-        $this->assertStringNotContainsString('Extra Charge (BDT)', $html);
+        $this->assertStringContainsString('x-model="passengerData.extra_charge_bdt"', $html);
+        $this->assertStringContainsString('Extra Charge (BDT)', $html);
+        $this->assertStringContainsString('x-model="passengerData.extra_charge"', $html);
+        $this->assertStringContainsString('readonly', $html);
+        $this->assertStringNotContainsString('passengerData.extra_charge = ((parseFloat(passengerData.extra_charge_bdt)', $html);
     }
 }

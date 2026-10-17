@@ -426,7 +426,7 @@
         const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
         if (ticketOption) {
             document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
-            filterModalTickets(pkg.ticket_fare_id);
+            filterModalTickets();
             document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
         } else {
             const fareTypeOf = (fare) => fare ? (fare.ticket_type?.value ?? fare.ticket_type ?? '') : '';
@@ -462,7 +462,7 @@
         document.getElementById('packageModal').classList.add('hidden');
     }
 
-    function filterModalTickets(exceptFareId = null) {
+    function filterModalTickets() {
         const selectedType = document.getElementById('modalTicketTypeSelect').value;
         document.getElementById('modalTicketSelect').value = '';
         document.getElementById('modalTicketInboundSelect').value = '';
@@ -471,13 +471,7 @@
         Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
             if (option.value === '') return;
             const ticketType = option.dataset.ticketType;
-            const isUsed = option.dataset.used === 'true';
-            const isExcepted = exceptFareId && option.value == exceptFareId;
-            let show = (selectedType === '' || ticketType === selectedType);
-            if (show && isUsed && !isExcepted) {
-                show = false;
-            }
-            option.style.display = show ? '' : 'none';
+            option.style.display = (selectedType === '' || ticketType === selectedType) ? '' : 'none';
         });
         Array.from(document.getElementById('modalTicketInboundSelect').options).forEach(option => {
             if (option.value === '' || !option.dataset.ticketType) return;
@@ -651,6 +645,7 @@
                     display += ' | SAR ' + offerPrice.toLocaleString();
                 }
             }
+            display += ' | TKT ID: ' + opt.value;
             opt.textContent = display;
         });
     }
@@ -712,6 +707,7 @@
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Package Name</th>
                             <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket ID</th>
                             <th class="px-3 py-2 text-right font-medium">Ticket Selling Fare</th>
                             <th class="px-3 py-2 text-right font-medium">Ticket Offer Fare</th>
                             <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
@@ -755,6 +751,7 @@
                             <tr class="hover:bg-slate-50">
                                 <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
                                 <td class="px-3 py-2 text-slate-600">{{ $routeName }}</td>
+                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">@if($package->is_double_ticket){{ $package->ticket_fare_inbound_id ?? '-' }}(in) | {{ $package->ticket_fare_outbound_id ?? '-' }}(out)@else{{ $package->ticket_fare_id ?? '-' }}@endif</td>
                                 <td class="px-3 py-2 text-right text-slate-800">@currency($ticketSellingFare, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($ticketOfferFare)
@@ -809,7 +806,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
+                                <td colspan="12" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -877,6 +874,9 @@
                                 @php
                                     $type = $fare['ticket_type'];
                                     $prefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($type ?? '?');
+                                    if (in_array($fare['id'], $usedFareIds)) {
+                                        $prefix .= ' (USED)';
+                                    }
                                 @endphp
                                 <option value="{{ $fare['id'] }}"
                                     data-ticket-type="{{ $fare['ticket_type'] }}"
@@ -884,14 +884,14 @@
                                     data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
                                     data-display-prefix="{{ $prefix }}"
                                     data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
-                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
 
                     <div id="modalDoubleTicketFields" class="mt-4 hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
                                 <select id="modalTicketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -900,13 +900,17 @@
                                         @php
                                             $inType = $fare['ticket_type'];
                                             $inPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($inType ?? '?');
+                                            if (in_array($fare['id'], $usedInboundFareIds ?? [])) {
+                                                $inPrefix .= ' (USED)';
+                                            }
                                         @endphp
                                         <option value="{{ $fare['id'] }}"
                                             data-selling-fare="{{ $fare['selling_fare'] }}"
                                             data-ticket-type="{{ $fare['ticket_type'] }}"
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
-                                            data-display-prefix="{{ $inPrefix }}">
-                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            data-display-prefix="{{ $inPrefix }}"
+                                            data-used="{{ in_array($fare['id'], $usedInboundFareIds ?? []) ? 'true' : 'false' }}">
+                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -919,13 +923,17 @@
                                         @php
                                             $outType = $fare['ticket_type'];
                                             $outPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($outType ?? '?');
+                                            if (in_array($fare['id'], $usedOutboundFareIds ?? [])) {
+                                                $outPrefix .= ' (USED)';
+                                            }
                                         @endphp
                                         <option value="{{ $fare['id'] }}"
                                             data-selling-fare="{{ $fare['selling_fare'] }}"
                                             data-ticket-type="{{ $fare['ticket_type'] }}"
                                             data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
-                                            data-display-prefix="{{ $outPrefix }}">
-                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                            data-display-prefix="{{ $outPrefix }}"
+                                            data-used="{{ in_array($fare['id'], $usedOutboundFareIds ?? []) ? 'true' : 'false' }}">
+                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }} | TKT ID: {{ $fare['id'] }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -987,7 +995,6 @@
         const outboundFares = @json($outboundFares);
         const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
         const packages = @json($packages->items());
-        const usedFareIds = @json($usedFareIds);
         let modalCurrentVisaPrice = 0;
         let modalPkgLocked = false;
         let modalPkgEditing = false;

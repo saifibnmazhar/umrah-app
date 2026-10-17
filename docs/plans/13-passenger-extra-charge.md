@@ -17,7 +17,7 @@ Add an `extra_charge` column to the `passengers` table, allow it to be stored vi
 - `BookingService::syncFinancials()` (`app/Services/BookingService.php:154-189`) only touches `total_value`/`discount`/`invoice` — it does NOT update `service_charge` or `profit`, so the lightweight recalc is additive and safe. Same for the `BookingController::syncBookingFinancials()` wrapper (`BookingController.php:147-175`).
 - `PassengerObserver::updated` (`app/Observers/PassengerObserver.php:29`) already writes a `passenger_update_logs` audit row for any field change — `extra_charge` edits are audited via the main `update()` call. Derived `service_charge`/`profit` writes use `updateQuietly()`/`saveQuietly()` and are intentionally NOT audit-logged (see §9 audit note — no explicit logging added, no observer recursion by design).
 - Downstream freshness: `VisaSubmissionObserver`, `IssuedTicketObserver`, `ReIssuedTicketObserver`, `RefundedTicketObserver`, `PackageObserver`, `BookingObserver` all call `recalculateBookingProfit()`, so the new formula propagates on later visa/ticket/package events automatically. EXCEPTION (verified gap, fixed in step 6b): `BookingController@update` package-change loop has no profit recalc afterward, and `PassengerObserver::updated` only recalcs when `is_cancelled` is dirty (`PassengerObserver.php:36-38`).
-- `extra_charge` is profit-side only: it must NOT enter `passengers.package_value`, `bookings.total_value`, or invoice totals.
+- `extra_charge` IS included in `passengers.package_value`, `bookings.total_value`, and invoice totals (`BookingService::calculatePackageValue()` adds it), AND it contributes to the effective service charge used for profit calculations. (Amended — originally profit-side only.)
 
 ## Steps (implementation order)
 
@@ -123,7 +123,7 @@ Keep the existing visa+ticket-effectiveness gate (lines 658-660) unchanged. This
 
 ### 9. Edge cases / notes
 - `extra_charge` only contributes to service charge when both visa and ticket profit are effective (inherits `calculateServiceCharge()` gate). Same rule as the base charge. Single-service waivers (`TICKET_ONLY`/`VISA_ONLY`) apply identically.
-- `extra_charge` does NOT affect `package_value`, `total_value`, or invoice — profit-side only.
+- `extra_charge` affects `package_value`, `total_value`, and invoice — it is part of the derived package value (fare + visa + service charge + extra_charge) and also part of the profit service charge.
 - Audit: `PassengerObserver` logs the user-entered `extra_charge` change via the main `update()` call. Derived `service_charge`/`profit` writes use `updateQuietly()`/`saveQuietly()` and are intentionally NOT audit-logged — this also avoids observer recursion (a plain `update()` inside the recalc would re-fire `updated()`, re-log, and risk an update→observer→recalc→update loop). No explicit logging added: it would cost an extra DB write on every booking-wide recalc (visa/ticket/package events), `Auth::user()` can be null outside request context, and computed-column rows would pollute a user-input audit trail. Traceability = `extra_charge` audit row + `service_charge_effective_at` timestamp.
 - Double-ticket bookings: `extra_charge` is per-passenger, works identically.
 - Fare-snapshot interplay: package change resets `booking_service_charge` but does NOT touch `extra_charge` — persists as manual adjustment (confirmed). Stored `service_charge` refresh is now guaranteed by the step-6b recalc.
@@ -141,8 +141,28 @@ Keep the existing visa+ticket-effectiveness gate (lines 658-660) unchanged. This
 7. **Reports**: confirm P&L report `service_charge` reflects base + extra after recalc.
 8. **Package change**: change package on a booking → `booking_service_charge` resets to new package charge; `extra_charge` persists untouched; stored `service_charge` refreshes (step-6b recalc).
 9. **Visa-only / not-effective**: passenger whose visa/ticket is not yet effective → `service_charge = 0` even with `extra_charge > 0` (inherits gate).
-10. **Invoice immutability**: confirm invoice `total_amount` unchanged after `extra_charge` create/edit (profit-side only).
+10. **Invoice totals**: confirm invoice `total_amount` and `balance` DO change after `extra_charge` create/edit (extra charge is part of package value), with an `invoice_update_logs` row `reason = passenger_updated`.
 11. **Validation**: negative and non-numeric `extra_charge` → 422; null/`''` on edit → stored `0`, no 500.
 12. **Combined edit**: change `extra_charge` + `passenger_type` in one PUT → both `syncFinancials` and profit recalc ran in order (invoice totals AND profit correct).
 13. **Cancelled passenger**: set `extra_charge` on a cancelled passenger → profit stays `0`.
 14. **Single-service**: `visa_only` passenger with visa issued (no ticket) → `extra_charge` counts; `ticket_only` with ticket issued (no visa) → counts.
+
+---
+
+## Amendment (revenue-side inclusion)
+
+The original "profit-side only" invariant was reversed: `extra_charge` now flows into the
+derived package value and therefore into booking totals and invoices.
+
+- `BookingService::calculatePackageValue()` returns `ticket + visa + service_charge + extra_charge`
+  — the single source of truth; cascades to `recalculateBookingTotal()`, `syncFinancials()`
+  (discount + invoice delta), print views, and the sync commands.
+- `PassengerController@update` no longer skips `syncFinancials()` for extra-charge-only edits
+  (the `$extraOnly` branch was removed), so booking/invoice totals refresh on every edit.
+- Frontend mirrors updated to stay in sync with PHP: `resources/js/booking.js` —
+  `calculatePackageValue()` ×3 and `getPassengerFare()` ×2 add `(parseFloat(passenger.extra_charge) || 0)`.
+- Percentage discounts apply to the extra-charge portion (computed on `total_value`).
+- Profit math is unchanged — profit never reads `package_value`, so there is no double counting.
+- Backfill for existing data: `php artisan bookings:sync-financials` then `php artisan profit:backfill`
+  (in that order — profit subtracts `discount_amount`).
+- Coverage: `tests/Feature/PassengerExtraChargeTotalsTest.php`.

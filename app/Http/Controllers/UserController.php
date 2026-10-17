@@ -67,6 +67,10 @@ class UserController extends Controller
             }
         }
 
+        if (! Str::contains($roleName, 'branch') && ! Str::contains($roleName, 'fingerprint')) {
+            $validated['branch_id'] = null;
+        }
+
         $validated['password'] = bcrypt($validated['password']);
         $user = User::create($validated);
         $user->roles()->sync([$validated['role_id']]);
@@ -106,6 +110,10 @@ class UserController extends Controller
             if (! $branch || ! $branch->fingerprint_operation) {
                 return back()->withErrors(['branch_id' => 'Fingerprint roles require a branch with fingerprint operations enabled.'])->withInput();
             }
+        }
+
+        if (! Str::contains($roleName, 'branch') && ! Str::contains($roleName, 'fingerprint')) {
+            $validated['branch_id'] = null;
         }
 
         if (! empty($validated['password'])) {

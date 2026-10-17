@@ -11,14 +11,10 @@ class PassengerObserver
 {
     public function created(Passenger $passenger): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
+        // Always log (D8): NULL user_id = "system"/CLI.
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'passport_no' => $passenger->passport_no,
             'action' => 'created',
             'old_values' => null,
@@ -37,11 +33,6 @@ class PassengerObserver
             app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking);
         }
 
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $original = $passenger->getOriginal();
         $oldValues = [];
         $newValues = [];
@@ -52,7 +43,7 @@ class PassengerObserver
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'passport_no' => $passenger->passport_no,
             'action' => 'updated',
             'old_values' => $oldValues,
@@ -62,16 +53,11 @@ class PassengerObserver
 
     public function deleting(Passenger $passenger): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $oldValues = collect($passenger->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'passport_no' => $passenger->passport_no,
             'action' => 'deleted',
             'old_values' => $oldValues,

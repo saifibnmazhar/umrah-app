@@ -32,11 +32,6 @@
                           this.roleTypes[key] = window.roleTypeMap[key];
                       });
                   }
-                  this.$watch('selectedRole', () => {
-                      if (this.roleType !== 'branch' && this.roleType !== 'fingerprint' && this.$refs.branchSelect) {
-                          this.$refs.branchSelect.value = '';
-                      }
-                  });
               }
           }">
         @csrf
@@ -153,6 +148,10 @@
                 <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
             @enderror
         </div>
+
+        <template x-if="roleType !== 'branch' && roleType !== 'fingerprint'">
+            <input type="hidden" name="branch_id" value="">
+        </template>
 
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">

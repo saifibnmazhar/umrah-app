@@ -131,7 +131,9 @@
             <div id="invoicePassengers" class="space-y-3">
             @forelse($booking->passengers as $index => $passenger)
             @php
-                $passengerTotal = ($passenger->ticketFare?->fare ?? 0) + ($passenger->package_value ?? 0);
+                // ticketFare->fare never resolves (no fare column on ticket_fares)
+                // — the passenger row total IS the stored package_value.
+                $passengerTotal = $passenger->package_value ?? 0;
             @endphp
             <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
                 <div>

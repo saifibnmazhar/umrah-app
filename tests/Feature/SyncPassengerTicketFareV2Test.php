@@ -26,7 +26,6 @@ use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
 use App\Rules\FlightDateSlot;
-use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -182,8 +181,11 @@ class SyncPassengerTicketFareV2Test extends TestCase
         $this->assertEquals($deps['farePackage']->id, $passenger->fresh()->ticket_fare_id);
         $this->assertEquals($deps['farePackage']->id, IssuedTicket::where('passenger_id', $passenger->id)->value('ticket_fare_id'));
 
-        $expected = app(BookingService::class)->calculatePackageValue($passenger->fresh());
-        $this->assertEquals($expected, (float) $passenger->fresh()->package_value);
+        // Hardcoded fixture-derived expectation (NOT calculatePackageValue —
+        // plan 17 test 11: the old assertion compared the service against
+        // itself). fare 28000 + visa 2000 + service 1500, at the passenger's
+        // historic anchor.
+        $this->assertEqualsWithDelta(31500.0, (float) $passenger->fresh()->package_value, 0.01);
         $this->assertGreaterThan(0, (float) $passenger->fresh()->package_value);
         $this->assertEquals($booking->id, $passenger->fresh()->booking_id);
     }

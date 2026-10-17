@@ -9,7 +9,8 @@
     preSelectedPackageId: {{ $passenger->booking->package_id ?? 'null' }},
     updateRoute: '{{ route('passengers.update', $passenger->id) }}',
     showRoute: '{{ route('passengers.show', $passenger->id) }}',
-    currentCurrencyRate: {{ $rate }}
+    currentCurrencyRate: {{ $rate }},
+    canEditProtectedFields: {{ (auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin')) ? 'true' : 'false' }}
 };</script>
 <script>window.__currencyRate = {{ $rate }};</script>
 <div class="max-w-3xl mx-auto" x-data="editPassengerApp()" x-init="init()">
@@ -64,11 +65,12 @@
                         <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         <div x-show="passengerData.passenger_type === 'Adult'" class="mt-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
-                            <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.gender" :required="passengerData.passenger_type === 'Adult'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
+                            <p x-show="passengerData.passenger_type === 'Adult' && !passengerData.gender" class="text-xs text-red-500 mt-1">Gender is required for adult passengers.</p>
                         </div>
                     </div>
                     <div>
@@ -88,8 +90,9 @@
                         <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
-                        <input type="date" x-model="passengerData.passport_expiry" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date *</label>
+                        <input type="date" x-model="passengerData.passport_expiry" required min="{{ date('Y-m-d', strtotime('+1 day')) }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <p x-show="passengerData.passport_expiry && new Date(passengerData.passport_expiry) <= new Date(new Date().toDateString())" class="text-xs text-red-500 mt-1">Expiry must be a future date.</p>
                     </div>
                 </div>
             </div>
@@ -115,16 +118,22 @@
                             <option value="ticket_only">Ticket Only</option>
                         </select>
                     </div>
-                    @if($canEditExtraCharge ?? false)
                     <div>
                         <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Extra Charge (BDT)</label>
+                            @if($canEditExtraCharge ?? false)
                             <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge_bdt" @input="passengerData.extra_charge = ((parseFloat(passengerData.extra_charge_bdt) || 0) / ($store.currency.rate || 1)).toFixed(6)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            @else
+                            <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none" placeholder="0">
+                            @endif
                         </div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Extra Charge (SAR)</label>
+                        @if($canEditExtraCharge ?? false)
                         <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge" :readonly="$store.currency.mode === 'BDT' && $store.currency.rate > 0" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT' && $store.currency.rate > 0}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        @else
+                        <input type="number" min="0" step="0.01" x-model="passengerData.extra_charge" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none" placeholder="0">
+                        @endif
                     </div>
-                    @endif
                 </div>
             </div>
 
@@ -175,14 +184,16 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                             <div class="flex gap-2">
                                 <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
                                     <option value="">Select Date Range</option>
                                 </select>
-                                @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                                     <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
-                                @endif
                             </div>
+                            @else
+                            <div class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">{{ $passenger->flight_date_display }}</div>
+                            @endif
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
@@ -217,14 +228,16 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                             <div class="flex gap-2">
                                 <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
                                     <option value="">Select Date Range</option>
                                 </select>
-                                @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                                     <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
-                                @endif
                             </div>
+                            @else
+                            <div class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">{{ $passenger->flight_date_display }}</div>
+                            @endif
                         </div>
                     </div>
 
@@ -587,6 +600,9 @@
             }
 
             this.passengerData.passenger_type = calculatedType;
+            if (calculatedType !== 'Adult') {
+                this.passengerData.gender = '';
+            }
             this.updateBaggageWeight();
         },
 
@@ -796,6 +812,9 @@
         },
 
         calculateFlightDateRange() {
+            if (window.__bookingServerData?.canEditProtectedFields === false) {
+                return;
+            }
             const route = this.passengerData.route;
             if (!route) {
                 this.populateFlightDateRangeOptions([]);
@@ -1146,6 +1165,17 @@
                 return;
             }
 
+            if (!this.passengerData.passport_expiry) {
+                alert('Please enter passport expiry date');
+                return;
+            }
+            const expiryDate = new Date(this.passengerData.passport_expiry);
+            const todayDate = new Date(new Date().toDateString());
+            if (isNaN(expiryDate.getTime()) || expiryDate <= todayDate) {
+                alert('Passport expiry must be a future date');
+                return;
+            }
+
             let stayDurationValue = this.parseStayDurationDays(this.passengerData.stay_duration);
             if (stayDurationValue === null) {
                 stayDurationValue = this.passengerData.stay_duration_int || null;
@@ -1163,8 +1193,13 @@
             }
 
             if (!flightDateFrom || !flightDateTo) {
-                alert('Please select a valid Flight Date Range');
-                return;
+                const canEditProtected = window.__bookingServerData?.canEditProtectedFields !== false;
+                if (canEditProtected) {
+                    alert('Please select a valid Flight Date Range');
+                    return;
+                }
+                flightDateFrom = flightDateFrom || null;
+                flightDateTo = flightDateTo || null;
             }
 
             const __stayLimits = window.__stayDurationLimits ?? { minDays: 1, maxDays: 85 };
@@ -1172,6 +1207,8 @@
                 alert(`Please select a valid Stay Duration (${__stayLimits.minDays}-${__stayLimits.maxDays} days)`);
                 return;
             }
+
+            const canEditProtectedFields = window.__bookingServerData?.canEditProtectedFields !== false;
 
             const payload = {
                 first_name: this.passengerData.first_name,
@@ -1182,16 +1219,19 @@
                 passport_expiry: this.passengerData.passport_expiry || null,
                 service_required: this.passengerData.service_required || null,
                 stay_duration: stayDurationValue,
-                flight_date_from: flightDateFrom || null,
-                flight_date_to: flightDateTo || null,
                 address: this.passengerData.address || '',
                 passenger_type: this.passengerData.passenger_type ? this.passengerData.passenger_type.toLowerCase() : null,
                 gender: this.passengerData.gender || null,
                 ticket_fare_id: this.isDoubleTicket ? null : (this.passengerData.ticket_fare_id || null),
                 ticket_fare_inbound_id: this.passengerData.ticket_fare_inbound_id || null,
                 ticket_fare_outbound_id: this.passengerData.ticket_fare_outbound_id || null,
-                extra_charge: parseFloat(this.passengerData.extra_charge) || 0,
             };
+
+            if (canEditProtectedFields) {
+                payload.flight_date_from = flightDateFrom || null;
+                payload.flight_date_to = flightDateTo || null;
+                payload.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
+            }
 
             try {
                 const response = await fetch(window.__bookingServerData.updateRoute, {

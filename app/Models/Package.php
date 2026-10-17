@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\LogReplay;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -59,6 +60,38 @@ class Package extends Model
     public function updateLogs(): HasMany
     {
         return $this->hasMany(PackageUpdateLog::class);
+    }
+
+    /**
+     * Value of any package column (service_charge, regular_price,
+     * visa_selling_price_id, …) that was in effect at the given moment,
+     * reconstructed by replaying package_update_logs.
+     *
+     * Honors the manually-written `fare_updated` rows (cascade from
+     * TicketFareController after updateQuietly suppresses observers) both for
+     * seeding and during the walk — see App\Support\LogReplay.
+     *
+     * Falls back to the live row value when there is no log history for the
+     * column (exact for this dataset: locked-package price edits became
+     * possible in the same commit as the log tables).
+     *
+     * @return string|int|float|null raw replayed value — int for FK columns
+     *                               (visa_selling_price_id), string for
+     *                               decimal-cast prices; null only when a
+     *                               logged value was null (callers decide via ??)
+     */
+    public function valueAt(string $column, \DateTimeInterface|string $at): string|int|float|null
+    {
+        $logs = $this->relationLoaded('updateLogs')
+            ? $this->updateLogs
+            : $this->updateLogs()->orderBy('created_at')->get();
+
+        return LogReplay::valueFromEvents(
+            LogReplay::eventsFromLogs($logs),
+            $column,
+            $at,
+            $this->{$column}
+        );
     }
 
     public function getIsLockedAttribute(): bool

@@ -18,14 +18,10 @@ class PackageObserver
 
     public function created(Package $package): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
+        // Always log (D8): NULL user_id = "system"/CLI.
         PackageUpdateLog::create([
             'package_id' => $package->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'created',
             'old_values' => null,
             'new_values' => $package->attributesToArray(),
@@ -50,11 +46,6 @@ class PackageObserver
             return;
         }
 
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $original = $package->getOriginal();
         $oldValues = [];
         $newValues = [];
@@ -65,7 +56,7 @@ class PackageObserver
 
         PackageUpdateLog::create([
             'package_id' => $package->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'updated',
             'old_values' => $oldValues,
             'new_values' => $newValues,
@@ -74,18 +65,13 @@ class PackageObserver
 
     public function deleting(Package $package): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
         $oldValues = collect($package->attributesToArray())
             ->except(['created_at', 'updated_at'])
             ->toArray();
 
         PackageUpdateLog::create([
             'package_id' => $package->id,
-            'user_id' => $user->id,
+            'user_id' => Auth::id(),
             'action' => 'deleted',
             'old_values' => $oldValues,
             'new_values' => null,
