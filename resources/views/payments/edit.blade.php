@@ -11,6 +11,7 @@
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Edit Payment</h1>
 
     <form method="POST" action="{{ route('payments.update', $payment->id) }}" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5"
+          @submit="submitting = true"
           x-data="{
             method: '{{ old('payment_method', $payment->payment_method) }}',
             currency: 'SAR',
@@ -20,6 +21,7 @@
             transactionType: '{{ old('transaction_type_id', $payment->voucher?->transaction_type_id) }}',
             referralBranch: '{{ old('branch_id', $payment->branch_id ?? ($payment->payment_referral ? 'other' : '')) }}',
             senderBank: '{{ old('sender_bank_id', $payment->sender_bank_id ?? ($payment->other_sender_bank ? 'other' : '')) }}',
+            submitting: false,
 
             handleCurrencyChange() {
                 if (this.currency === 'BDT' && this.amount_sar > 0 && this.exchangeRate > 0) {
@@ -227,9 +229,7 @@
         </div>
 
         <div class="pt-4 flex items-center gap-4">
-            <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
-                Update Payment
-            </button>
+            <button type="submit" :disabled="submitting" :class="submitting ? 'opacity-50 cursor-not-allowed' : ''" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition" x-text="submitting ? 'Updating...' : 'Update Payment'"></button>
             <a href="{{ route('payments.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
                Cancel
            </a>

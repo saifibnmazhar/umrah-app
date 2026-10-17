@@ -11,6 +11,7 @@
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Add Payment</h1>
 
     <form method="POST" action="{{ route('payments.store') }}" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5"
+          @submit="submitting = true"
           x-data="{
             method: '{{ old('payment_method') }}',
             currency: 'SAR',
@@ -20,6 +21,7 @@
             transactionType: '{{ old('transaction_type_id') }}',
             referralBranch: '{{ old('branch_id') }}',
             senderBank: '{{ old('sender_bank_id') }}',
+            submitting: false,
 
             handleCurrencyChange() {
                 if (this.currency === 'BDT' && this.amount_sar > 0 && this.exchangeRate > 0) {
@@ -226,9 +228,7 @@
         </div>
 
         <div class="pt-4 flex items-center gap-4">
-            <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
-                Create Payment
-            </button>
+            <button type="submit" :disabled="submitting" :class="submitting ? 'opacity-50 cursor-not-allowed' : ''" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition" x-text="submitting ? 'Creating...' : 'Create Payment'"></button>
             <a href="{{ route('payments.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
                 Cancel
             </a>
