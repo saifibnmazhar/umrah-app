@@ -540,6 +540,7 @@ Alpine.data('bookingApp', () => ({
 
     closePaymentModal() {
         this.paymentModalVisible = false;
+        this.savingPayment = false;
     },
 
     handlePaymentCurrencyChange() {
@@ -804,6 +805,7 @@ Alpine.data('createBookingApp', () => ({
     },
     paymentSaved: false,
     isSubmitting: false,
+    savingPayment: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
@@ -2240,6 +2242,7 @@ Alpine.data('createBookingApp', () => ({
 
     closePaymentModal() {
         this.paymentModalVisible = false;
+        this.savingPayment = false;
     },
 
     handlePaymentCurrencyChange() {
@@ -2322,12 +2325,13 @@ Alpine.data('createBookingApp', () => ({
             alert('Payment amount cannot exceed the total booking value of ' + Alpine.store('currency').format(this.paymentMaxAmount));
             return;
         }
-        
+
         if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
             alert('Cannot process BDT payment. Exchange rate not available.');
             return;
         }
-        
+
+        this.savingPayment = true;
         this.paymentSaved = true;
         
         console.log('Payment saved:', {
@@ -2683,6 +2687,7 @@ Alpine.data('editBookingApp', () => ({
         amount_bdt: ''
     },
     paymentSaved: false,
+    savingPayment: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
@@ -3746,6 +3751,7 @@ Alpine.data('editBookingApp', () => ({
 
     closePaymentModal() {
         this.paymentModalVisible = false;
+        this.savingPayment = false;
     },
 
     handlePaymentCurrencyChange() {
@@ -3782,6 +3788,7 @@ Alpine.data('editBookingApp', () => ({
             return;
         }
 
+        this.savingPayment = true;
         this.paymentSaved = true;
 
         console.log('Payment saved:', {
@@ -4105,6 +4112,7 @@ Alpine.data('showBookingApp', () => ({
     passengerDocFiles: [],
     paymentModalVisible: false,
     editingPaymentId: null,
+    savingPayment: false,
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -5035,6 +5043,7 @@ Alpine.data('showBookingApp', () => ({
     closePaymentModal() {
         this.paymentModalVisible = false;
         this.editingPaymentId = null;
+        this.savingPayment = false;
     },
 
     openEditPaymentModal(payment) {
@@ -5096,6 +5105,10 @@ Alpine.data('showBookingApp', () => ({
     },
 
     savePayment() {
+        if (this.savingPayment) {
+            return;
+        }
+
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
         const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
 
@@ -5140,6 +5153,8 @@ Alpine.data('showBookingApp', () => ({
 
         const method = this.editingPaymentId ? 'PUT' : 'POST';
 
+        this.savingPayment = true;
+
         fetch(url, {
             method: method,
             headers: {
@@ -5171,6 +5186,7 @@ Alpine.data('showBookingApp', () => ({
             setTimeout(() => location.reload(), 500);
         })
         .catch(error => {
+            this.savingPayment = false;
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {

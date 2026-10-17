@@ -443,7 +443,7 @@
             </div>
             
             <div class="flex gap-3">
-                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="savePayment()" :disabled="savingPayment" :class="savingPayment ? 'opacity-50 cursor-not-allowed' : ''" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="savingPayment ? 'Saving...' : 'Save'"></button>
                 <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
