@@ -79,6 +79,7 @@
                             <option value="{{ $route->id }}"
                                     data-route-type="{{ $route->route_type->value }}"
                                     data-flight-type="{{ $route->flight_type->value ?? '' }}"
+                                    data-airline-id="{{ $route->airline_id }}"
                                     {{ old('route_id') == $route->id ? 'selected' : '' }}>
                                 @if($route->route_type->value === 'multi_city')
                                     @if($route->multiSegments->count() > 0)
@@ -293,19 +294,29 @@ function toggleFields() {
 function filterRoutes() {
     const routeType = document.getElementById('routeType').value;
     const flightType = document.getElementById('flightType').value;
+    const airlineId = document.getElementById('airlineId').value;
     const routeSelect = document.getElementById('routeId');
     const options = routeSelect.querySelectorAll('option');
 
     options.forEach(function(option) {
-        if (option.value === '' || option.value === '__add_new__') return;
+        if (option.value === '') return;
+
+        // Without an airline there is no route context: hide the list and the
+        // "+ Add New Route" action, leaving only the placeholder.
+        if (option.value === '__add_new__') {
+            option.style.display = airlineId ? '' : 'none';
+            return;
+        }
 
         const optionRouteType = option.getAttribute('data-route-type');
         const optionFlightType = option.getAttribute('data-flight-type');
+        const optionAirlineId = option.getAttribute('data-airline-id');
 
         const matchesRouteType = !routeType || optionRouteType === routeType;
         const matchesFlightType = !flightType || optionFlightType === flightType;
+        const matchesAirline = !!airlineId && optionAirlineId === airlineId;
 
-        if (matchesRouteType && matchesFlightType) {
+        if (matchesRouteType && matchesFlightType && matchesAirline) {
             option.style.display = '';
         } else {
             option.style.display = 'none';
@@ -316,8 +327,12 @@ function filterRoutes() {
         const selectedOption = routeSelect.options[routeSelect.selectedIndex];
         const selectedRouteType = selectedOption.getAttribute('data-route-type');
         const selectedFlightType = selectedOption.getAttribute('data-flight-type');
+        const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
 
-        if ((routeType && selectedRouteType !== routeType) || (flightType && selectedFlightType !== flightType)) {
+        if ((routeType && selectedRouteType !== routeType)
+            || (flightType && selectedFlightType !== flightType)
+            || !airlineId
+            || selectedAirlineId !== airlineId) {
             routeSelect.value = '';
             document.getElementById('flightType').value = '';
         }
@@ -352,17 +367,24 @@ function filterClasses() {
     const airlineId = document.getElementById('airlineId').value;
     const classSelect = document.getElementById('classId');
 
-    // Filter class options based on airline
+    // Filter class options based on airline. Without an airline there is no
+    // class context: hide the list and the "+ Add New Class" action, leaving
+    // only the placeholder.
     const options = classSelect.querySelectorAll('option');
     options.forEach(function(option) {
-        if (option.value === '' || option.value === '__add_new__') return;
+        if (option.value === '') return;
+
+        if (option.value === '__add_new__') {
+            option.style.display = airlineId ? '' : 'none';
+            return;
+        }
 
         const optionAirlineId = option.getAttribute('data-airline-id');
 
-        if (airlineId && optionAirlineId !== airlineId) {
-            option.style.display = 'none';
-        } else {
+        if (airlineId && optionAirlineId === airlineId) {
             option.style.display = '';
+        } else {
+            option.style.display = 'none';
         }
     });
 
@@ -371,7 +393,7 @@ function filterClasses() {
         const selectedOption = classSelect.options[classSelect.selectedIndex];
         const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
 
-        if (airlineId && selectedAirlineId !== airlineId) {
+        if (!airlineId || selectedAirlineId !== airlineId) {
             classSelect.value = '';
         }
     }
@@ -379,6 +401,7 @@ function filterClasses() {
 
 function handleAirlineChange() {
     filterClasses();
+    filterRoutes();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -811,6 +834,7 @@ function ticketFareForm() {
             newOpt.text = label;
             newOpt.setAttribute('data-route-type', routeType);
             newOpt.setAttribute('data-flight-type', flightType);
+            newOpt.setAttribute('data-airline-id', route.airline_id != null ? String(route.airline_id) : '');
             newOpt.selected = true;
 
             let inserted = false;
