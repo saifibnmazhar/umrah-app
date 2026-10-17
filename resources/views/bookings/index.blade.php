@@ -6512,6 +6512,9 @@ function bookingIndexApp() {
             this.ticketFareForm.route = '';
             this.ticketFareForm.airline = '';
             this.ticketFareForm.travel_class = '';
+            // Ticket was cleared, so its fare no longer applies.
+            this.ticketFareForm.net_fare = '';
+            this.ticketFareForm.net_fare_bdt = '';
         },
 
         handleAirlineChange() {
