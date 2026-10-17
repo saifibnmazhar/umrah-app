@@ -444,6 +444,7 @@ Alpine.data('bookingApp', () => ({
 
     closePassengerModal() {
         this.passengerModalVisible = false;
+        this.savingPassenger = false;
     },
 
     editPassenger(index) {
@@ -791,6 +792,7 @@ Alpine.data('createBookingApp', () => ({
     fingerprintCharge: 0,
     editingPassengerIndex: null,
     passengerModalVisible: false,
+    savingPassenger: false,
     customerModalVisible: false,
     discountModalVisible: false,
     discountValueBdt: '',
@@ -1705,6 +1707,7 @@ Alpine.data('createBookingApp', () => ({
 
     closePassengerModal() {
         this.passengerModalVisible = false;
+        this.savingPassenger = false;
         this.editingPassengerIndex = null;
         window.__pendingPassengerDocs = [];
         const list = document.getElementById('passenger_doc_list');
@@ -1769,6 +1772,7 @@ Alpine.data('createBookingApp', () => ({
             this.renderPassengerDocList();
         }
 
+        this.savingPassenger = true;
         this.closePassengerModal();
     },
 
@@ -4124,6 +4128,7 @@ Alpine.data('editBookingApp', () => ({
 Alpine.data('showBookingApp', () => ({
     ...durationUtils,
     passengerModalVisible: false,
+    savingPassenger: false,
     editingPassengerIndex: null,
     customDurationModalVisible: false,
     customerDocs: [],
@@ -4429,6 +4434,7 @@ Alpine.data('showBookingApp', () => ({
 
     closePassengerModal() {
         this.passengerModalVisible = false;
+        this.savingPassenger = false;
     },
 
     savePassenger() {
@@ -4461,6 +4467,11 @@ Alpine.data('showBookingApp', () => ({
         if (!schedule) {
             return;
         }
+
+        if (this.savingPassenger) {
+            return;
+        }
+        this.savingPassenger = true;
 
         fetch('/bookings/' + bookingId + '/passengers', {
             method: 'POST',
@@ -4518,6 +4529,9 @@ Alpine.data('showBookingApp', () => ({
         })
         .catch(error => {
             alert('Error: ' + error.message);
+        })
+        .finally(() => {
+            this.savingPassenger = false;
         });
     },
 

@@ -280,11 +280,11 @@
             </div>
 
             <div class="flex gap-3 pt-4 border-t border-slate-200">
-                <button type="submit" class="flex-1 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-1.5">
+                <button type="submit" :disabled="savingPassenger" :class="savingPassenger ? 'opacity-50 cursor-not-allowed' : ''" class="flex-1 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
-                    Save Changes
+                    <span x-text="savingPassenger ? 'Saving...' : 'Save Changes'"></span>
                 </button>
                 <a href="{{ route('passengers.show', $passenger->id) }}" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-center">
                     Cancel
@@ -382,6 +382,7 @@
         packages: [],
         allPackages: [],
         customDurationModalVisible: false,
+        savingPassenger: false,
         flightDateModalVisible: false,
         flightDateModalFrom: '',
         flightDateModalTo: '',
@@ -1155,6 +1156,9 @@
         },
 
         async savePassenger() {
+            if (this.savingPassenger) {
+                return;
+            }
             if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
                 alert('Please fill in all required fields');
                 return;
@@ -1233,6 +1237,7 @@
                 payload.extra_charge = parseFloat(this.passengerData.extra_charge) || 0;
             }
 
+            this.savingPassenger = true;
             try {
                 const response = await fetch(window.__bookingServerData.updateRoute, {
                     method: 'PUT',
@@ -1254,6 +1259,8 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while updating the passenger.');
+            } finally {
+                this.savingPassenger = false;
             }
         },
     }));

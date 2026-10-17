@@ -249,7 +249,7 @@
             </div>
 
             <div class="flex gap-3 pt-4 border-t border-slate-200">
-                <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Add</button>
+                <button type="submit" :disabled="savingPassenger" :class="savingPassenger ? 'opacity-50 cursor-not-allowed' : ''" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="savingPassenger ? 'Adding...' : 'Add'"></button>
                 <button type="button" @click="closePassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </form>
