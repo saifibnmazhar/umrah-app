@@ -271,12 +271,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <script>
 function statementReport() {
     const today = new Date();
-    const thirtyDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
-    const iso = (d) => d.toISOString().slice(0, 10);
+    // Local-date formatter: toISOString() converts to UTC, which yields the
+    // previous day for UTC+ timezones early in the day. Build YYYY-MM-DD from
+    // local parts so "today" is the user's today.
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
         filters: {
             date_type: 'issue',
-            date_from: iso(thirtyDaysAgo),
+            date_from: iso(today),
             date_to: iso(today),
             agent_id: '',
             search: '',

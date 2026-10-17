@@ -39,7 +39,7 @@ class StatementController extends Controller
         ]);
 
         $dateType = $validated['date_type'] ?? 'issue';
-        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->subDays(30)->startOfDay();
+        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->startOfDay();
         $dateTo = isset($validated['date_to']) ? Carbon::parse($validated['date_to'])->endOfDay() : now()->endOfDay();
         $search = isset($validated['search']) ? trim($validated['search']) : null;
         $search = $search === '' ? null : $search;
@@ -138,7 +138,7 @@ class StatementController extends Controller
         ]);
 
         $dateType = $validated['date_type'] ?? 'issue';
-        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->subDays(30)->startOfDay();
+        $dateFrom = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : now()->startOfDay();
         $dateTo = isset($validated['date_to']) ? Carbon::parse($validated['date_to'])->endOfDay() : now()->endOfDay();
         $search = isset($validated['search']) ? trim($validated['search']) : null;
         $search = $search === '' ? null : $search;

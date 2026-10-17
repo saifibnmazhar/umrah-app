@@ -32,6 +32,7 @@ use App\Models\User;
 use App\Models\VisaSellingPrice;
 use App\Models\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -415,29 +416,36 @@ class StatementReportTest extends TestCase
         $this->assertCount(1, $response->json('rows'));
     }
 
-    public function test_default_range_is_last_30_days(): void
+    public function test_default_range_is_today_to_today(): void
     {
-        $user = $this->makeUser('Super Admin');
-        $deps = $this->baseDeps($user);
-        $oldBooking = $this->makeBooking($user, $deps, 'INV-DOLD');
-        $oldPassenger = $this->makePassenger($user, $deps, $oldBooking);
-        $this->makeTicket($user, $deps, $oldBooking, $oldPassenger, ['issued_date' => '2026-07-01']);
-        $newBooking = $this->makeBooking($user, $deps, 'INV-DNEW');
-        $newPassenger = $this->makePassenger($user, $deps, $newBooking);
-        $this->makeTicket($user, $deps, $newBooking, $newPassenger, ['issued_date' => '2026-10-01']);
+        Carbon::setTestNow('2026-10-01 12:00:00');
 
-        // No dates sent: defaults to today minus 30 days through today.
-        $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query(['date_type' => 'issue']));
-        $response->assertOk();
-        $rows = $response->json('rows');
-        $this->assertCount(1, $rows);
-        $this->assertEquals('INV-DNEW', $rows[0]['reference_id']);
-        // The older ticket falls outside the window: opening only.
-        $this->assertEquals(-2700.00, (float) $response->json('summary.opening_balance'));
+        try {
+            $user = $this->makeUser('Super Admin');
+            $deps = $this->baseDeps($user);
+            $oldBooking = $this->makeBooking($user, $deps, 'INV-DOLD');
+            $oldPassenger = $this->makePassenger($user, $deps, $oldBooking);
+            $this->makeTicket($user, $deps, $oldBooking, $oldPassenger, ['issued_date' => '2026-07-01']);
+            $newBooking = $this->makeBooking($user, $deps, 'INV-DNEW');
+            $newPassenger = $this->makePassenger($user, $deps, $newBooking);
+            $this->makeTicket($user, $deps, $newBooking, $newPassenger, ['issued_date' => '2026-10-01']);
 
-        $agents = TicketAgent::orderBy('name')->get();
-        $html = view('reports.statement', ['agents' => $agents])->render();
-        $this->assertStringContainsString('getDate() - 30', $html, 'page must default to last 30 days');
+            // No dates sent: defaults to today through today.
+            $response = $this->actingAs($user)->getJson('/api/reports/statement?'.http_build_query(['date_type' => 'issue']));
+            $response->assertOk();
+            $rows = $response->json('rows');
+            $this->assertCount(1, $rows);
+            $this->assertEquals('INV-DNEW', $rows[0]['reference_id']);
+            // The older ticket falls outside the window: opening only.
+            $this->assertEquals(-2700.00, (float) $response->json('summary.opening_balance'));
+
+            $agents = TicketAgent::orderBy('name')->get();
+            $html = view('reports.statement', ['agents' => $agents])->render();
+            $this->assertStringContainsString('date_from: iso(today)', $html, 'page must default from today');
+            $this->assertStringContainsString('date_to: iso(today)', $html, 'page must default to today');
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_view_shows_toast_and_resets_summary_on_range_cap(): void
